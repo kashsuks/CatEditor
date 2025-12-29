@@ -138,7 +138,8 @@ fn move_left(app: &mut CatEditorApp) {
 }
 
 fn move_right(app: &mut CatEditorApp) {
-    if app.cursor_pos < app.text.len() {
+    let max = app.text.chars().count(); //char length not by bytes
+    if app.cursor_pos < max {
         app.cursor_pos += 1;
     }
 }
@@ -169,20 +170,35 @@ fn move_up(app: &mut CatEditorApp) {
 
 fn move_down(app: &mut CatEditorApp) {
     let lines: Vec<&str> = app.text.lines().collect();
-    let mut current_line = 0;
-    let mut char_count = 0;
+    if lines.is_empty() {
+        return;
+    }
+
+    let mut current_line = 0usize;
+    let mut char_count = 0usize;
 
     for (i, line) in lines.iter().enumerate() {
-        if char_count + line.len() >= app.cursor_pos {
+        let line_len = line.chars().count();
+        if char_count + line_len >= app.cursor_pos {
             current_line = i;
             break;
         }
         char_count += line.len() + 1;
     }
 
-    if current_line < lines.len() - 1 {
-        let col = app.cursor_pos - char_count;
-        let next_line_len = lines[current_line + 1].len();
+    if current_line + 1 < lines.len() {
+        let col = app.cursor_pos.saturating_sub(char_count);
+
+        let next_len = lines[current_line + 1].chars().count();
+        let new_col = col.min(next_len);
+
+        let next_line_start: usize = lines
+            .iter()
+            .take(current_line + 1)
+            .map(|l| l.chars().count() + 1)
+            .sum();
+        
+        app.cursor_pos = next_line_start + new_col;
     }
 }
 
