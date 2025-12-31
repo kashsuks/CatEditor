@@ -119,7 +119,7 @@ impl eframe::App for CatEditorApp {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.horizontal_top(|ui| {
                     let line_count = self.text.lines().count().max(1);
-                    let line_number_width = 20.0;
+                    let line_number_width = 40.0;
 
                     ui.allocate_ui_with_layout(
                         egui::vec2(line_number_width, ui.available_height()),
