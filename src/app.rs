@@ -2,6 +2,7 @@ use eframe::egui;
 use crate::menu;
 use crate::theme;
 use crate::theme_manager::{ThemeColors, load_theme};
+use crate::command_palette::CommandPalette;
 
 #[derive(PartialEq)]
 pub enum Mode {
@@ -22,6 +23,9 @@ pub struct CatEditorApp {
     //theme stuff
     pub theme: ThemeColors,
     pub theme_menu_open: bool,
+    
+    //command palette
+    pub command_palette: CommandPalette,
 }
 
 impl Default for CatEditorApp {
@@ -37,6 +41,7 @@ impl Default for CatEditorApp {
             pending_motion: None,
             theme,
             theme_menu_open: false,
+            command_palette: CommandPalette::default(),
         }
     }
 }
@@ -55,9 +60,13 @@ impl eframe::App for CatEditorApp {
                 i.modifiers.ctrl
             };
 
-            if modifier_pressed && i.key_pressed(egui::Key::Comma) && i.key_pressed(egui::Key::A) {
-                println!("refresh");
-                self.theme = load_theme();
+            if modifier_pressed && i.key_pressed(egui::Key::Comma) {
+                if i.modifiers.shift {
+                    self.theme = load_theme();
+                } else {
+                    // println!("command palette toggled");
+                    self.command_palette.toggle();
+                }
             }
         });
 
@@ -94,6 +103,9 @@ impl eframe::App for CatEditorApp {
 
         menu::show_menu_bar(ctx, self);
 
+        // show command palette
+        self.command_palette.show(ctx);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::TopBottomPanel::bottom("status_bar").show_inside(ui, |ui| {
                 let mode_text = match self.mode {
@@ -107,7 +119,7 @@ impl eframe::App for CatEditorApp {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.horizontal_top(|ui| {
                     let line_count = self.text.lines().count().max(1);
-                    let line_number_width = 20.0;
+                    let line_number_width = 40.0;
 
                     ui.allocate_ui_with_layout(
                         egui::vec2(line_number_width, ui.available_height()),
