@@ -76,10 +76,12 @@ impl CommandPalette {
         }
     }
 
-    pub fn show(&mut self, ctx: &egui::Context) {
+    pub fn show(&mut self, ctx: &egui::Context) -> Option<String> {
         if !self.open {
-            return;
+            return None;
         }
+
+        let mut selected_command = None;
 
         egui::Area::new("command_palette_overlay".into())
             .fixed_pos(egui::pos2(0.0, 0.0))
@@ -135,14 +137,19 @@ impl CommandPalette {
                             .max_height(300.0)
                             .show(ui, |ui| {
                                 if !self.filtered_commands.is_empty() {
-                                    for cmd in &self.filtered_commands {
-                                        let response = ui.add_sized(
+                                    let commands_to_show = self.filtered_commands.clone();
+                                    for cmd in &commands_to_show {
+                                        let button_response = ui.add_sized(
                                             egui::vec2(ui.available_width(), 50.0),
                                             egui::Button::new("")
-                                                .frame(false)
+                                                .frame(true)
                                         );
                                         
-                                        let rect = response.rect;
+                                        if button_response.clicked() {
+                                            selected_command = Some(cmd.name.clone());
+                                        }
+                                        
+                                        let rect = button_response.rect;
                                         let painter = ui.painter();
                                         
                                         painter.text(
@@ -150,7 +157,7 @@ impl CommandPalette {
                                             egui::Align2::LEFT_TOP,
                                             &cmd.name,
                                             egui::FontId::proportional(16.0),
-                                            if response.hovered() {
+                                            if button_response.hovered() {
                                                 ui.visuals().strong_text_color()
                                             } else {
                                                 ui.visuals().text_color()
@@ -169,5 +176,13 @@ impl CommandPalette {
                             });
                     });
             });
+
+        if selected_command.is_some() {
+            self.open = false;
+            self.input.clear();
+            self.filtered_commands.clear();
+        }
+
+        selected_command
     }
 }

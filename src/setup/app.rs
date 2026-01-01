@@ -28,7 +28,7 @@ pub struct CatEditorApp {
     
     pub command_palette: CommandPalette,
     pub find_replace: FindReplace,
-    pub command_input: CommandInput, // Added field
+    pub command_input: CommandInput,
 }
 
 impl Default for CatEditorApp {
@@ -102,7 +102,12 @@ impl eframe::App for CatEditorApp {
         });
 
         menu::show_menu_bar(ctx, self);
-        self.command_palette.show(ctx);
+        
+        // Handle command palette and execute selected commands
+        if let Some(command) = self.command_palette.show(ctx) {
+            self.execute_palette_command(ctx, &command);
+        }
+        
         self.find_replace.show(ctx, &mut self.text);
 
         if let Some(cmd) = self.command_input.show(ctx) {
@@ -192,6 +197,45 @@ impl eframe::App for CatEditorApp {
 }
 
 impl CatEditorApp {
+    fn execute_palette_command(&mut self, ctx: &egui::Context, command: &str) {
+        match command {
+            "Theme" => {
+                // The theme menu is already shown in menu.rs, so we don't need to do anything special
+                // User can access it via the menu bar
+            }
+            "Open File" => {
+                if let Some(path) = rfd::FileDialog::new().pick_file() {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        self.text = content;
+                        self.current_file = Some(path.display().to_string());
+                    }
+                }
+            }
+            "Save File" => {
+                if let Some(path) = &self.current_file {
+                    let _ = std::fs::write(path, &self.text);
+                } else if let Some(path) = rfd::FileDialog::new().save_file() {
+                    let _ = std::fs::write(&path, &self.text);
+                    self.current_file = Some(path.display().to_string());
+                }
+            }
+            "Quit" => {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+            "New File" => {
+                self.text.clear();
+                self.current_file = None;
+            }
+            "Save As" => {
+                if let Some(path) = rfd::FileDialog::new().save_file() {
+                    let _ = std::fs::write(&path, &self.text);
+                    self.current_file = Some(path.display().to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn execute_command(&mut self, _ctx: &egui::Context) {
         match self.command_buffer.trim() {
             "q" => { self.should_quit = true; }
