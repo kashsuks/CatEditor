@@ -7,6 +7,7 @@ pub struct FindReplace {
     pub case_sensitive: bool,
     pub match_count: usize,
     pub current_match: usize,
+    pub matches: Vec<usize>,
 }
 
 impl Default for FindReplace {
@@ -18,6 +19,7 @@ impl Default for FindReplace {
             case_sensitive: false,
             match_count: 0,
             current_match: 0,
+            matches: Vec::new(),
         }
     }
 }
@@ -28,15 +30,17 @@ impl FindReplace {
         if self.open {
             self.match_count = 0;
             self.current_match = 0;
+            self.matches.clear();
         }
     }
 
-    pub fn find_matches(&self, text: &str) -> Vec<usize> {
+    pub fn find_matches(&mut self, text: &str) -> Vec<usize> {
         if self.find_text.is_empty() {
+            self.matches.clear();
             return Vec::new();
         }
 
-        let mut matches = Vec::new();
+        let mut found_matches = Vec::new();
         let search_text = if self.case_sensitive {
             text.to_string()
         } else {
@@ -50,22 +54,48 @@ impl FindReplace {
 
         let mut start = 0;
         while let Some(pos) = search_text[start..].find(&find) {
-            matches.push(start + pos);
+            found_matches.push(start + pos);
             start += pos + 1;
         }
 
-        matches
+        self.matches = found_matches.clone();
+        self.match_count = found_matches.len();
+        found_matches
+    }
+
+    pub fn go_to_next_match(&mut self, cursor_pos: &mut usize) {
+        if !self.matches.is_empty() {
+            self.current_match = (self.current_match + 1) % self.matches.len();
+            *cursor_pos = self.matches[self.current_match];
+        }
+    }
+
+    pub fn go_to_prev_match(&mut self, cursor_pos: &mut usize) {
+        if !self.matches.is_empty() {
+            if self.current_match == 0 {
+                self.current_match = self.matches.len() - 1;
+            } else {
+                self.current_match -= 1;
+            }
+            *cursor_pos = self.matches[self.current_match];
+        }
     }
 
     pub fn replace_next(&mut self, text: &mut String) -> bool {
-        let matches = self.find_matches(text);
-        if matches.is_empty() || self.current_match >= matches.len() {
+        if self.matches.is_empty() || self.current_match >= self.matches.len() {
             return false;
         }
 
-        let pos = matches[self.current_match];
+        let pos = self.matches[self.current_match];
         let end = pos + self.find_text.len();
         text.replace_range(pos..end, &self.replace_text);
+        
+        self.find_matches(text);
+
+        if self.current_match >= self.matches.len() && !self.matches.is_empty() {
+            self.current_match = self.matches.len() - 1;
+        }
+
         true
     }
 
@@ -74,29 +104,26 @@ impl FindReplace {
             return 0;
         }
 
-        let matches = self.find_matches(text);
-        let count = matches.len();
+        let count = self.matches.len();
 
-        for (i, &pos) in matches.iter().enumerate().rev() {
-            let offset = i * (self.replace_text.len().saturating_sub(self.find_text.len()));
-            let adjusted_pos = if self.replace_text.len() > self.find_text.len() {
-                pos + offset
-            } else {
-                pos.saturating_sub(offset)
-            };
-            let end = adjusted_pos + self.find_text.len();
-            text.replace_range(adjusted_pos..end, &self.replace_text);
+        for &pos in self.matches.iter().rev() {
+            let end = pos + self.find_text.len();
+            text.replace_range(pos..end, &self.replace_text);
         }
+
+        self.matches.clear();
+        self.match_count = 0;
+        self.current_match = 0;
 
         count
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, text: &mut String) {
+    pub fn show(&mut self, ctx: &egui::Context, text: &mut String, cursor_pos: &mut usize) {
         if !self.open {
             return;
         }
 
-        self.match_count = self.find_matches(text).len();
+        self.find_matches(text); // update the matches when a find text is changed
 
         egui::Window::new("Find and Replace")
             .collapsible(false)
@@ -117,6 +144,11 @@ impl FindReplace {
 
                     if find_response.changed() {
                         self.current_match = 0;
+                        self.find_matches(text);
+                        //jump to the first match if any
+                        if !self.matches.is_empty() {
+                            *cursor_pos = self.matches[0];
+                        }
                     }
                 });
 
@@ -132,15 +164,21 @@ impl FindReplace {
                     ui.checkbox(&mut self.case_sensitive, "Case sensitive");
 
                     if self.match_count > 0 {
-                        ui.label(format!("{} matches found", self.match_count));
+                        ui.label(format!("Match {} of {}", self.current_match + 1, self.match_count));
+                    } else if !self.find_text.is_empty() {
+                        ui.label("No matches found");
                     }
                 });
 
                 ui.add_space(10.0);
 
                 ui.horizontal(|ui| {
-                    if ui.button("Find next").clicked() && self.match_count > 0 {
-                        self.current_match = (self.current_match + 1) % self.match_count;
+                    if ui.button("Previous").clicked() && self.match_count > 0 {
+                        self.go_to_prev_match(cursor_pos);
+                    }
+
+                    if ui.button("Next").clicked() && self.match_count > 0 {
+                        self.go_to_next_match(cursor_pos);
                     }
 
                     if ui.button("Replace").clicked() {
@@ -149,8 +187,6 @@ impl FindReplace {
 
                     if ui.button("Replace all").clicked() {
                         self.replace_all(text);
-                        self.match_count = 0;
-                        self.current_match = 0;
                     }
 
                     if ui.button("Close").clicked() {
@@ -161,6 +197,34 @@ impl FindReplace {
                 if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                     self.open = false;
                 }
+
+                if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    if ui.input(|i| i.modifiers.shift) {
+                        self.go_to_prev_match(cursor_pos);
+                    } else {
+                        self.go_to_next_match(cursor_pos);
+                    }
+                }
             });
+    }
+
+    pub fn get_highlight_ranges(&self) -> Vec<(usize, usize)> {
+        if self.find_text.is_empty() {
+            return Vec::new();
+        }
+
+        self.matches
+            .iter()
+            .map(|&pos| (pos, pos + self.find_text.len()))
+            .collect()
+    }
+
+    pub fn get_current_match_range(&self) -> Option<(usize, usize)> {
+        if self.matches.is_empty() || self.current_match >= self.matches.len() {
+            return None;
+        }
+
+        let pos = self.matches[self.current_match];
+        Some((pos, pos + self.find_text.len()))
     }
 }

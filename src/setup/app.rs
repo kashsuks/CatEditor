@@ -103,12 +103,12 @@ impl eframe::App for CatEditorApp {
 
         menu::show_menu_bar(ctx, self);
         
-        // Handle command palette and execute selected commands
+        // handle command palette and execute selected commands
         if let Some(command) = self.command_palette.show(ctx) {
             self.execute_palette_command(ctx, &command);
         }
         
-        self.find_replace.show(ctx, &mut self.text);
+        self.find_replace.show(ctx, &mut self.text, &mut self.cursor_pos);
 
         if let Some(cmd) = self.command_input.show(ctx) {
             self.command_buffer = cmd;
