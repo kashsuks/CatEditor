@@ -8,6 +8,7 @@ pub struct FindReplace {
     pub match_count: usize,
     pub current_match: usize,
     pub matches: Vec<usize>,
+    pub should_scroll_to_match: bool,
 }
 
 impl Default for FindReplace {
@@ -20,6 +21,7 @@ impl Default for FindReplace {
             match_count: 0,
             current_match: 0,
             matches: Vec::new(),
+            should_scroll_to_match: false,
         }
     }
 }
@@ -31,6 +33,7 @@ impl FindReplace {
             self.match_count = 0;
             self.current_match = 0;
             self.matches.clear();
+            self.should_scroll_to_match = false;
         }
     }
 
@@ -67,6 +70,7 @@ impl FindReplace {
         if !self.matches.is_empty() {
             self.current_match = (self.current_match + 1) % self.matches.len();
             *cursor_pos = self.matches[self.current_match];
+            self.should_scroll_to_match = true;
         }
     }
 
@@ -78,6 +82,7 @@ impl FindReplace {
                 self.current_match -= 1;
             }
             *cursor_pos = self.matches[self.current_match];
+            self.should_scroll_to_match = true;
         }
     }
 
@@ -123,7 +128,7 @@ impl FindReplace {
             return;
         }
 
-        self.find_matches(text); // update the matches when a find text is changed
+        self.find_matches(text);
 
         egui::Window::new("Find and Replace")
             .collapsible(false)
@@ -145,9 +150,9 @@ impl FindReplace {
                     if find_response.changed() {
                         self.current_match = 0;
                         self.find_matches(text);
-                        //jump to the first match if any
                         if !self.matches.is_empty() {
                             *cursor_pos = self.matches[0];
+                            self.should_scroll_to_match = true;
                         }
                     }
                 });

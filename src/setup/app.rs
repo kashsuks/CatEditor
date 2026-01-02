@@ -125,73 +125,134 @@ impl eframe::App for CatEditorApp {
                 ui.label(mode_text);
             });
 
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.horizontal_top(|ui| {
-                    let line_count = self.text.lines().count().max(1);
-                    let line_number_width = 40.0;
+            egui::ScrollArea::vertical()
+                .id_salt("main_scroll_area")
+                .show(ui, |ui| {
+                    ui.horizontal_top(|ui| {
+                        let line_count = self.text.lines().count().max(1);
+                        let line_number_width = 40.0;
 
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(line_number_width, ui.available_height()),
-                        egui::Layout::top_down(egui::Align::RIGHT),
-                        |ui| {
-                            ui.style_mut().spacing.item_spacing.y = 0.0;
-                            for line_num in 1..=line_count {
-                                ui.label(
-                                    egui::RichText::new(format!("{} ", line_num))
-                                        .color(egui::Color32::from_gray(120))
-                                        .monospace(),
-                                );
-                            }
-                        },
-                    );
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(line_number_width, ui.available_height()),
+                            egui::Layout::top_down(egui::Align::RIGHT),
+                            |ui| {
+                                ui.style_mut().spacing.item_spacing.y = 0.0;
+                                for line_num in 1..=line_count {
+                                    ui.label(
+                                        egui::RichText::new(format!("{} ", line_num))
+                                            .color(egui::Color32::from_gray(120))
+                                            .monospace(),
+                                    );
+                                }
+                            },
+                        );
 
-                    let old_text = if self.mode == Mode::Normal {
-                        Some(self.text.clone())
-                    } else {
-                        None
-                    };
+                        let old_text = if self.mode == Mode::Normal {
+                            Some(self.text.clone())
+                        } else {
+                            None
+                        };
 
-                    let text_edit = egui::TextEdit::multiline(&mut self.text)
-                        .font(egui::TextStyle::Monospace)
-                        .frame(false)
-                        .desired_width(f32::INFINITY)
-                        .interactive(true);
+                        let text_edit = egui::TextEdit::multiline(&mut self.text)
+                            .font(egui::TextStyle::Monospace)
+                            .frame(false)
+                            .desired_width(f32::INFINITY)
+                            .interactive(true);
 
-                    let available = ui.available_size();
-                    let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
+                        let available = ui.available_size();
+                        let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
 
-                    let something_else_has_focus = !output.response.has_focus() && 
-                        ctx.memory(|mem| mem.focused().is_some());
+                        if self.find_replace.open && !self.find_replace.find_text.is_empty() {
+                            let galley = output.galley.clone();
+                            let text_draw_pos = output.galley_pos;
+                            let painter = ui.painter();
 
-                    match self.mode {
-                        Mode::Insert => {
-                            if !something_else_has_focus {
-                                output.response.request_focus();
-                            }
-                            if let Some(cursor) = output.cursor_range {
-                                self.cursor_pos = cursor.primary.ccursor.index;
-                            }
-                        }
-                        Mode::Normal => {
-                            if !something_else_has_focus {
-                                output.response.request_focus();
-                            }
+                            let highlight_ranges = self.find_replace.get_highlight_ranges();
+                            let current_match_range = self.find_replace.get_current_match_range();
 
-                            let mut state = output.state;
-                            let ccursor = egui::text::CCursor::new(self.cursor_pos);
-                            state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
-                            state.store(ctx, output.response.id);
+                            for (start, end) in highlight_ranges {
+                                let is_current = current_match_range
+                                    .map(|(curr_start, curr_end)| start == curr_start && end == curr_end)
+                                    .unwrap_or(false);
 
-                            if let Some(old) = old_text {
-                                if self.text != old {
-                                    self.text = old;
+                                let start_cursor = galley.from_ccursor(egui::text::CCursor::new(start));
+                                let end_cursor = galley.from_ccursor(egui::text::CCursor::new(end));
+
+                                if start_cursor.rcursor.row == end_cursor.rcursor.row {
+                                    let row_rect = galley.rows[start_cursor.rcursor.row].rect;
+                                    
+                                    let start_x = if start_cursor.rcursor.column < galley.rows[start_cursor.rcursor.row].glyphs.len() {
+                                        galley.rows[start_cursor.rcursor.row].glyphs[start_cursor.rcursor.column].pos.x
+                                    } else {
+                                        row_rect.max.x
+                                    };
+                                    
+                                    let end_x = if end_cursor.rcursor.column < galley.rows[end_cursor.rcursor.row].glyphs.len() {
+                                        galley.rows[end_cursor.rcursor.row].glyphs[end_cursor.rcursor.column].pos.x
+                                    } else {
+                                        row_rect.max.x
+                                    };
+
+                                    let rect = egui::Rect::from_min_max(
+                                        text_draw_pos + egui::vec2(start_x, row_rect.min.y),
+                                        text_draw_pos + egui::vec2(end_x, row_rect.max.y),
+                                    );
+
+                                    let color = if is_current {
+                                        egui::Color32::from_rgb(173, 216, 230)
+                                    } else {
+                                        egui::Color32::from_rgba_unmultiplied(255, 255, 0, 80)
+                                    };
+
+                                    painter.rect_filled(rect, egui::Rounding::same(2.0), color);
+                                }
+                                
+                                if is_current {
+                                    let row_rect = galley.rows[start_cursor.rcursor.row].rect;
+                                    let scroll_to_y = text_draw_pos.y + row_rect.min.y - 100.0;
+                                    ui.scroll_to_rect(
+                                        egui::Rect::from_min_size(
+                                            egui::pos2(0.0, scroll_to_y),
+                                            egui::vec2(1.0, 1.0)
+                                        ),
+                                        Some(egui::Align::Center)
+                                    );
                                 }
                             }
                         }
-                        Mode::Command => {}
-                    }
+
+                        let something_else_has_focus = !output.response.has_focus() && 
+                            ctx.memory(|mem| mem.focused().is_some());
+
+                        match self.mode {
+                            Mode::Insert => {
+                                if !something_else_has_focus {
+                                    output.response.request_focus();
+                                }
+                                if let Some(cursor) = output.cursor_range {
+                                    self.cursor_pos = cursor.primary.ccursor.index;
+                                }
+                            }
+                            Mode::Normal => {
+                                if !something_else_has_focus {
+                                    output.response.request_focus();
+                                }
+
+                                let mut state = output.state;
+                                let ccursor = egui::text::CCursor::new(self.cursor_pos);
+                                state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
+                                state.store(ctx, output.response.id);
+
+                                if let Some(old) = old_text {
+                                    if self.text != old {
+                                        self.text = old;
+                                    }
+                                }
+                            }
+                            Mode::Command => {}
+                        }
+                    });
                 });
-            });
         });
     }
 }
