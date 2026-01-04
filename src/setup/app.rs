@@ -130,7 +130,11 @@ impl eframe::App for CatEditorApp {
                 .show(ui, |ui| {
                     ui.horizontal_top(|ui| {
                         let line_count = self.text.lines().count().max(1);
-                        let line_number_width = 40.0;
+                        
+                        let max_line_digits = line_count.to_string().len();
+                        let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+                        let char_width = ui.fonts(|f| f.glyph_width(&font_id, '0'));
+                        let line_number_width = (max_line_digits as f32 * char_width) + 20.0;
 
                         ui.allocate_ui_with_layout(
                             egui::vec2(line_number_width, ui.available_height()),
@@ -141,7 +145,7 @@ impl eframe::App for CatEditorApp {
                                     ui.label(
                                         egui::RichText::new(format!("{} ", line_num))
                                             .color(egui::Color32::from_gray(120))
-                                            .monospace(),
+                                            .text_style(egui::TextStyle::Monospace),
                                     );
                                 }
                             },
