@@ -119,6 +119,8 @@ impl eframe::App for CatEditorApp {
 
         menu::show_menu_bar(ctx, self);
 
+        self.tab_manager.show_tab_bar(ctx);
+
         if let Some(command) = self.command_palette.show(ctx) {
             self.execute_palette_command(ctx, &command);
         }
