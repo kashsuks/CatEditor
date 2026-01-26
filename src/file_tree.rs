@@ -3,22 +3,31 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
+// A struct for the file nodes that will be used for each file
 pub struct FileNode {
     pub path: PathBuf,
     pub name: String,
     pub is_dir: bool,
-    pub is_expanded: bool,
-    pub children: Vec<FileNode>,
+    pub is_expanded: bool, // State for whether the file node is expanded (user is searching deeper) or not
+    pub children: Vec<FileNode>, // children will be be specifically for directories since files
+                                 // themselves cannot have children
 }
 
 impl FileNode {
+    // Default file node definition with all the values and their specific values by default 
+    //
+    // # Arguments
+    //
+    // * `path` - Relative path (to the directory root absolute path)
     fn new(path: PathBuf) -> Self {
+        // all the values that are linked to a specific file
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| path.to_string_lossy().to_string());
 
-        let is_dir = path.is_dir();
+        let is_dir = path.is_dir(); // pretty self-explanatory. State for whether a specific path
+                                    // is a directory or not
 
         Self {
             path,
@@ -28,7 +37,8 @@ impl FileNode {
             children: Vec::new(),
         }
     }
-
+    
+    // Checks whether the current path has children under it for the file tree to display
     fn load_children(&mut self) {
         if !self.is_dir || !self.children.is_empty() {
             return;
@@ -39,7 +49,9 @@ impl FileNode {
                 .filter_map(|e| e.ok())
                 .map(|e| e.path())
                 .filter(|p| {
-                    // skip hidden files/folders
+                    // skip hidden files/folders (stuff like .git and its objects will be ignored)
+                    //
+                    // TODO: allow app when run with sudo perms to show these hidden paths
                     p.file_name()
                         .map(|n| !n.to_string_lossy().starts_with('.'))
                         .unwrap_or(false)
@@ -59,27 +71,36 @@ impl FileNode {
     }
 }
 
+// Public structure that is used for the states specifically to the file tree tab box
 pub struct FileTree {
-    pub visible: bool,
+    pub visible: bool, // file tree is either visible or not
     pub root: Option<FileNode>,
     pub width: f32,
 }
 
 impl Default for FileTree {
+    // Default values for the file tree
     fn default() -> Self {
         Self {
-            visible: false,
-            root: None,
-            width: 250.0,
+            visible: false, // file tree not visible by default (can be triggered by running
+                            // control + b)
+            root: None, // no root file when running app on startup
+            width: 250.0, // default width is 250.0px
         }
     }
 }
 
 impl FileTree {
+    // Allows the user to toggle whether the file tree is open or not
     pub fn toggle(&mut self) {
         self.visible = !self.visible;
     }
-
+    
+    // Set the root file of that specific directory so that files can be recursively searched
+    //
+    // # Arguments
+    //
+    // * `path` - Absolute path of the root file of the current directory
     pub fn set_root(&mut self, path: PathBuf) {
         let mut root = FileNode::new(path);
         root.is_expanded = true;

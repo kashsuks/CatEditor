@@ -8,16 +8,28 @@ pub struct FileEntry {
     pub display_name: String,
 }
 
+// A struct representing states used for fuzzy finding
 pub struct FuzzyFinder {
     pub open: bool,
     pub input: String,
     pub current_folder: Option<PathBuf>,
     all_files: Vec<FileEntry>,
-    filetered_files: Vec<FileEntry>, // keeping your spelling, but consistent everywhere
+    filetered_files: Vec<FileEntry>,
     selected_index: usize,
 }
 
 impl Default for FuzzyFinder {
+    // Creates the default state settings for fuzzy fuzzy_finder
+    //
+    // # Arguments
+    // * `open` - State for whether a file is currently open, default to false since on startup a
+    // file is not open
+    // * `input` - User input in a string format 
+    // * `current_folder` - Scans current structure to check what folder the user currently is in 
+    // * `filetered_files` - Fuzzy finding algorithm results with matches for what files were
+    // filtered 
+    // * `selected_index` - Index of what file was selected
+
     fn default() -> Self {
         Self {
             open: false,
@@ -31,6 +43,7 @@ impl Default for FuzzyFinder {
 }
 
 impl FuzzyFinder {
+    // Allows the user to check whether fuzzy finder box is toggled on or off
     pub fn toggle(&mut self) {
         self.open = !self.open;
         if self.open {
@@ -39,14 +52,29 @@ impl FuzzyFinder {
             self.selected_index = 0;
         }
     }
-
+    
+    // Set the folder that the user is currently in 
+    //
+    // # Arguments
+    //
+    // * `folder_path` - The absolute path of the folder where the user is currently located under
     pub fn set_folder(&mut self, folder_path: PathBuf) {
         self.current_folder = Some(folder_path.clone());
         self.all_files = self.scan_directory(&folder_path);
         self.filetered_files = self.all_files.clone();
         self.selected_index = 0;
     }
-
+    
+    // Recursively scans the directory that the user is currently under to fetch all the files in
+    // it 
+    //
+    // # Arguments
+    //
+    // * `dir` - Absolute path of the directory the user is currently under
+    //
+    // # Returns
+    // 
+    // * `Vec<FileEntry>` - All the files under that directory in a structured manner
     fn scan_directory(&self, dir: &Path) -> Vec<FileEntry> {
         let mut files = Vec::new();
 
@@ -73,7 +101,9 @@ impl FuzzyFinder {
 
                     files.push(FileEntry { path, display_name });
                 } else if path.is_dir() {
-                    files.extend(self.scan_directory(&path));
+                    files.extend(self.scan_directory(&path)); // if the path is a directory rather
+                                                              // than a file, we can recursively
+                                                              // call itself to search
                 }
             }
         }
@@ -82,6 +112,8 @@ impl FuzzyFinder {
         files
     }
 
+
+    // Scoring system to rank the closest matches of files
     fn filter_files(&mut self) {
         if self.input.is_empty() {
             self.filetered_files = self.all_files.clone();
@@ -101,7 +133,7 @@ impl FuzzyFinder {
                 })
                 .collect();
 
-            // Sort: higher score first, then alphabetical as tie-breaker
+            // sort: higher score first, then alphabetical as tie breaker
             scored.sort_by(|(a_file, a_score), (b_file, b_score)| {
                 b_score
                     .cmp(a_score)
@@ -114,6 +146,15 @@ impl FuzzyFinder {
         self.selected_index = 0;
     }
 
+    // Function to actually display the results of the fuzzy finder results box
+    //
+    // # Arguments
+    //
+    // * `ctx` - Context provided by egui
+    //
+    // # Returns
+    //
+    // * `Option<PathBuf>`
     pub fn show(&mut self, ctx: &egui::Context) -> Option<PathBuf> {
         if !self.open || self.current_folder.is_none() {
             return None;
@@ -243,6 +284,8 @@ impl FuzzyFinder {
                                         let rect = button_response.rect;
                                         let painter = ui.painter();
 
+                                        // icon images for all the default files (more to be added
+                                        // or just use an icon pack)
                                         let icon = if file.display_name.ends_with(".rs") {
                                             "🦀"
                                         } else if file.display_name.ends_with(".toml") {
@@ -281,13 +324,22 @@ impl FuzzyFinder {
     }
 }
 
-// fuzzy finding algo
-// returns a score (higher means a better match), 0 means no match
+// Fuzzy finder algorithm based on score syste,
+// 
+// # Arguments
+//
+// * `text` - The user input to check a match for 
+// * `pattern` - What pattern to check the matches for 
+//
+// # Returns
+//
+// * `i32` - 32-bit integer of the final score that was given by the algorithm
 fn fuzzy_match(text: &str, pattern: &str) -> i32 {
     if pattern.is_empty() {
-        return 1;
+        return 1; // only 1 point since there is a single match for the file
     }
-
+    
+    // these are the default values for the starting of the algorithm
     let mut score = 0;
     let mut pattern_idx = 0;
     let pattern_chars: Vec<char> = pattern.chars().collect();
