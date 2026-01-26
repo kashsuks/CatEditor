@@ -55,6 +55,11 @@ fn show_file_menu(ui: &mut egui::Ui, ctx: &egui::Context, app: &mut CatEditorApp
             ui.close_menu();
         }
         ui.separator();
+        if ui.button("Settings").clicked() {
+            app.settings.toggle();
+            ui.close_menu();
+        }
+        ui.separator();
         if ui.button("Quit").clicked() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }

@@ -6,6 +6,7 @@ mod hotkey;
 mod setup;
 mod command_palette;
 mod fuzzy_finder;
+mod settings;
 
 fn main() -> eframe::Result<()> {
     //get the args

@@ -6,6 +6,7 @@ use crate::command_palette::CommandPalette;
 use crate::hotkey::find_replace::FindReplace;
 use crate::hotkey::command_input::CommandInput;
 use crate::fuzzy_finder::FuzzyFinder;
+use crate::settings::Settings;
 use std::path::PathBuf;
 
 #[derive(PartialEq)]
@@ -26,6 +27,7 @@ pub struct CatEditorApp {
     pub pending_motion: Option<char>,
     pub saved_column: Option<usize>,
     pub space_pressed: bool,
+    pub vim_mode_enabled: bool,
 
     pub theme: ThemeColors,
     pub theme_menu_open: bool,
@@ -34,6 +36,7 @@ pub struct CatEditorApp {
     pub find_replace: FindReplace,
     pub command_input: CommandInput,
     pub fuzzy_finder: FuzzyFinder,
+    pub settings: Settings,
 }
 
 impl Default for CatEditorApp {
@@ -50,12 +53,14 @@ impl Default for CatEditorApp {
             pending_motion: None,
             saved_column: None,
             space_pressed: false,
+            vim_mode_enabled: false,
             theme,
             theme_menu_open: false,
             command_palette: CommandPalette::default(),
             find_replace: FindReplace::default(),
             command_input: CommandInput::default(),
             fuzzy_finder: FuzzyFinder::default(),
+            settings: Settings::default(),
         }
     }
 }
@@ -100,13 +105,15 @@ impl eframe::App for CatEditorApp {
         ctx.input(|i| {
             if self.mode == Mode::Insert {
                 if i.key_pressed(egui::Key::Escape) {
-                    self.mode = Mode::Normal;
-                    let max = self.text.chars().count();
-                    if self.cursor_pos > max {
-                        self.cursor_pos = max;
+                    if self.vim_mode_enabled {
+                        self.mode = Mode::Normal;
+                        let max = self.text.chars().count();
+                        if self.cursor_pos > max {
+                            self.cursor_pos = max;
+                        }
                     }
                 }
-            } else if self.mode == Mode::Normal {
+            } else if self.mode == Mode::Normal && self.vim_mode_enabled {
                 if i.key_pressed(egui::Key::Space) {
                     self.space_pressed = true;
                 } else if self.space_pressed {
@@ -128,17 +135,24 @@ impl eframe::App for CatEditorApp {
                 
                 handle_fuzzy_finder_keybind(self, i);
                 
-                crate::hotkey::vim_motions::handle_normal_mode_input(self, i);
+                if self.vim_mode_enabled {
+                    crate::hotkey::vim_motions::handle_normal_mode_input(self, i);
+                }
 
-                if i.key_pressed(egui::Key::I) {
+                if i.key_pressed(egui::Key::I) && self.vim_mode_enabled {
                     self.mode = Mode::Insert;
-                } else if i.key_pressed(egui::Key::Colon) {
+                } else if i.key_pressed(egui::Key::Colon) && self.vim_mode_enabled {
                     self.command_input.open();
                 }
             }
         });
 
         menu::show_menu_bar(ctx, self);
+        
+        // Show settings window (need to temporarily take it out to avoid double borrow)
+        let mut settings = std::mem::take(&mut self.settings);
+        settings.show(ctx, self);
+        self.settings = settings;
         
         // handle command palette and execute selected commands
         if let Some(command) = self.command_palette.show(ctx) {
