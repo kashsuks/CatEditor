@@ -35,6 +35,7 @@ impl Settings {
         egui::Area::new("settings_overlay".into())
             .fixed_pos(egui::pos2(0.0, 0.0))
             .order(egui::Order::Foreground)
+            .interactable(false)
             .show(ctx, |ui| {
                 let screen_rect = ctx.screen_rect();
                 ui.allocate_space(screen_rect.size());
@@ -127,22 +128,22 @@ impl Settings {
             
             egui::Grid::new("colors_grid")
                 .num_columns(2)
-                .spacing([10.0, 8.0])
+                .spacing([40.0, 8.0])
                 .show(ui, |ui| {
-                    theme_changed |= color_input(ui, "Rosewater", &mut app.theme.rosewater);
-                    theme_changed |= color_input(ui, "Flamingo", &mut app.theme.flamingo);
-                    theme_changed |= color_input(ui, "Pink", &mut app.theme.pink);
-                    theme_changed |= color_input(ui, "Mauve", &mut app.theme.mauve);
-                    theme_changed |= color_input(ui, "Red", &mut app.theme.red);
-                    theme_changed |= color_input(ui, "Maroon", &mut app.theme.maroon);
-                    theme_changed |= color_input(ui, "Peach", &mut app.theme.peach);
-                    theme_changed |= color_input(ui, "Yellow", &mut app.theme.yellow);
-                    theme_changed |= color_input(ui, "Green", &mut app.theme.green);
-                    theme_changed |= color_input(ui, "Teal", &mut app.theme.teal);
-                    theme_changed |= color_input(ui, "Sky", &mut app.theme.sky);
-                    theme_changed |= color_input(ui, "Sapphire", &mut app.theme.sapphire);
-                    theme_changed |= color_input(ui, "Blue", &mut app.theme.blue);
-                    theme_changed |= color_input(ui, "Lavender", &mut app.theme.lavender);
+                    theme_changed |= self.color_input(ui, "Rosewater", &mut app.theme.rosewater);
+                    theme_changed |= self.color_input(ui, "Flamingo", &mut app.theme.flamingo);
+                    theme_changed |= self.color_input(ui, "Pink", &mut app.theme.pink);
+                    theme_changed |= self.color_input(ui, "Mauve", &mut app.theme.mauve);
+                    theme_changed |= self.color_input(ui, "Red", &mut app.theme.red);
+                    theme_changed |= self.color_input(ui, "Maroon", &mut app.theme.maroon);
+                    theme_changed |= self.color_input(ui, "Peach", &mut app.theme.peach);
+                    theme_changed |= self.color_input(ui, "Yellow", &mut app.theme.yellow);
+                    theme_changed |= self.color_input(ui, "Green", &mut app.theme.green);
+                    theme_changed |= self.color_input(ui, "Teal", &mut app.theme.teal);
+                    theme_changed |= self.color_input(ui, "Sky", &mut app.theme.sky);
+                    theme_changed |= self.color_input(ui, "Sapphire", &mut app.theme.sapphire);
+                    theme_changed |= self.color_input(ui, "Blue", &mut app.theme.blue);
+                    theme_changed |= self.color_input(ui, "Lavender", &mut app.theme.lavender);
                 });
         });
 
@@ -154,14 +155,14 @@ impl Settings {
             
             egui::Grid::new("text_grid")
                 .num_columns(2)
-                .spacing([10.0, 8.0])
+                .spacing([40.0, 8.0])
                 .show(ui, |ui| {
-                    theme_changed |= color_input(ui, "Text", &mut app.theme.text);
-                    theme_changed |= color_input(ui, "Subtext1", &mut app.theme.subtext1);
-                    theme_changed |= color_input(ui, "Subtext0", &mut app.theme.subtext0);
-                    theme_changed |= color_input(ui, "Overlay2", &mut app.theme.overlay2);
-                    theme_changed |= color_input(ui, "Overlay1", &mut app.theme.overlay1);
-                    theme_changed |= color_input(ui, "Overlay0", &mut app.theme.overlay0);
+                    theme_changed |= self.color_input(ui, "Text", &mut app.theme.text);
+                    theme_changed |= self.color_input(ui, "Subtext1", &mut app.theme.subtext1);
+                    theme_changed |= self.color_input(ui, "Subtext0", &mut app.theme.subtext0);
+                    theme_changed |= self.color_input(ui, "Overlay2", &mut app.theme.overlay2);
+                    theme_changed |= self.color_input(ui, "Overlay1", &mut app.theme.overlay1);
+                    theme_changed |= self.color_input(ui, "Overlay0", &mut app.theme.overlay0);
                 });
         });
 
@@ -173,14 +174,14 @@ impl Settings {
             
             egui::Grid::new("background_grid")
                 .num_columns(2)
-                .spacing([10.0, 8.0])
+                .spacing([40.0, 8.0])
                 .show(ui, |ui| {
-                    theme_changed |= color_input(ui, "Surface2", &mut app.theme.surface2);
-                    theme_changed |= color_input(ui, "Surface1", &mut app.theme.surface1);
-                    theme_changed |= color_input(ui, "Surface0", &mut app.theme.surface0);
-                    theme_changed |= color_input(ui, "Base", &mut app.theme.base);
-                    theme_changed |= color_input(ui, "Mantle", &mut app.theme.mantle);
-                    theme_changed |= color_input(ui, "Crust", &mut app.theme.crust);
+                    theme_changed |= self.color_input(ui, "Surface2", &mut app.theme.surface2);
+                    theme_changed |= self.color_input(ui, "Surface1", &mut app.theme.surface1);
+                    theme_changed |= self.color_input(ui, "Surface0", &mut app.theme.surface0);
+                    theme_changed |= self.color_input(ui, "Base", &mut app.theme.base);
+                    theme_changed |= self.color_input(ui, "Mantle", &mut app.theme.mantle);
+                    theme_changed |= self.color_input(ui, "Crust", &mut app.theme.crust);
                 });
         });
 
@@ -220,15 +221,15 @@ impl Settings {
             );
         });
     }
-}
 
-fn color_input(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
-    ui.label(format!("{}:", label));
-    let response = ui.add(
-        egui::TextEdit::singleline(value)
-            .desired_width(120.0)
-            .hint_text("#rrggbb")
-    );
-    ui.end_row();
-    response.changed()
+    fn color_input(&mut self, ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
+        ui.label(format!("{}:", label));
+        let response = ui.add(
+            egui::TextEdit::singleline(value)
+                .desired_width(150.0)
+                .hint_text("#rrggbb")
+        );
+        ui.end_row();
+        response.changed()
+    }
 }
