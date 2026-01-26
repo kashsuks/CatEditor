@@ -5,6 +5,8 @@ use crate::config::theme_manager::{ThemeColors, load_theme};
 use crate::command_palette::CommandPalette;
 use crate::hotkey::find_replace::FindReplace;
 use crate::hotkey::command_input::CommandInput;
+use crate::fuzzy_finder::FuzzyFinder;
+use std::path::PathBuf;
 
 #[derive(PartialEq)]
 pub enum Mode {
@@ -19,9 +21,11 @@ pub struct CatEditorApp {
     pub command_buffer: String,
     pub should_quit: bool,
     pub current_file: Option<String>,
+    pub current_folder: Option<PathBuf>,
     pub cursor_pos: usize,
     pub pending_motion: Option<char>,
     pub saved_column: Option<usize>,
+    pub space_pressed: bool,
 
     pub theme: ThemeColors,
     pub theme_menu_open: bool,
@@ -29,6 +33,7 @@ pub struct CatEditorApp {
     pub command_palette: CommandPalette,
     pub find_replace: FindReplace,
     pub command_input: CommandInput,
+    pub fuzzy_finder: FuzzyFinder,
 }
 
 impl Default for CatEditorApp {
@@ -40,14 +45,17 @@ impl Default for CatEditorApp {
             command_buffer: String::new(),
             should_quit: false,
             current_file: None,
+            current_folder: None,
             cursor_pos: 0,
             pending_motion: None,
             saved_column: None,
+            space_pressed: false,
             theme,
             theme_menu_open: false,
             command_palette: CommandPalette::default(),
             find_replace: FindReplace::default(),
             command_input: CommandInput::default(),
+            fuzzy_finder: FuzzyFinder::default(),
         }
     }
 }
@@ -77,6 +85,14 @@ impl eframe::App for CatEditorApp {
             if modifier_pressed && i.key_pressed(egui::Key::F) {
                 self.find_replace.toggle();
             }
+
+            // Cmd+K / Ctrl+K to open folder
+            if modifier_pressed && i.key_pressed(egui::Key::K) {
+                if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                    self.current_folder = Some(path.clone());
+                    self.fuzzy_finder.set_folder(path);
+                }
+            }
         });
 
         theme::apply_theme(ctx, self);
@@ -91,6 +107,27 @@ impl eframe::App for CatEditorApp {
                     }
                 }
             } else if self.mode == Mode::Normal {
+                if i.key_pressed(egui::Key::Space) {
+                    self.space_pressed = true;
+                } else if self.space_pressed {
+                    for event in &i.events {
+                        if let egui::Event::Text(text) = event {
+                            if text == "f" {
+                                continue;
+                            } else if text == "f" {
+                                if self.current_folder.is_some() {
+                                    self.fuzzy_finder.toggle();
+                                }
+                                self.space_pressed = false;
+                            } else {
+                                self.space_pressed = false;
+                            }
+                        }
+                    }
+                }
+                
+                handle_fuzzy_finder_keybind(self, i);
+                
                 crate::hotkey::vim_motions::handle_normal_mode_input(self, i);
 
                 if i.key_pressed(egui::Key::I) {
@@ -115,14 +152,34 @@ impl eframe::App for CatEditorApp {
             self.execute_command(ctx);
         }
 
+        if let Some(file_path) = self.fuzzy_finder.show(ctx) {
+            if let Ok(content) = std::fs::read_to_string(&file_path) {
+                self.text = content;
+                self.current_file = Some(file_path.display().to_string());
+            }
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::TopBottomPanel::bottom("status_bar").show_inside(ui, |ui| {
-                let mode_text = match self.mode {
-                    Mode::Insert => "-- INSERT --",
-                    Mode::Normal => "-- NORMAL --",
-                    Mode::Command => "",
-                };
-                ui.label(mode_text);
+                ui.horizontal(|ui| {
+                    let mode_text = match self.mode {
+                        Mode::Insert => "-- INSERT --",
+                        Mode::Normal => "-- NORMAL --",
+                        Mode::Command => "",
+                    };
+                    ui.label(mode_text);
+                    
+                    // Show current folder if open
+                    if let Some(folder) = &self.current_folder {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label(
+                                egui::RichText::new(format!("📁 {}", folder.display()))
+                                    .color(egui::Color32::from_gray(150))
+                                    .text_style(egui::TextStyle::Small)
+                            );
+                        });
+                    }
+                });
             });
 
             egui::ScrollArea::vertical()
@@ -258,6 +315,40 @@ impl eframe::App for CatEditorApp {
                     });
                 });
         });
+    }
+}
+
+fn handle_fuzzy_finder_keybind(app: &mut CatEditorApp, input: &egui::InputState) {
+    static mut FF_STATE: u8 = 0;
+    
+    unsafe {
+        if input.key_pressed(egui::Key::Space) {
+            FF_STATE = 1;
+        } else if FF_STATE > 0 {
+            for event in &input.events {
+                if let egui::Event::Text(text) = event {
+                    if text == "f" {
+                        FF_STATE += 1;
+                        if FF_STATE == 3 {
+                            if app.current_folder.is_some() {
+                                app.fuzzy_finder.toggle();
+                            }
+                            FF_STATE = 0;
+                        }
+                    } else {
+                        FF_STATE = 0;
+                    }
+                }
+            }
+            
+            if FF_STATE > 0 && !input.key_pressed(egui::Key::Space) {
+                for event in &input.events {
+                    if let egui::Event::Text(_) = event {
+                        continue;
+                    }
+                }
+            }
+        }
     }
 }
 
