@@ -1,0 +1,15 @@
+title: My Project Docs
+description: Documentation for My Project
+theme: null
+remote_theme: just-the-docs/just-the-docs
+
+color_scheme: dark
+search_enabled: true
+
+aux_links:
+  "Main Repository":
+    - "https://github.com/kashsuks/CatEditor"
+
+plugins:
+  - jekyll-remote-theme
+
