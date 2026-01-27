@@ -101,7 +101,7 @@ impl eframe::App for CatEditorApp {
                 self.file_tree.toggle();
             }
 
-            // Terminal toggle with Cmd/Ctrl + J
+            // Opens system's default terminal in current folder
             if modifier_pressed && i.key_pressed(egui::Key::J) {
                 self.terminal.toggle();
             }
@@ -110,7 +110,8 @@ impl eframe::App for CatEditorApp {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
                     self.current_folder = Some(path.clone());
                     self.fuzzy_finder.set_folder(path.clone());
-                    self.file_tree.set_root(path);
+                    self.file_tree.set_root(path.clone());
+                    self.terminal.set_directory(path);
                 }
             }
         });
