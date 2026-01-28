@@ -1,7 +1,14 @@
 [package]
-name = "src"
+name = "rode-editor"
 version = "0.1.0"
-edition = "2024"
+edition = "2026"
+authors = ["Kashyap Sukshavas"]
+description = "A lightweight editor built with rust"
+license = "MIT"
+repository = "https://github.com/kashsuks/rode"
+readme = "README.md"
+keywords = ["editor", "terminal", "egui"]
+categories = ["development-tools"]
 
 [dependencies]
 eframe = "0.29"

@@ -28,7 +28,8 @@ impl Terminal {
 
     /// Open the system's default terminal application
     fn open_system_terminal(&mut self) {
-        let directory = self.last_opened_directory;
+        let directory = self
+            .last_opened_directory
             .clone()
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| PathBuf::from("."));
@@ -126,6 +127,8 @@ impl Terminal {
     fn open_linux_terminal(&self, directory: &PathBuf) -> std::io::Result<()> {
         let dir_str = directory.display().to_string();
 
+        let xterm_cmd = format!("cd '{}' && exec $SHELL", dir_str);
+
         let terminals = vec![
             ("gnome-terminal", vec!["--working-directory", &dir_str]),
             ("konsole", vec!["--workdir", &dir_str]),
@@ -135,15 +138,11 @@ impl Terminal {
             ("terminator", vec!["--working-directory", &dir_str]),
             ("tilix", vec!["--working-directory", &dir_str]),
             ("urxvt", vec!["-cd", &dir_str]),
-            ("xterm", vec!["-e", &format!("cd '{}' && exec $SHELL", dir_str)]),
+            ("xterm", vec!["-e", &xterm_cmd]),
         ];
 
         for (terminal, args) in terminals {
-            if Command::new(terminal)
-                .args(&args)
-                .spawn()
-                .is_ok()
-            {
+            if Command::new(terminal).args(&args).spawn().is_ok() {
                 return Ok(());
             }
         }
@@ -153,6 +152,7 @@ impl Terminal {
             "No supported terminal emulator found",
         ))
     }
+
 
     /// Set the directory that should be opened when launching the terminal
     /// 
