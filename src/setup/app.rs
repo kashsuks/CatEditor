@@ -136,15 +136,12 @@ impl eframe::App for CatEditorApp {
                     for event in &i.events {
                         if let egui::Event::Text(text) = event {
                             if text == "f" {
-                                continue;
-                            } else if text == "f" {
                                 if self.current_folder.is_some() {
                                     self.fuzzy_finder.toggle();
                                 }
-                                self.space_pressed = false;
-                            } else {
-                                self.space_pressed = false;
                             }
+                            // regardless of what key was pressed, stop waiting for the next key
+                            self.space_pressed = false;
                         }
                     }
                 }
