@@ -1,15 +1,14 @@
 use eframe::egui;
 use std::env;
 
-mod config;
-mod hotkey;
-mod setup;
 mod command_palette;
-mod fuzzy_finder;
-mod settings;
+mod config;
 mod file_tree;
+mod fuzzy_finder;
+mod hotkey;
+mod settings;
+mod setup;
 mod terminal;
-
 
 // Main function with frame settings
 //
@@ -21,7 +20,7 @@ mod terminal;
 fn main() -> eframe::Result<()> {
     //get the args
     let args: Vec<String> = env::args().collect();
-    let file_path = if args.len() > 1    {
+    let file_path = if args.len() > 1 {
         Some(args[1].clone())
     } else {
         None
@@ -29,7 +28,7 @@ fn main() -> eframe::Result<()> {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([800.0, 600.0]) // default window size but can change 
+            .with_inner_size([800.0, 600.0]) // default window size but can change
             .with_title("CatEditor")
             .with_fullscreen(true),
         ..Default::default()
@@ -40,7 +39,7 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(|_cc| {
             let mut app = setup::app::CatEditorApp::default();
-            
+
             if let Some(path) = file_path {
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     app.text = content;

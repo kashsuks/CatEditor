@@ -1,6 +1,6 @@
 use std::fs;
-use std::path::PathBuf;
 use std::io::Write;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct ThemeColors {
@@ -107,29 +107,48 @@ base = "{}"
 mantle = "{}"
 crust = "{}"
 "#,
-            self.rosewater, self.flamingo, self.pink, self.mauve,
-            self.red, self.maroon, self.peach, self.yellow,
-            self.green, self.teal, self.sky, self.sapphire,
-            self.blue, self.lavender, self.text, self.subtext1,
-            self.subtext0, self.overlay2, self.overlay1, self.overlay0,
-            self.surface2, self.surface1, self.surface0, self.base,
-            self.mantle, self.crust
+            self.rosewater,
+            self.flamingo,
+            self.pink,
+            self.mauve,
+            self.red,
+            self.maroon,
+            self.peach,
+            self.yellow,
+            self.green,
+            self.teal,
+            self.sky,
+            self.sapphire,
+            self.blue,
+            self.lavender,
+            self.text,
+            self.subtext1,
+            self.subtext0,
+            self.overlay2,
+            self.overlay1,
+            self.overlay0,
+            self.surface2,
+            self.surface1,
+            self.surface0,
+            self.base,
+            self.mantle,
+            self.crust
         )
     }
 
     pub fn from_toml(content: &str) -> Result<Self, String> {
         let mut theme = Self::default();
-        
+
         for line in content.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
                 continue;
             }
-            
+
             if let Some((key, value)) = line.split_once('=') {
                 let key = key.trim();
                 let value = value.trim().trim_matches('"').to_string();
-                
+
                 match key {
                     "rosewater" => theme.rosewater = value,
                     "flamingo" => theme.flamingo = value,
@@ -161,7 +180,7 @@ crust = "{}"
                 }
             }
         }
-        
+
         Ok(theme)
     }
 }
@@ -173,7 +192,7 @@ pub fn get_theme_path() -> PathBuf {
 
 pub fn load_theme() -> ThemeColors {
     let path = get_theme_path();
-    
+
     if let Ok(content) = fs::read_to_string(&path) {
         ThemeColors::from_toml(&content).unwrap_or_default()
     } else {
@@ -183,14 +202,14 @@ pub fn load_theme() -> ThemeColors {
 
 pub fn save_theme(theme: &ThemeColors) -> Result<(), std::io::Error> {
     let path = get_theme_path();
-    
+
     // Create directory if it doesn't exist
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    
+
     let mut file = fs::File::create(path)?;
     file.write_all(theme.to_toml().as_bytes())?;
-    
+
     Ok(())
 }

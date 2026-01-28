@@ -2549,6 +2549,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rode-editor"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "rfd",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2800,15 +2809,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eda41003dc44290527a59b13432d4a0379379fa074b70174882adfbdfd917844"
 dependencies = [
  "bitflags 2.10.0",
-]
-
-[[package]]
-name = "src"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui",
- "rfd",
 ]
 
 [[package]]

@@ -1,14 +1,14 @@
-use eframe::egui;
+use crate::command_palette::CommandPalette;
+use crate::config::theme_manager::{ThemeColors, load_theme};
+use crate::file_tree::FileTree;
+use crate::fuzzy_finder::FuzzyFinder;
+use crate::hotkey::command_input::CommandInput;
+use crate::hotkey::find_replace::FindReplace;
+use crate::settings::Settings;
 use crate::setup::menu;
 use crate::setup::theme;
-use crate::config::theme_manager::{ThemeColors, load_theme};
-use crate::command_palette::CommandPalette;
-use crate::hotkey::find_replace::FindReplace;
-use crate::hotkey::command_input::CommandInput;
-use crate::fuzzy_finder::FuzzyFinder;
-use crate::settings::Settings;
-use crate::file_tree::FileTree;
 use crate::terminal::Terminal;
+use eframe::egui;
 use std::path::PathBuf;
 
 #[derive(PartialEq)]
@@ -33,7 +33,7 @@ pub struct CatEditorApp {
 
     pub theme: ThemeColors,
     pub theme_menu_open: bool,
-    
+
     pub command_palette: CommandPalette,
     pub find_replace: FindReplace,
     pub command_input: CommandInput,
@@ -148,9 +148,9 @@ impl eframe::App for CatEditorApp {
                         }
                     }
                 }
-                
+
                 handle_fuzzy_finder_keybind(self, i);
-                
+
                 if self.vim_mode_enabled {
                     crate::hotkey::vim_motions::handle_normal_mode_input(self, i);
                 }
@@ -164,23 +164,24 @@ impl eframe::App for CatEditorApp {
         });
 
         menu::show_menu_bar(ctx, self);
-        
+
         if let Some(file_path) = self.file_tree.show(ctx) {
             if let Ok(content) = std::fs::read_to_string(&file_path) {
                 self.text = content;
                 self.current_file = Some(file_path.display().to_string());
             }
         }
-        
+
         let mut settings = std::mem::take(&mut self.settings);
         settings.show(ctx, self);
         self.settings = settings;
-        
+
         if let Some(command) = self.command_palette.show(ctx) {
             self.execute_palette_command(ctx, &command);
         }
-        
-        self.find_replace.show(ctx, &mut self.text, &mut self.cursor_pos);
+
+        self.find_replace
+            .show(ctx, &mut self.text, &mut self.cursor_pos);
 
         if let Some(cmd) = self.command_input.show(ctx) {
             self.command_buffer = cmd;
@@ -205,14 +206,14 @@ impl eframe::App for CatEditorApp {
                         Mode::Command => "",
                     };
                     ui.label(mode_text);
-                    
+
                     // Show current folder if open
                     if let Some(folder) = &self.current_folder {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label(
                                 egui::RichText::new(format!("📁 {}", folder.display()))
                                     .color(egui::Color32::from_gray(150))
-                                    .text_style(egui::TextStyle::Small)
+                                    .text_style(egui::TextStyle::Small),
                             );
                         });
                     }
@@ -224,7 +225,7 @@ impl eframe::App for CatEditorApp {
                 .show(ui, |ui| {
                     ui.horizontal_top(|ui| {
                         let line_count = self.text.lines().count().max(1);
-                        
+
                         let max_line_digits = line_count.to_string().len();
                         let font_id = egui::TextStyle::Monospace.resolve(ui.style());
                         let char_width = ui.fonts(|f| f.glyph_width(&font_id, '0'));
@@ -270,23 +271,36 @@ impl eframe::App for CatEditorApp {
 
                             for (start, end) in highlight_ranges {
                                 let is_current = current_match_range
-                                    .map(|(curr_start, curr_end)| start == curr_start && end == curr_end)
+                                    .map(|(curr_start, curr_end)| {
+                                        start == curr_start && end == curr_end
+                                    })
                                     .unwrap_or(false);
 
-                                let start_cursor = galley.from_ccursor(egui::text::CCursor::new(start));
+                                let start_cursor =
+                                    galley.from_ccursor(egui::text::CCursor::new(start));
                                 let end_cursor = galley.from_ccursor(egui::text::CCursor::new(end));
 
                                 if start_cursor.rcursor.row == end_cursor.rcursor.row {
                                     let row_rect = galley.rows[start_cursor.rcursor.row].rect;
-                                    
-                                    let start_x = if start_cursor.rcursor.column < galley.rows[start_cursor.rcursor.row].glyphs.len() {
-                                        galley.rows[start_cursor.rcursor.row].glyphs[start_cursor.rcursor.column].pos.x
+
+                                    let start_x = if start_cursor.rcursor.column
+                                        < galley.rows[start_cursor.rcursor.row].glyphs.len()
+                                    {
+                                        galley.rows[start_cursor.rcursor.row].glyphs
+                                            [start_cursor.rcursor.column]
+                                            .pos
+                                            .x
                                     } else {
                                         row_rect.max.x
                                     };
-                                    
-                                    let end_x = if end_cursor.rcursor.column < galley.rows[end_cursor.rcursor.row].glyphs.len() {
-                                        galley.rows[end_cursor.rcursor.row].glyphs[end_cursor.rcursor.column].pos.x
+
+                                    let end_x = if end_cursor.rcursor.column
+                                        < galley.rows[end_cursor.rcursor.row].glyphs.len()
+                                    {
+                                        galley.rows[end_cursor.rcursor.row].glyphs
+                                            [end_cursor.rcursor.column]
+                                            .pos
+                                            .x
                                     } else {
                                         row_rect.max.x
                                     };
@@ -304,23 +318,23 @@ impl eframe::App for CatEditorApp {
 
                                     painter.rect_filled(rect, egui::Rounding::same(2.0), color);
                                 }
-                                
+
                                 if is_current {
                                     let row_rect = galley.rows[start_cursor.rcursor.row].rect;
                                     let scroll_to_y = text_draw_pos.y + row_rect.min.y - 100.0;
                                     ui.scroll_to_rect(
                                         egui::Rect::from_min_size(
                                             egui::pos2(0.0, scroll_to_y),
-                                            egui::vec2(1.0, 1.0)
+                                            egui::vec2(1.0, 1.0),
                                         ),
-                                        Some(egui::Align::Center)
+                                        Some(egui::Align::Center),
                                     );
                                 }
                             }
                         }
 
-                        let something_else_has_focus = !output.response.has_focus() && 
-                            ctx.memory(|mem| mem.focused().is_some());
+                        let something_else_has_focus = !output.response.has_focus()
+                            && ctx.memory(|mem| mem.focused().is_some());
 
                         match self.mode {
                             Mode::Insert => {
@@ -338,7 +352,9 @@ impl eframe::App for CatEditorApp {
 
                                 let mut state = output.state;
                                 let ccursor = egui::text::CCursor::new(self.cursor_pos);
-                                state.cursor.set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
+                                state
+                                    .cursor
+                                    .set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
                                 state.store(ctx, output.response.id);
 
                                 if let Some(old) = old_text {
@@ -357,7 +373,7 @@ impl eframe::App for CatEditorApp {
 
 fn handle_fuzzy_finder_keybind(app: &mut CatEditorApp, input: &egui::InputState) {
     static mut FF_STATE: u8 = 0;
-    
+
     unsafe {
         if input.key_pressed(egui::Key::Space) {
             FF_STATE = 1;
@@ -377,7 +393,7 @@ fn handle_fuzzy_finder_keybind(app: &mut CatEditorApp, input: &egui::InputState)
                     }
                 }
             }
-            
+
             if FF_STATE > 0 && !input.key_pressed(egui::Key::Space) {
                 for event in &input.events {
                     if let egui::Event::Text(_) = event {
@@ -431,7 +447,9 @@ impl CatEditorApp {
 
     fn execute_command(&mut self, _ctx: &egui::Context) {
         match self.command_buffer.trim() {
-            "q" => { self.should_quit = true; }
+            "q" => {
+                self.should_quit = true;
+            }
             "w" => {
                 if let Some(path) = &self.current_file {
                     let _ = std::fs::write(path, &self.text);

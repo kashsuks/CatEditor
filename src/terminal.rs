@@ -1,5 +1,5 @@
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 // Public structure for the default terminal settings
 //
@@ -153,18 +153,17 @@ impl Terminal {
         ))
     }
 
-
     /// Set the directory that should be opened when launching the terminal
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// - `directory` (`PathBuf`) - the directory that the user is currently in
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use crate::terminal;
-    /// 
+    ///
     /// let _ = set_directory();
     /// ```
     pub fn set_directory(&mut self, directory: PathBuf) {

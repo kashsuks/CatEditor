@@ -94,7 +94,7 @@ impl FindReplace {
         let pos = self.matches[self.current_match];
         let end = pos + self.find_text.len();
         text.replace_range(pos..end, &self.replace_text);
-        
+
         self.find_matches(text);
 
         if self.current_match >= self.matches.len() && !self.matches.is_empty() {
@@ -138,10 +138,8 @@ impl FindReplace {
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Find:");
-                    let find_response = ui.add(
-                        egui::TextEdit::singleline(&mut self.find_text)
-                            .desired_width(350.0)
-                    );
+                    let find_response = ui
+                        .add(egui::TextEdit::singleline(&mut self.find_text).desired_width(350.0));
 
                     if self.open && find_response.has_focus() {
                         find_response.request_focus();
@@ -159,17 +157,18 @@ impl FindReplace {
 
                 ui.horizontal(|ui| {
                     ui.label("Replace:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.replace_text)
-                            .desired_width(350.0)
-                    );
+                    ui.add(egui::TextEdit::singleline(&mut self.replace_text).desired_width(350.0));
                 });
 
                 ui.horizontal(|ui| {
                     ui.checkbox(&mut self.case_sensitive, "Case sensitive");
 
                     if self.match_count > 0 {
-                        ui.label(format!("Match {} of {}", self.current_match + 1, self.match_count));
+                        ui.label(format!(
+                            "Match {} of {}",
+                            self.current_match + 1,
+                            self.match_count
+                        ));
                     } else if !self.find_text.is_empty() {
                         ui.label("No matches found");
                     }

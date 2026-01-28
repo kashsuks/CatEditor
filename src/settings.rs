@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::setup::app::CatEditorApp;
+use eframe::egui;
 
 pub struct Settings {
     pub open: bool,
@@ -59,18 +59,24 @@ impl Settings {
                         egui::Layout::top_down(egui::Align::LEFT),
                         |ui| {
                             ui.add_space(10.0);
-                            
-                            if ui.selectable_label(
-                                self.selected_category == SettingsCategory::Appearance,
-                                "Appearance"
-                            ).clicked() {
+
+                            if ui
+                                .selectable_label(
+                                    self.selected_category == SettingsCategory::Appearance,
+                                    "Appearance",
+                                )
+                                .clicked()
+                            {
                                 self.selected_category = SettingsCategory::Appearance;
                             }
-                            
-                            if ui.selectable_label(
-                                self.selected_category == SettingsCategory::Preferences,
-                                "Preferences"
-                            ).clicked() {
+
+                            if ui
+                                .selectable_label(
+                                    self.selected_category == SettingsCategory::Preferences,
+                                    "Preferences",
+                                )
+                                .clicked()
+                            {
                                 self.selected_category = SettingsCategory::Preferences;
                             }
                         },
@@ -82,7 +88,7 @@ impl Settings {
                         .id_salt("settings_content")
                         .show(ui, |ui| {
                             ui.add_space(10.0);
-                            
+
                             match self.selected_category {
                                 SettingsCategory::Appearance => {
                                     self.show_appearance_settings(ui, app);
@@ -113,7 +119,7 @@ impl Settings {
     fn show_appearance_settings(&mut self, ui: &mut egui::Ui, app: &mut CatEditorApp) {
         ui.heading("Appearance");
         ui.add_space(10.0);
-        
+
         ui.label(egui::RichText::new("Theme Colors").strong().size(16.0));
         ui.add_space(5.0);
         ui.label("Customize the color scheme of the editor");
@@ -124,7 +130,7 @@ impl Settings {
         ui.group(|ui| {
             ui.label(egui::RichText::new("Colors").strong());
             ui.separator();
-            
+
             egui::Grid::new("colors_grid")
                 .num_columns(2)
                 .spacing([40.0, 8.0])
@@ -151,7 +157,7 @@ impl Settings {
         ui.group(|ui| {
             ui.label(egui::RichText::new("Text").strong());
             ui.separator();
-            
+
             egui::Grid::new("text_grid")
                 .num_columns(2)
                 .spacing([40.0, 8.0])
@@ -170,7 +176,7 @@ impl Settings {
         ui.group(|ui| {
             ui.label(egui::RichText::new("Background").strong());
             ui.separator();
-            
+
             egui::Grid::new("background_grid")
                 .num_columns(2)
                 .spacing([40.0, 8.0])
@@ -192,7 +198,7 @@ impl Settings {
     fn show_preferences_settings(&mut self, ui: &mut egui::Ui, app: &mut CatEditorApp) {
         ui.heading("Preferences");
         ui.add_space(10.0);
-        
+
         ui.label(egui::RichText::new("Editor Settings").strong().size(16.0));
         ui.add_space(5.0);
         ui.label("Configure how the editor behaves");
@@ -202,7 +208,7 @@ impl Settings {
             ui.label(egui::RichText::new("Input Mode").strong());
             ui.separator();
             ui.add_space(5.0);
-            
+
             ui.horizontal(|ui| {
                 ui.label("Enable Vim mode:");
                 if ui.checkbox(&mut app.vim_mode_enabled, "").changed() {
@@ -211,12 +217,12 @@ impl Settings {
                     }
                 }
             });
-            
+
             ui.add_space(5.0);
             ui.label(
                 egui::RichText::new("Use Vim keybindings for text navigation and editing")
                     .color(egui::Color32::from_gray(150))
-                    .size(12.0)
+                    .size(12.0),
             );
         });
     }
@@ -226,7 +232,7 @@ impl Settings {
         let response = ui.add(
             egui::TextEdit::singleline(value)
                 .desired_width(150.0)
-                .hint_text("#rrggbb")
+                .hint_text("#rrggbb"),
         );
         ui.end_row();
         response.changed()

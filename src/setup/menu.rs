@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::setup::app::CatEditorApp;
+use eframe::egui;
 
 pub fn show_menu_bar(ctx: &egui::Context, app: &mut CatEditorApp) {
     egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
@@ -122,15 +122,15 @@ fn show_view_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
 fn show_theme_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
     ui.menu_button("Theme", |ui| {
         ui.set_min_width(300.0);
-        
+
         let mut theme_changed = false;
-        
+
         egui::ScrollArea::vertical()
             .max_height(500.0)
             .show(ui, |ui| {
                 ui.label(egui::RichText::new("Colors").strong());
                 ui.separator();
-                
+
                 theme_changed |= color_input(ui, "Rosewater", &mut app.theme.rosewater);
                 theme_changed |= color_input(ui, "Flamingo", &mut app.theme.flamingo);
                 theme_changed |= color_input(ui, "Pink", &mut app.theme.pink);
@@ -145,22 +145,22 @@ fn show_theme_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
                 theme_changed |= color_input(ui, "Sapphire", &mut app.theme.sapphire);
                 theme_changed |= color_input(ui, "Blue", &mut app.theme.blue);
                 theme_changed |= color_input(ui, "Lavender", &mut app.theme.lavender);
-                
+
                 ui.add_space(10.0);
                 ui.label(egui::RichText::new("Text").strong());
                 ui.separator();
-                
+
                 theme_changed |= color_input(ui, "Text", &mut app.theme.text);
                 theme_changed |= color_input(ui, "Subtext1", &mut app.theme.subtext1);
                 theme_changed |= color_input(ui, "Subtext0", &mut app.theme.subtext0);
                 theme_changed |= color_input(ui, "Overlay2", &mut app.theme.overlay2);
                 theme_changed |= color_input(ui, "Overlay1", &mut app.theme.overlay1);
                 theme_changed |= color_input(ui, "Overlay0", &mut app.theme.overlay0);
-                
+
                 ui.add_space(10.0);
                 ui.label(egui::RichText::new("Background").strong());
                 ui.separator();
-                
+
                 theme_changed |= color_input(ui, "Surface2", &mut app.theme.surface2);
                 theme_changed |= color_input(ui, "Surface1", &mut app.theme.surface1);
                 theme_changed |= color_input(ui, "Surface0", &mut app.theme.surface0);
@@ -168,7 +168,7 @@ fn show_theme_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
                 theme_changed |= color_input(ui, "Mantle", &mut app.theme.mantle);
                 theme_changed |= color_input(ui, "Crust", &mut app.theme.crust);
             });
-        
+
         if theme_changed {
             let _ = crate::config::theme_manager::save_theme(&app.theme);
         }
@@ -181,13 +181,14 @@ fn color_input(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
         let response = ui.add(
             egui::TextEdit::singleline(value)
                 .desired_width(100.0)
-                .hint_text("#rrggbb")
+                .hint_text("#rrggbb"),
         );
-        
+
         if response.has_focus() {
             response.request_focus();
         }
-        
+
         response.changed()
-    }).inner
+    })
+    .inner
 }

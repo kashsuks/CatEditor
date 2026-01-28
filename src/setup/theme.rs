@@ -2,7 +2,7 @@ use eframe::egui;
 
 pub fn apply_theme(ctx: &egui::Context, app: &crate::setup::app::CatEditorApp) {
     let theme = &app.theme;
-    
+
     let rosewater = c(&theme.rosewater);
     let flamingo = c(&theme.flamingo);
     let _pink = c(&theme.pink);
@@ -88,13 +88,13 @@ fn c(hex: &str) -> egui::Color32 {
 
 fn parse_hex_rgb(hex: &str) -> (u8, u8, u8) {
     let h = hex.trim().trim_start_matches('#');
-    
+
     //pad with some 0 if its incomplete
     let mut padded = h.to_string();
     while padded.len() < 6 {
         padded.push('0');
     }
-    
+
     let r = u8::from_str_radix(&padded.get(0..2).unwrap_or("00"), 16).unwrap_or(0);
     let g = u8::from_str_radix(&padded.get(2..4).unwrap_or("00"), 16).unwrap_or(0);
     let b = u8::from_str_radix(&padded.get(4..6).unwrap_or("00"), 16).unwrap_or(0);

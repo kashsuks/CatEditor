@@ -24,10 +24,10 @@ impl Default for FuzzyFinder {
     // # Arguments
     // * `open` - State for whether a file is currently open, default to false since on startup a
     // file is not open
-    // * `input` - User input in a string format 
-    // * `current_folder` - Scans current structure to check what folder the user currently is in 
+    // * `input` - User input in a string format
+    // * `current_folder` - Scans current structure to check what folder the user currently is in
     // * `filetered_files` - Fuzzy finding algorithm results with matches for what files were
-    // filtered 
+    // filtered
     // * `selected_index` - Index of what file was selected
 
     fn default() -> Self {
@@ -52,8 +52,8 @@ impl FuzzyFinder {
             self.selected_index = 0;
         }
     }
-    
-    // Set the folder that the user is currently in 
+
+    // Set the folder that the user is currently in
     //
     // # Arguments
     //
@@ -64,16 +64,16 @@ impl FuzzyFinder {
         self.filetered_files = self.all_files.clone();
         self.selected_index = 0;
     }
-    
+
     // Recursively scans the directory that the user is currently under to fetch all the files in
-    // it 
+    // it
     //
     // # Arguments
     //
     // * `dir` - Absolute path of the directory the user is currently under
     //
     // # Returns
-    // 
+    //
     // * `Vec<FileEntry>` - All the files under that directory in a structured manner
     fn scan_directory(&self, dir: &Path) -> Vec<FileEntry> {
         let mut files = Vec::new();
@@ -102,8 +102,8 @@ impl FuzzyFinder {
                     files.push(FileEntry { path, display_name });
                 } else if path.is_dir() {
                     files.extend(self.scan_directory(&path)); // if the path is a directory rather
-                                                              // than a file, we can recursively
-                                                              // call itself to search
+                    // than a file, we can recursively
+                    // call itself to search
                 }
             }
         }
@@ -111,7 +111,6 @@ impl FuzzyFinder {
         files.sort_by(|a, b| a.display_name.cmp(&b.display_name));
         files
     }
-
 
     // Scoring system to rank the closest matches of files
     fn filter_files(&mut self) {
@@ -264,13 +263,13 @@ impl FuzzyFinder {
 
                                         let button_response = ui.add_sized(
                                             egui::vec2(ui.available_width(), 35.0),
-                                            egui::Button::new("")
-                                                .frame(true)
-                                                .fill(if is_selected {
+                                            egui::Button::new("").frame(true).fill(
+                                                if is_selected {
                                                     ui.visuals().selection.bg_fill
                                                 } else {
                                                     egui::Color32::TRANSPARENT
-                                                }),
+                                                },
+                                            ),
                                         );
 
                                         if button_response.clicked() {
@@ -325,11 +324,11 @@ impl FuzzyFinder {
 }
 
 // Fuzzy finder algorithm based on score syste,
-// 
+//
 // # Arguments
 //
-// * `text` - The user input to check a match for 
-// * `pattern` - What pattern to check the matches for 
+// * `text` - The user input to check a match for
+// * `pattern` - What pattern to check the matches for
 //
 // # Returns
 //
@@ -338,7 +337,7 @@ fn fuzzy_match(text: &str, pattern: &str) -> i32 {
     if pattern.is_empty() {
         return 1; // only 1 point since there is a single match for the file
     }
-    
+
     // these are the default values for the starting of the algorithm
     let mut score = 0;
     let mut pattern_idx = 0;

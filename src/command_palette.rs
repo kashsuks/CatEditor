@@ -62,15 +62,14 @@ impl CommandPalette {
 
     fn filter_commands(&mut self) {
         let input_lower = self.input.to_lowercase();
-        
+
         if input_lower.is_empty() {
             self.filtered_commands.clear();
         } else {
-            self.filtered_commands = self.commands
+            self.filtered_commands = self
+                .commands
                 .iter()
-                .filter(|cmd| {
-                    cmd.name.to_lowercase().contains(&input_lower)
-                })
+                .filter(|cmd| cmd.name.to_lowercase().contains(&input_lower))
                 .cloned()
                 .collect();
         }
@@ -89,7 +88,7 @@ impl CommandPalette {
             .show(ctx, |ui| {
                 let screen_rect = ctx.screen_rect();
                 ui.allocate_space(screen_rect.size());
-                
+
                 let painter = ui.painter();
                 painter.rect_filled(
                     screen_rect,
@@ -109,7 +108,7 @@ impl CommandPalette {
                     egui::vec2(ui.available_width(), 40.0),
                     egui::TextEdit::singleline(&mut self.input)
                         .hint_text("Type a command...")
-                        .font(egui::TextStyle::Heading)
+                        .font(egui::TextStyle::Heading),
                 );
 
                 if self.open {
@@ -129,7 +128,10 @@ impl CommandPalette {
 
                 egui::Frame::none()
                     .fill(ui.visuals().extreme_bg_color)
-                    .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
+                    .stroke(egui::Stroke::new(
+                        1.0,
+                        ui.visuals().widgets.noninteractive.bg_stroke.color,
+                    ))
                     .inner_margin(egui::Margin::same(10.0))
                     .show(ui, |ui| {
                         ui.set_min_size(egui::vec2(ui.available_width(), 20.0));
@@ -141,17 +143,16 @@ impl CommandPalette {
                                     for cmd in &commands_to_show {
                                         let button_response = ui.add_sized(
                                             egui::vec2(ui.available_width(), 50.0),
-                                            egui::Button::new("")
-                                                .frame(true)
+                                            egui::Button::new("").frame(true),
                                         );
-                                        
+
                                         if button_response.clicked() {
                                             selected_command = Some(cmd.name.clone());
                                         }
-                                        
+
                                         let rect = button_response.rect;
                                         let painter = ui.painter();
-                                        
+
                                         painter.text(
                                             egui::pos2(rect.left() + 10.0, rect.top() + 12.0),
                                             egui::Align2::LEFT_TOP,
@@ -161,15 +162,15 @@ impl CommandPalette {
                                                 ui.visuals().strong_text_color()
                                             } else {
                                                 ui.visuals().text_color()
-                                            }
+                                            },
                                         );
-                                        
+
                                         painter.text(
                                             egui::pos2(rect.left() + 10.0, rect.top() + 30.0),
                                             egui::Align2::LEFT_TOP,
                                             &cmd.description,
                                             egui::FontId::proportional(12.0),
-                                            ui.visuals().weak_text_color()
+                                            ui.visuals().weak_text_color(),
                                         );
                                     }
                                 }

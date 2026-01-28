@@ -10,11 +10,11 @@ pub struct FileNode {
     pub is_dir: bool,
     pub is_expanded: bool, // State for whether the file node is expanded (user is searching deeper) or not
     pub children: Vec<FileNode>, // children will be be specifically for directories since files
-                                 // themselves cannot have children
+                           // themselves cannot have children
 }
 
 impl FileNode {
-    // Default file node definition with all the values and their specific values by default 
+    // Default file node definition with all the values and their specific values by default
     //
     // # Arguments
     //
@@ -27,7 +27,7 @@ impl FileNode {
             .unwrap_or_else(|| path.to_string_lossy().to_string());
 
         let is_dir = path.is_dir(); // pretty self-explanatory. State for whether a specific path
-                                    // is a directory or not
+        // is a directory or not
 
         Self {
             path,
@@ -37,7 +37,7 @@ impl FileNode {
             children: Vec::new(),
         }
     }
-    
+
     // Checks whether the current path has children under it for the file tree to display
     fn load_children(&mut self) {
         if !self.is_dir || !self.children.is_empty() {
@@ -83,8 +83,8 @@ impl Default for FileTree {
     fn default() -> Self {
         Self {
             visible: false, // file tree not visible by default (can be triggered by running
-                            // control + b)
-            root: None, // no root file when running app on startup
+            // control + b)
+            root: None,   // no root file when running app on startup
             width: 250.0, // default width is 250.0px
         }
     }
@@ -95,7 +95,7 @@ impl FileTree {
     pub fn toggle(&mut self) {
         self.visible = !self.visible;
     }
-    
+
     // Set the root file of that specific directory so that files can be recursively searched
     //
     // # Arguments

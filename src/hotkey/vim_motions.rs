@@ -87,31 +87,29 @@ fn handle_pending_motion(app: &mut CatEditorApp, input: &egui::InputState, motio
     for event in &input.events {
         if let egui::Event::Text(text) = event {
             match motion {
-                'g' => {
-                    match text.as_str() {
-                        "g" => {
-                            move_to_first_line(app);
-                            app.saved_column = None;
-                        }
-                        "j" => move_down(app),
-                        "k" => move_up(app),
-                        "e" => {
-                            move_word_end_backward(app, false);
-                            app.saved_column = None;
-                        }
-                        "E" => {
-                            move_word_end_backward(app, true);
-                            app.saved_column = None;
-                        }
-                        "d" => {},
-                        "D" => {},
-                        "_" => {
-                            move_to_last_non_blank(app);
-                            app.saved_column = None;
-                        }
-                        _ => {}
+                'g' => match text.as_str() {
+                    "g" => {
+                        move_to_first_line(app);
+                        app.saved_column = None;
                     }
-                }
+                    "j" => move_down(app),
+                    "k" => move_up(app),
+                    "e" => {
+                        move_word_end_backward(app, false);
+                        app.saved_column = None;
+                    }
+                    "E" => {
+                        move_word_end_backward(app, true);
+                        app.saved_column = None;
+                    }
+                    "d" => {}
+                    "D" => {}
+                    "_" => {
+                        move_to_last_non_blank(app);
+                        app.saved_column = None;
+                    }
+                    _ => {}
+                },
                 'f' => {
                     find_char_forward(app, text.chars().next().unwrap_or(' '));
                     app.saved_column = None;
@@ -128,14 +126,12 @@ fn handle_pending_motion(app: &mut CatEditorApp, input: &egui::InputState, motio
                     find_char_to_backward(app, text.chars().next().unwrap_or(' '));
                     app.saved_column = None;
                 }
-                'z' => {
-                    match text.as_str() {
-                        "z" => {},
-                        "t" => {},
-                        "b" => {},
-                        _ => {}
-                    }
-                }
+                'z' => match text.as_str() {
+                    "z" => {}
+                    "t" => {}
+                    "b" => {}
+                    _ => {}
+                },
                 _ => {}
             }
             app.pending_motion = None;
@@ -187,7 +183,11 @@ fn move_up(app: &mut CatEditorApp) {
         let prev_line_len = lines[current_line - 1].chars().count();
         let new_col = target_col.min(prev_line_len);
 
-        let char_count: usize = lines.iter().take(current_line - 1).map(|l| l.len() + 1).sum();
+        let char_count: usize = lines
+            .iter()
+            .take(current_line - 1)
+            .map(|l| l.len() + 1)
+            .sum();
         app.cursor_pos = char_count + new_col;
     }
 }
@@ -214,7 +214,7 @@ fn move_down(app: &mut CatEditorApp) {
             .take(current_line + 1)
             .map(|l| l.chars().count() + 1)
             .sum();
-        
+
         app.cursor_pos = next_line_start + new_col;
     }
 }
@@ -459,12 +459,12 @@ fn move_half_page_down(app: &mut CatEditorApp) {
     let mut char_count = 0;
 
     for (i, line) in lines.iter().enumerate() {
-            if char_count + line.len() >= app.cursor_pos {
-                current_line = i;
-                break;
-            }
+        if char_count + line.len() >= app.cursor_pos {
+            current_line = i;
+            break;
+        }
 
-            char_count += line.len() + 1;
+        char_count += line.len() + 1;
     }
 
     let target_line = (current_line + page_size).min(lines.len() - 1);
@@ -527,7 +527,7 @@ fn find_char_to_backward(app: &mut CatEditorApp, target: char) {
     for i in (0..app.cursor_pos).rev() {
         if chars[i] == target {
             app.cursor_pos = i + 1;
-            return
+            return;
         }
     }
 }
