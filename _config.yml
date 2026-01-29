@@ -8,8 +8,7 @@ search_enabled: true
 
 aux_links:
   "Main Repository":
-    - "https://github.com/kashsuks/CatEditor"
+    - "https://github.com/kashsuks/Rode"
 
 plugins:
   - jekyll-remote-theme
-
