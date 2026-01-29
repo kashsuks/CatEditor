@@ -16,7 +16,13 @@ If you would like to compile from source, please follow the instructions below.
 ```
 git clone https://github.com/kashsuks/rode
 ```
-2. Run the startup command:
+
+2. Change directory
+```
+cd rode
+```
+
+3. Run the startup command:
 ```
 cargo run
 ```
