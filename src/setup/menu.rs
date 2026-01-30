@@ -8,7 +8,7 @@ pub fn show_menu_bar(ctx: &egui::Context, app: &mut CatEditorApp) {
             show_edit_menu(ui, app);
             show_search_menu(ui, app);
             show_view_menu(ui, app);
-            show_theme_menu(ui, app);
+            show_theme_menu(ui, ctx, app);
         });
     });
 }
@@ -53,11 +53,6 @@ fn show_file_menu(ui: &mut egui::Ui, ctx: &egui::Context, app: &mut CatEditorApp
                 let _ = std::fs::write(&path, &app.text);
                 app.current_file = Some(path.display().to_string());
             }
-            ui.close_menu();
-        }
-        ui.separator();
-        if ui.button("Settings").clicked() {
-            app.settings.toggle();
             ui.close_menu();
         }
         ui.separator();
@@ -119,7 +114,7 @@ fn show_view_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
     });
 }
 
-fn show_theme_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
+fn show_theme_menu(ui: &mut egui::Ui, ctx: &egui::Context, app: &mut CatEditorApp) {
     ui.menu_button("Theme", |ui| {
         ui.set_min_width(300.0);
 
@@ -171,24 +166,46 @@ fn show_theme_menu(ui: &mut egui::Ui, app: &mut CatEditorApp) {
 
         if theme_changed {
             let _ = crate::config::theme_manager::save_theme(&app.theme);
+            ctx.request_repaint();
         }
     });
 }
 
 fn color_input(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
+    let mut changed = false;
     ui.horizontal(|ui| {
         ui.label(format!("{}:", label));
+        
+        // Parse current color for preview
+        let preview_color = parse_color_preview(value);
+        
+        // Show color preview square
+        let (rect, _response) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
+        ui.painter().rect_filled(rect, egui::Rounding::same(3.0), preview_color);
+        ui.painter().rect_stroke(rect, egui::Rounding::same(3.0), egui::Stroke::new(1.0, egui::Color32::GRAY));
+        
         let response = ui.add(
             egui::TextEdit::singleline(value)
                 .desired_width(100.0)
                 .hint_text("#rrggbb"),
         );
 
-        if response.has_focus() {
-            response.request_focus();
+        // Detect changes on every keystroke, not just when focus is lost
+        if response.changed() {
+            changed = true;
         }
+    });
+    changed
+}
 
-        response.changed()
-    })
-    .inner
+fn parse_color_preview(hex: &str) -> egui::Color32 {
+    let h = hex.trim().trim_start_matches('#');
+    if h.len() >= 6 {
+        let r = u8::from_str_radix(&h[0..2], 16).unwrap_or(128);
+        let g = u8::from_str_radix(&h[2..4], 16).unwrap_or(128);
+        let b = u8::from_str_radix(&h[4..6], 16).unwrap_or(128);
+        egui::Color32::from_rgb(r, g, b)
+    } else {
+        egui::Color32::GRAY
+    }
 }

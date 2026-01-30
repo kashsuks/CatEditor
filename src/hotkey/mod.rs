@@ -4,9 +4,7 @@
 //!
 //! ## Features
 //!
-//! - Hotkeys for vim motions for movement along lines and sections of text
 //! - Find and replace modal that allows you to replace text with specific cases
 
 pub mod command_input;
 pub mod find_replace;
-pub mod vim_motions;

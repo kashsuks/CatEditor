@@ -6,7 +6,6 @@ mod config;
 mod file_tree;
 mod fuzzy_finder;
 mod hotkey;
-mod settings;
 mod setup;
 mod terminal;
 

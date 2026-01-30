@@ -4,41 +4,26 @@ use crate::file_tree::FileTree;
 use crate::fuzzy_finder::FuzzyFinder;
 use crate::hotkey::command_input::CommandInput;
 use crate::hotkey::find_replace::FindReplace;
-use crate::settings::Settings;
 use crate::setup::menu;
 use crate::setup::theme;
 use crate::terminal::Terminal;
 use eframe::egui;
 use std::path::PathBuf;
 
-#[derive(PartialEq)]
-pub enum Mode {
-    Insert,
-    Normal,
-    Command,
-}
-
 pub struct CatEditorApp {
     pub text: String,
-    pub mode: Mode,
     pub command_buffer: String,
     pub should_quit: bool,
     pub current_file: Option<String>,
     pub current_folder: Option<PathBuf>,
     pub cursor_pos: usize,
-    pub pending_motion: Option<char>,
-    pub saved_column: Option<usize>,
-    pub space_pressed: bool,
-    pub vim_mode_enabled: bool,
 
     pub theme: ThemeColors,
-    pub theme_menu_open: bool,
 
     pub command_palette: CommandPalette,
     pub find_replace: FindReplace,
     pub command_input: CommandInput,
     pub fuzzy_finder: FuzzyFinder,
-    pub settings: Settings,
     pub file_tree: FileTree,
     pub terminal: Terminal,
 }
@@ -48,23 +33,16 @@ impl Default for CatEditorApp {
         let theme = load_theme();
         Self {
             text: String::new(),
-            mode: Mode::Insert,
             command_buffer: String::new(),
             should_quit: false,
             current_file: None,
             current_folder: None,
             cursor_pos: 0,
-            pending_motion: None,
-            saved_column: None,
-            space_pressed: false,
-            vim_mode_enabled: false,
             theme,
-            theme_menu_open: false,
             command_palette: CommandPalette::default(),
             find_replace: FindReplace::default(),
             command_input: CommandInput::default(),
             fuzzy_finder: FuzzyFinder::default(),
-            settings: Settings::default(),
             file_tree: FileTree::default(),
             terminal: Terminal::default(),
         }
@@ -78,6 +56,7 @@ impl eframe::App for CatEditorApp {
             return;
         }
 
+        // Handle global keyboard shortcuts (should work regardless of mode)
         ctx.input(|i| {
             let modifier_pressed = if cfg!(target_os = "macos") {
                 i.modifiers.command
@@ -118,47 +97,11 @@ impl eframe::App for CatEditorApp {
 
         theme::apply_theme(ctx, self);
 
-        ctx.input(|i| {
-            if self.mode == Mode::Insert {
-                if i.key_pressed(egui::Key::Escape) {
-                    if self.vim_mode_enabled {
-                        self.mode = Mode::Normal;
-                        let max = self.text.chars().count();
-                        if self.cursor_pos > max {
-                            self.cursor_pos = max;
-                        }
-                    }
-                }
-            } else if self.mode == Mode::Normal && self.vim_mode_enabled {
-                if i.key_pressed(egui::Key::Space) {
-                    self.space_pressed = true;
-                } else if self.space_pressed {
-                    for event in &i.events {
-                        if let egui::Event::Text(text) = event {
-                            if text == "f" {
-                                if self.current_folder.is_some() {
-                                    self.fuzzy_finder.toggle();
-                                }
-                            }
-                            // regardless of what key was pressed, stop waiting for the next key
-                            self.space_pressed = false;
-                        }
-                    }
-                }
-
-                handle_fuzzy_finder_keybind(self, i);
-
-                if self.vim_mode_enabled {
-                    crate::hotkey::vim_motions::handle_normal_mode_input(self, i);
-                }
-
-                if i.key_pressed(egui::Key::I) && self.vim_mode_enabled {
-                    self.mode = Mode::Insert;
-                } else if i.key_pressed(egui::Key::Colon) && self.vim_mode_enabled {
-                    self.command_input.open();
-                }
-            }
-        });
+        // Only process if no modal dialogs are open
+        let modals_open = self.command_palette.open 
+            || self.find_replace.open 
+            || self.command_input.open 
+            || self.fuzzy_finder.open;
 
         menu::show_menu_bar(ctx, self);
 
@@ -169,10 +112,6 @@ impl eframe::App for CatEditorApp {
             }
         }
 
-        let mut settings = std::mem::take(&mut self.settings);
-        settings.show(ctx, self);
-        self.settings = settings;
-
         if let Some(command) = self.command_palette.show(ctx) {
             self.execute_palette_command(ctx, &command);
         }
@@ -182,7 +121,6 @@ impl eframe::App for CatEditorApp {
 
         if let Some(cmd) = self.command_input.show(ctx) {
             self.command_buffer = cmd;
-            self.execute_command(ctx);
         }
 
         if let Some(file_path) = self.fuzzy_finder.show(ctx) {
@@ -197,13 +135,6 @@ impl eframe::App for CatEditorApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::TopBottomPanel::bottom("status_bar").show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    let mode_text = match self.mode {
-                        Mode::Insert => "-- INSERT --",
-                        Mode::Normal => "-- NORMAL --",
-                        Mode::Command => "",
-                    };
-                    ui.label(mode_text);
-
                     // Show current folder if open
                     if let Some(folder) = &self.current_folder {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -243,17 +174,10 @@ impl eframe::App for CatEditorApp {
                             },
                         );
 
-                        let old_text = if self.mode == Mode::Normal {
-                            Some(self.text.clone())
-                        } else {
-                            None
-                        };
-
                         let text_edit = egui::TextEdit::multiline(&mut self.text)
                             .font(egui::TextStyle::Monospace)
                             .frame(false)
-                            .desired_width(f32::INFINITY)
-                            .interactive(true);
+                            .desired_width(f32::INFINITY);
 
                         let available = ui.available_size();
                         let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
@@ -333,72 +257,15 @@ impl eframe::App for CatEditorApp {
                         let something_else_has_focus = !output.response.has_focus()
                             && ctx.memory(|mem| mem.focused().is_some());
 
-                        match self.mode {
-                            Mode::Insert => {
-                                if !something_else_has_focus {
-                                    output.response.request_focus();
-                                }
-                                if let Some(cursor) = output.cursor_range {
-                                    self.cursor_pos = cursor.primary.ccursor.index;
-                                }
-                            }
-                            Mode::Normal => {
-                                if !something_else_has_focus {
-                                    output.response.request_focus();
-                                }
-
-                                let mut state = output.state;
-                                let ccursor = egui::text::CCursor::new(self.cursor_pos);
-                                state
-                                    .cursor
-                                    .set_char_range(Some(egui::text::CCursorRange::one(ccursor)));
-                                state.store(ctx, output.response.id);
-
-                                if let Some(old) = old_text {
-                                    if self.text != old {
-                                        self.text = old;
-                                    }
-                                }
-                            }
-                            Mode::Command => {}
+                        if !something_else_has_focus && !modals_open {
+                            output.response.request_focus();
+                        }
+                        if let Some(cursor) = output.cursor_range {
+                            self.cursor_pos = cursor.primary.ccursor.index;
                         }
                     });
                 });
         });
-    }
-}
-
-fn handle_fuzzy_finder_keybind(app: &mut CatEditorApp, input: &egui::InputState) {
-    static mut FF_STATE: u8 = 0;
-
-    unsafe {
-        if input.key_pressed(egui::Key::Space) {
-            FF_STATE = 1;
-        } else if FF_STATE > 0 {
-            for event in &input.events {
-                if let egui::Event::Text(text) = event {
-                    if text == "f" {
-                        FF_STATE += 1;
-                        if FF_STATE == 3 {
-                            if app.current_folder.is_some() {
-                                app.fuzzy_finder.toggle();
-                            }
-                            FF_STATE = 0;
-                        }
-                    } else {
-                        FF_STATE = 0;
-                    }
-                }
-            }
-
-            if FF_STATE > 0 && !input.key_pressed(egui::Key::Space) {
-                for event in &input.events {
-                    if let egui::Event::Text(_) = event {
-                        continue;
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -440,32 +307,5 @@ impl CatEditorApp {
             }
             _ => {}
         }
-    }
-
-    fn execute_command(&mut self, _ctx: &egui::Context) {
-        match self.command_buffer.trim() {
-            "q" => {
-                self.should_quit = true;
-            }
-            "w" => {
-                if let Some(path) = &self.current_file {
-                    let _ = std::fs::write(path, &self.text);
-                } else if let Some(path) = rfd::FileDialog::new().save_file() {
-                    let _ = std::fs::write(&path, &self.text);
-                    self.current_file = Some(path.display().to_string());
-                }
-            }
-            "wq" => {
-                if let Some(path) = &self.current_file {
-                    let _ = std::fs::write(path, &self.text);
-                }
-                self.should_quit = true;
-            }
-            _ => {
-                println!("Unknown command: {}", self.command_buffer);
-            }
-        }
-        self.command_buffer.clear();
-        self.mode = Mode::Normal;
     }
 }
