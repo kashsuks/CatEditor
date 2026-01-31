@@ -7,6 +7,9 @@
 # Installation
 
 Rode is shipped across multiple platforms, mainly *Github Releases* and [crates.io](https://crates.io). Note that nightly builds are an ongoing process and are planned to arrive in the near future.
+
+## Compiling from Source
+
 If you would like to compile from source, please follow the instructions below.
 
 > **Prerequisites** - Ensure you have the `cargo` package manager installed since this project requires Rust and a few of its published crates
@@ -33,6 +36,24 @@ You will see that the required packages will get installed and the application m
 > Do not expect them to work because I am a solo developer and I have too much shit to deal with.
 > The same applies to nightly builds (when they do arrive).
 > They will not be stable. Do not expect them to be stable.
+
+## Mac Installation
+
+- For Mac Silicon (any of the M series chips), please use `rode-editor-apple-silicon`
+
+Once you've installed it:
+- Copy the path of the install (either through finder or whatever method)
+- Go to your terminal of choice and type in `chmod +x <the path to the install>`
+- Then run `rode-editor-apple-silicon`
+
+If apple says that the install cannot be verified:
+- Go to settings
+- Scroll down to `Privacy & Security`
+- Scroll all the way down and in the `Security` section it should ask for permission to open
+- Press allow and give any other permission
+- The app _should_ open!
+
+If you would like to use [crates.io](https://crates.io) to use the application please refer to the [published version](https://crates.io/crates/rode-editor)
 
 ---
 
