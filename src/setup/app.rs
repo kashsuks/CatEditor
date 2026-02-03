@@ -216,11 +216,20 @@ impl eframe::App for CatEditorApp {
                             .cursor_at_end(false);
 
                         let available = ui.available_size();
-                        let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
+                        let mut output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
 
                         // In Normal mode, revert any text changes made by the widget
                         if matches!(self.vim_state.mode, VimMode::Normal) && self.text != self.last_text {
                             self.text = self.last_text.clone();
+                        }
+
+                        // sync widget cursor with vim cursor 
+                        if matches!(self.vim_state.mode, VimMode::Normal) {
+                            // hard force the widget to use our cursor
+                            let cursor = output.galley.from_ccursor(egui::text::CCursor::new(self.cursor_pos));
+                            let cursor_range = egui::text::CursorRange::one(cursor);
+                            output.state.cursor.set_range(Some(cursor_range));
+                            output.state.store(ui.ctx(), output.response.id);
                         }
 
                         // Draw custom block cursor for Normal mode
