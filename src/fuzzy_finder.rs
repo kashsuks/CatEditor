@@ -357,7 +357,7 @@ fn fuzzy_match(text: &str, pattern: &str) -> i32 {
             if i == 0 || text_chars[i - 1] == '/' || text_chars[i - 1] == '_' {
                 score += 30;
             }
-
+    
             pattern_idx += 1;
         }
     }
