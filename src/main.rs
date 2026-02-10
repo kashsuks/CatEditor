@@ -1,5 +1,6 @@
 use eframe::egui;
 use std::env;
+use crate::syntax_highlighter::SyntaxHighlighter;
 
 mod command_palette;
 mod config;
@@ -11,6 +12,7 @@ mod terminal;
 mod icon_manager;
 mod icon_theme;
 mod autocomplete;
+mod syntax_highlighter;
 
 // Main function with frame settings
 //
@@ -45,6 +47,7 @@ fn main() -> eframe::Result<()> {
             if let Some(path) = file_path {
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     app.text = content;
+                    app.current_language = syntax_highlighter::SyntaxHighlighter::detect_language(&path);
                     app.current_file = Some(path);
                 }
             }

@@ -9,6 +9,7 @@ use crate::setup::theme;
 use crate::terminal::Terminal;
 use crate::icon_manager::IconManager;
 use crate::autocomplete::Autocomplete;
+use crate::syntax_highlighter::SyntaxHighlighter;
 use eframe::egui;
 use std::path::PathBuf;
 
@@ -29,6 +30,8 @@ pub struct CatEditorApp {
     pub terminal: Terminal,
     pub icon_manager: IconManager,
     pub autocomplete: Autocomplete,
+    pub syntax_highlighter: SyntaxHighlighter,
+    pub current_language: Option<String>,
 
     leader_pressed: bool,
     leader_sequence: String,
@@ -52,6 +55,8 @@ impl Default for CatEditorApp {
             terminal: Terminal::default(),
             icon_manager: IconManager::new(),
             autocomplete: Autocomplete::default(),
+            syntax_highlighter: SyntaxHighlighter::new(),
+            current_language: None,
             leader_pressed: false,
             leader_sequence: String::new(),
         }
@@ -124,6 +129,7 @@ impl eframe::App for CatEditorApp {
             if let Ok(content) = std::fs::read_to_string(&file_path) {
                 self.text = content;
                 self.current_file = Some(file_path.display().to_string());
+                self.current_language = SyntaxHighlighter::detect_language(&file_path.display().to_string());
             }
         }
 
@@ -142,6 +148,7 @@ impl eframe::App for CatEditorApp {
             if let Ok(content) = std::fs::read_to_string(&file_path) {
                 self.text = content;
                 self.current_file = Some(file_path.display().to_string());
+                self.current_language = SyntaxHighlighter::detect_language(&file_path.display().to_string());
             }
         }
 
@@ -266,6 +273,46 @@ impl eframe::App for CatEditorApp {
 
                         let available = ui.available_size();
                         let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
+
+                        if let Some(language) = &self.current_language {
+                            let tokens = self.syntax_highlighter.highlight(&self.text, language);
+                            let galley = output.galley.clone();
+                            let text_draw_pos = output.galley_pos;
+                            let painter = ui.painter();
+
+                            for token in tokens {
+                                let color = self.syntax_highlighter.get_color_for_token(token.token_type, &self.theme);
+
+                                let start_cursor = galley.from_ccursor(egui::text::CCursor::new(token.start));
+                                let end_cursor = galley.from_ccursor(egui::text::CCursor::new(token.end));
+
+                                if start_cursor.rcursor.row == end_cursor.rcursor.row {
+                                    let row_rect = galley.rows[start_cursor.rcursor.row].rect;
+
+                                    let start_x = if start_cursor.rcursor.column < galley.rows[start_cursor.rcursor.row].glyphs.len() {
+                                        galley.rows[start_cursor.rcursor.row].glyphs[start_cursor.rcursor.column].pos.x
+                                    } else {
+                                        row_rect.max.x
+                                    };
+
+                                    let end_x = if end_cursor.rcursor.column < galley.rows[end_cursor.rcursor.row].glyphs.len() {
+                                        galley.rows[end_cursor.rcursor.row].glyphs[end_cursor.rcursor.column].pos.x
+                                    } else {
+                                        row_rect.max.x
+                                    };
+
+                                    let token_text = &self.text[token.start..token.end];
+                                    painter.text(
+                                        text_draw_pos + egui::vec2(start_x, row_rect.min.y),
+                                        egui::Align2::LEFT_TOP,
+                                        token_text,
+                                        egui::TextStyle::Monospace.resolve(ui.style()),
+                                        color,
+                                    );
+
+                                }
+                            }
+                        }
 
                         let cursor_pos = output.cursor_range.map(|r| r.primary.ccursor.index).unwrap_or(0);
 
@@ -514,6 +561,7 @@ impl CatEditorApp {
                     if let Ok(content) = std::fs::read_to_string(&path) {
                         self.text = content;
                         self.current_file = Some(path.display().to_string());
+                        self.current_language = SyntaxHighlighter::detect_language(&path.display().to_string());
                     }
                 }
             }
