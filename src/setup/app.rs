@@ -342,19 +342,19 @@ impl eframe::App for CatEditorApp {
                             };
                             modifier && i.key_pressed(egui::Key::Space)
                         }) {
-                            self.autocomplete.trigger(&self.text, cursor_pos);
+                            self.autocomplete.trigger(&self.text, cursor_pos, self.current_language.as_deref());
                         }
 
                         // Auto-trigger while typing
                         if output.response.changed() && !self.autocomplete.active {
                             let (current_word, _) = Autocomplete::get_current_word(&self.text, cursor_pos);
                             if current_word.len() >= 2 {
-                                self.autocomplete.trigger(&self.text, cursor_pos);
+                                self.autocomplete.trigger(&self.text, cursor_pos, self.current_language.as_deref());
                             }
                         }
 
                         // Show autocomplete popup
-                        if self.autocomplete.active && !self.autocomplete.suggestion.is_empty() {
+                        if self.autocomplete.active && !self.autocomplete.suggestions.is_empty() {
                             let galley = output.galley.clone();
                             
                             if let Some(cursor_range) = output.cursor_range {
@@ -371,7 +371,7 @@ impl eframe::App for CatEditorApp {
                                     let popup_pos = output.galley_pos + egui::vec2(cursor_x, row_rect.max.y + 5.0);
                                     
                                     // Clone suggestion to avoid borrow issues
-                                    let suggestion = self.autocomplete.suggestion.clone();
+                                    let suggestions = self.autocomplete.suggestions.clone();
                                     let selected_index = self.autocomplete.selected_index;
                                     let mut clicked_index: Option<usize> = None;
                                     
@@ -385,14 +385,20 @@ impl eframe::App for CatEditorApp {
                                                     ui.set_max_height(200.0);
                                                     
                                                     egui::ScrollArea::vertical().show(ui, |ui| {
-                                                        for (idx, suggestion) in suggestion.iter().enumerate() {
+                                                        for (idx, suggestion) in suggestions.iter().enumerate() {
                                                             let is_selected = idx == selected_index;
                                                             
                                                             let icon = match suggestion.kind {
                                                                 crate::autocomplete::SuggestionKind::Function => "ƒ",
                                                                 crate::autocomplete::SuggestionKind::Variable => "𝑥",
+                                                                crate::autocomplete::SuggestionKind::Method => "⚡",
                                                                 crate::autocomplete::SuggestionKind::Type => "𝑇",
                                                                 crate::autocomplete::SuggestionKind::Keyword => "⚡",
+                                                                crate::autocomplete::SuggestionKind::Constant => "◇",
+                                                                crate::autocomplete::SuggestionKind::Module => "📦",
+                                                                crate::autocomplete::SuggestionKind::Macro => "!",
+                                                                crate::autocomplete::SuggestionKind::Property => "○",
+                                                                crate::autocomplete::SuggestionKind::Snippet => "📋", 
                                                             };
                                                             
                                                             let response = ui.selectable_label(

@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialze};
+use serde::{Deserialize, Serialize};
 
 /// Structure for info related to autocomplete suggestions
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -42,7 +42,7 @@ impl Suggestion {
 }
 
 /// The types of suggestions with graunlar categories
-#[derive(Clone, Debug, PartialEq, Serialze, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SuggestionKind {
     Variable,
     Function,

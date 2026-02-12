@@ -14,6 +14,6 @@ pub mod scoring;
 pub mod language;
 
 // Re-export main public API
-pub use types::{Suggestions, SuggestionKind};
+pub use types::{Suggestion, SuggestionKind};
 pub use engine::Autocomplete;
 pub use context::CompletionContext;
