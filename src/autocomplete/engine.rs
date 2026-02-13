@@ -77,7 +77,6 @@ impl Autocomplete {
                     if !current_word.chars().next().unwrap().is_numeric() {
                         identifiers.insert(current_word.clone());
                         
-                        // Track recent identifiers
                         if !self.recent_identifiers.contains(&current_word) {
                             self.recent_identifiers.push(current_word.clone());
                             if self.recent_identifiers.len() > self.max_recent {
@@ -273,7 +272,19 @@ impl Autocomplete {
         if let Some(suggestion) = self.get_selected() {
             let completion = &suggestion.text;
 
-            text.replace_range(self.trigger_position..*cursor_pos, completion);
+            if self.trigger_position > text.len() {
+                self.active = false;
+                return false;
+            }
+
+            let safe_cursor = (*cursor_pos).min(text.len());
+            
+            if self.trigger_position > safe_cursor {
+                self.active = false;
+                return false;
+            }
+
+            text.replace_range(self.trigger_position..safe_cursor, completion);
             *cursor_pos = self.trigger_position + completion.len();
 
             self.active = false;

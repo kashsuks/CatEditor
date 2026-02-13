@@ -318,16 +318,23 @@ impl eframe::App for CatEditorApp {
 
                         // Handle autocomplete keyboard shortcuts
                         if self.autocomplete.active {
+                            // Consume Tab key to prevent focus change
+                            let tab_pressed = ui.input(|i| i.key_pressed(egui::Key::Tab));
+                            
                             if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
                                 self.autocomplete.select_next();
                             }
                             if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
                                 self.autocomplete.select_previous();
                             }
-                            if ui.input(|i| i.key_pressed(egui::Key::Tab)) {
+                            // Only apply suggestion on Tab, NOT Enter
+                            if tab_pressed {
                                 let mut cursor = cursor_pos;
                                 self.autocomplete.apply_suggestion(&mut self.text, &mut cursor);
+                                // Consume the Tab event so it doesn't change focus
+                                ctx.input_mut(|i| i.events.retain(|e| !matches!(e, egui::Event::Key { key: egui::Key::Tab, pressed: true, .. })));
                             }
+                            // Allow Escape to cancel autocomplete
                             if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                                 self.autocomplete.cancel();
                             }
@@ -345,11 +352,16 @@ impl eframe::App for CatEditorApp {
                             self.autocomplete.trigger(&self.text, cursor_pos, self.current_language.as_deref());
                         }
 
-                        // Auto-trigger while typing
-                        if output.response.changed() && !self.autocomplete.active {
-                            let (current_word, _) = Autocomplete::get_current_word(&self.text, cursor_pos);
-                            if current_word.len() >= 2 {
+                        // Auto-trigger while typing (re-trigger to see updated text)
+                        if output.response.changed() {
+                            if self.autocomplete.active {
+                                // Re-trigger to update with new text
                                 self.autocomplete.trigger(&self.text, cursor_pos, self.current_language.as_deref());
+                            } else {
+                                let (current_word, _) = Autocomplete::get_current_word(&self.text, cursor_pos);
+                                if current_word.len() >= 2 {
+                                    self.autocomplete.trigger(&self.text, cursor_pos, self.current_language.as_deref());
+                                }
                             }
                         }
 
