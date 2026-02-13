@@ -273,6 +273,35 @@ impl eframe::App for CatEditorApp {
 
                         let available = ui.available_size();
                         let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
+                        
+                        // check for auto bracket closing
+                        if output.response.changed() {
+                            if let Some(cursor_range) = output.cursor_range {
+                                let cursor_pos = cursor_range.primary.ccursor.index;
+
+                                if cursor_pos > 0 {
+                                    let chars: Vec<char> = self.text.chars().collect();
+                                    if cursor_pos <= chars.len() {
+                                        let prev_char = if cursor_pos > 0 { chars.get(cursor_pos - 1) } else { None };
+
+                                        if let Some(&ch) = prev_char {
+                                            let closing = match ch {
+                                                '(' => Some(')'),
+                                                '{' => Some('}'),
+                                                '[' => Some(']'),
+                                                _ => None,
+                                            };
+
+                                            if let Some(close_char) = closing {
+                                                self.text.insert(cursor_pos, close_char);
+                                                // Note: the cursor stays naturally between the
+                                                // brackets
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         if let Some(language) = &self.current_language {
                             let tokens = self.syntax_highlighter.highlight(&self.text, language);
