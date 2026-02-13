@@ -84,12 +84,12 @@ impl eframe::App for CatEditorApp {
             };
 
             // Only allow these shortcuts in Normal mode or when not in text editor
-            if modifier_pressed && i.key_pressed(egui::Key::Comma) {
-                if i.modifiers.shift {
-                    self.theme = load_theme();
-                } else {
-                    self.command_palette.toggle();
-                }
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::P) {
+                self.command_palette.toggle();
+            } 
+
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::Comma) {
+                self.theme = load_theme();
             }
 
             if modifier_pressed && i.key_pressed(egui::Key::F) {
@@ -621,6 +621,14 @@ impl CatEditorApp {
                         self.current_file = Some(path.display().to_string());
                         self.current_language = SyntaxHighlighter::detect_language(&path.display().to_string());
                     }
+                }
+            }
+            "Open Folder" => {
+                if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                    self.current_folder = Some(path.clone());
+                    self.fuzzy_finder.set_folder(path.clone());
+                    self.file_tree.set_root(path.clone());
+                    self.terminal.set_directory(path);
                 }
             }
             "Save File" => {
