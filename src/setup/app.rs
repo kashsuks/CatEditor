@@ -1,6 +1,6 @@
 use crate::command_palette::CommandPalette;
 use crate::config::theme_manager::{ThemeColors, load_theme};
-use crate::file_tree::FileTree;
+use crate::file_tree::{FileTree, FileTreeAction};
 use crate::fuzzy_finder::FuzzyFinder;
 use crate::hotkey::command_input::CommandInput;
 use crate::hotkey::find_replace::FindReplace;
@@ -35,6 +35,8 @@ pub struct CatEditorApp {
 
     leader_pressed: bool,
     leader_sequence: String,
+    settings_open: bool,
+    autocomplete_space_count: u8,
 }
 
 impl Default for CatEditorApp {
@@ -59,6 +61,8 @@ impl Default for CatEditorApp {
             current_language: None,
             leader_pressed: false,
             leader_sequence: String::new(),
+            settings_open: false,
+            autocomplete_space_count: 0,
         }
     }
 }
@@ -100,6 +104,10 @@ impl eframe::App for CatEditorApp {
                 }
             }
 
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::S) {
+                self.settings_open = true;
+            }
+
             if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::Comma) {
                 self.theme = load_theme();
             }
@@ -129,6 +137,8 @@ impl eframe::App for CatEditorApp {
 
         theme::apply_theme(ctx, self);
 
+        self.show_settings_window(ctx);
+
         // Only process if no modal dialogs are open
         let modals_open = self.command_palette.open 
             || self.find_replace.open 
@@ -137,12 +147,21 @@ impl eframe::App for CatEditorApp {
 
         menu::show_menu_bar(ctx, self);
 
-        if let Some(file_path) = self.file_tree.show(ctx, &mut self.icon_manager) {
-            if let Ok(content) = std::fs::read_to_string(&file_path) {
-                self.text = content;
-                self.current_file = Some(file_path.display().to_string());
-                self.current_language = SyntaxHighlighter::detect_language(&file_path.display().to_string());
-            }
+        if let Some(action) = self.file_tree.show(ctx, &mut self.icon_manager) {
+           match action {
+               FileTreeAction::OpenFile(file_path) => {
+                   if let Ok(content) = std::fs::read_to_string(&file_path) {
+                       self.text = content;
+                       self.current_file = Some(file_path.display().to_string());
+                       self.current_language = 
+                           SyntaxHighlighter::detect_language(&file_path.display().to_string());
+                   }
+               }
+
+               FileTreeAction::OpenSettings => {
+                   self.settings_open = true;
+               }
+           } 
         }
 
         if let Some(command) = self.command_palette.show(ctx) {
@@ -581,6 +600,31 @@ impl eframe::App for CatEditorApp {
 }
 
 impl CatEditorApp {
+    fn show_settings_window(&mut self, ctx: &egui::Context) {
+        if !self.settings_open {
+            return;
+        }
+
+        egui::Window::new("Settings")
+            .open(&mut self.settings_open)
+            .resizable(true)
+            .default_size(egui::vec2(620.0, 480.0))
+            .show(ctx, |ui| {
+                ui.heading("Rode Settings");
+                ui.separator();
+                ui.label("Theme is editable from the top menu: Theme.");
+                ui.label("Shortcut: Cmd/Ctrl + Shift + S");
+                ui.add_space(8.0);
+
+                if ui.button("Reload Theme").clicked() {
+                    self.theme = load_theme();
+                }
+
+                if ui.button("Open Command Palette").clicked() {
+                    self.command_palette.toggle();
+                }
+            });
+    }
     fn setup_fonts(&self, ctx: &egui::Context) {
         use egui::FontFamily;
         use egui::FontData;
@@ -631,6 +675,9 @@ impl CatEditorApp {
             "Theme" => {
                 // The theme menu is already shown in menu.rs, so we don't need to do anything special
                 // User can access it via the menu bar
+            }
+            "Settings" => {
+                self.settings_open = true;
             }
             "Open File" => {
                self.open_file_dialog(); 

@@ -3,6 +3,12 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
+pub enum FileTreeAction {
+    OpenFile(PathBuf),
+    OpenSettings,
+}
+
+#[derive(Clone, Debug)]
 // A struct for the file nodes that will be used for each file
 pub struct FileNode {
     pub path: PathBuf,
@@ -10,7 +16,7 @@ pub struct FileNode {
     pub is_dir: bool,
     pub is_expanded: bool, // State for whether the file node is expanded (user is searching deeper) or not
     pub children: Vec<FileNode>, // children will be be specifically for directories since files
-                           // themselves cannot have children
+                                  // themselves cannot have children
 }
 
 impl FileNode {
@@ -27,7 +33,7 @@ impl FileNode {
             .unwrap_or_else(|| path.to_string_lossy().to_string());
 
         let is_dir = path.is_dir(); // pretty self-explanatory. State for whether a specific path
-        // is a directory or not
+                                    // is a directory or not
 
         Self {
             path,
@@ -50,8 +56,6 @@ impl FileNode {
                 .map(|e| e.path())
                 .filter(|p| {
                     // skip hidden files/folders (stuff like .git and its objects will be ignored)
-                    //
-                    // TODO: allow app when run with sudo perms to show these hidden paths
                     p.file_name()
                         .map(|n| !n.to_string_lossy().starts_with('.'))
                         .unwrap_or(false)
@@ -73,18 +77,18 @@ impl FileNode {
 
 /// Public structure that is used for the states specifically to the file tree tab box
 pub struct FileTree {
-    pub visible: bool, 
+    pub visible: bool,
     pub root: Option<FileNode>,
     pub width: f32,
 }
 
-impl Default for FileTree {  
+impl Default for FileTree {
     fn default() -> Self {
         Self {
             visible: false, // file tree not visible by default (can be triggered by running
             // control + b)
-            root: None,   // no root file when running app on startup
-            width: 250.0, 
+            root: None, // no root file when running app on startup
+            width: 250.0,
         }
     }
 }
@@ -108,12 +112,19 @@ impl FileTree {
         self.visible = true;
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, icon_manger: &mut crate::icon_manager::IconManager,) -> Option<PathBuf> {
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        icon_manger: &mut crate::icon_manager::IconManager,
+    ) -> Option<FileTreeAction> {
         if !self.visible {
             return None;
         }
 
-        let mut selected_file = None;
+        let mut action = None;
+
+        // Keep the subtle animation alive.
+        ctx.request_repaint_after(std::time::Duration::from_millis(32));
 
         egui::SidePanel::left("file_tree_panel")
             .resizable(true)
@@ -128,20 +139,55 @@ impl FileTree {
                     .show(ui, |ui| {
                         if let Some(root) = self.root.as_mut() {
                             if let Some(file) = Self::show_node(ui, root, 0, icon_manger, ctx) {
-                                selected_file = Some(file);
+                                action = Some(FileTreeAction::OpenFile(file));
                             }
                         } else {
                             ui.add_space(6.0);
                             ui.label(egui::RichText::new("No folder opened").italics());
-                            ui.label(egui::RichText::new("Use Open Folder to start browsing files.").weak());
+                            ui.label(
+                                egui::RichText::new("Use Open Folder to start browsing files.").weak(),
+                            );
                         }
                     });
+
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.add_space(8.0);
+                    ui.separator();
+                    ui.add_space(8.0);
+
+                    let t = ctx.input(|i| i.time) as f32;
+                    let pulse = ((t * 2.0).sin() * 0.5 + 0.5).clamp(0.0, 1.0);
+                    let gear_color = egui::Color32::from_rgb(
+                        (140.0 + pulse * 80.0) as u8,
+                        (170.0 + pulse * 50.0) as u8,
+                        240,
+                    );
+
+                    let settings_btn = ui.add_sized(
+                        [ui.available_width(), 34.0],
+                        egui::Button::new(
+                            egui::RichText::new("⚙ Settings")
+                                .color(gear_color)
+                                .strong(),
+                        ),
+                    );
+
+                    if settings_btn.clicked() {
+                        action = Some(FileTreeAction::OpenSettings);
+                    }
+                });
             });
 
-        selected_file
+        action
     }
 
-    fn show_node(ui: &mut egui::Ui, node: &mut FileNode, depth: usize, icon_manager: &mut crate::icon_manager::IconManager, ctx: &egui::Context) -> Option<PathBuf> {
+    fn show_node(
+        ui: &mut egui::Ui,
+        node: &mut FileNode,
+        depth: usize,
+        icon_manager: &mut crate::icon_manager::IconManager,
+        ctx: &egui::Context,
+    ) -> Option<PathBuf> {
         let mut selected_file = None;
         let indent = depth as f32 * 16.0;
 
@@ -153,7 +199,6 @@ impl FileTree {
                 ui.add(egui::Image::new(icon_texture).max_size(egui::vec2(16.0, 16.0)));
 
                 let response = ui.selectable_label(false, &node.name);
-
 
                 if response.clicked() {
                     node.is_expanded = !node.is_expanded;
@@ -188,3 +233,4 @@ impl FileTree {
         selected_file
     }
 }
+
