@@ -13,6 +13,7 @@ mod icon_manager;
 mod icon_theme;
 mod autocomplete;
 mod syntax_highlighter;
+mod wakatime;
 
 // Main function with frame settings
 //
