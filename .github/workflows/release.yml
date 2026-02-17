@@ -77,7 +77,7 @@ jobs:
           body: |
             Release v${{ needs.check-version.outputs.version }}
             Commit: ${{ github.sha }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GHUB_TOKEN }}
 
   publish-crate:
     needs: check-version
