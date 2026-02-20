@@ -21,8 +21,16 @@ impl Default for CommandPalette {
                 description: "Open theme settings".to_string(),
             },
             Command {
+                name: "Settings".to_string(),
+                description: "Open editor settings".to_string(),
+            },
+            Command {
                 name: "Open File".to_string(),
                 description: "Open an existing file".to_string(),
+            },
+            Command {
+                name: "Open Folder".to_string(),
+                description: "Open a folder in file tree".to_string(),
             },
             Command {
                 name: "Save File".to_string(),
@@ -56,7 +64,7 @@ impl CommandPalette {
         self.open = !self.open;
         if self.open {
             self.input.clear();
-            self.filtered_commands.clear();
+            self.filtered_commands = self.commands.clone();
         }
     }
 
@@ -64,7 +72,7 @@ impl CommandPalette {
         let input_lower = self.input.to_lowercase();
 
         if input_lower.is_empty() {
-            self.filtered_commands.clear();
+            self.filtered_commands = self.commands.clone();
         } else {
             self.filtered_commands = self
                 .commands

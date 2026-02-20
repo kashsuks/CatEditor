@@ -66,46 +66,48 @@ impl Default for ThemeColors {
 }
 
 impl ThemeColors {
-    pub fn to_toml(&self) -> String {
+    pub fn to_lua(&self) -> String {
         format!(
-            r#"# CatEditor Theme Configuration
-# Edit these hex color values to customize your theme
-# Changes will be applied automatically
-# 1. Edit colours in the Theme menu (auto-saved and applied)
-# 2. Force reload with Cmd + , + A (Mac) or Ctrl + , + A (Windows/Linux)
-# 3. Restart the application
+            r#"-- Rode Theme Configuration
+-- Edit these hex color values to customize your theme
+-- Changes will be applied automatically
+--  1. Edit colours in the Theme menu (auto-saved and applied)
+--  2. Force reload with Cmd + , + A (Mac) or Ctrl + , + A (Windows/Linux)
+--  3. Restart the application
 
-[colors]
-rosewater = "{}"
-flamingo = "{}"
-pink = "{}"
-mauve = "{}"
-red = "{}"
-maroon = "{}"
-peach = "{}"
-yellow = "{}"
-green = "{}"
-teal = "{}"
-sky = "{}"
-sapphire = "{}"
-blue = "{}"
-lavender = "{}"
+return {{
+    -- base colours
+    rosewater = "{}",
+    flamingo = "{}",
+    pink = "{}",
+    mauve = "{}",
+    red = "{}",
+    maroon = "{}",
+    peach = "{}",
+    yellow = "{}",
+    green = "{}",
+    teal = "{}",
+    sky = "{}",
+    sapphire = "{}",
+    blue = "{}",
+    lavender = "{}",
 
-[text]
-text = "{}"
-subtext1 = "{}"
-subtext0 = "{}"
-overlay2 = "{}"
-overlay1 = "{}"
-overlay0 = "{}"
+    -- text editing
+    text = "{}",
+    subtext1 = "{}",
+    subtext0 = "{}",
+    overlay2 = "{}",
+    overlay1 = "{}",
+    overlay0 = "{}",
 
-[background]
-surface2 = "{}"
-surface1 = "{}"
-surface0 = "{}"
-base = "{}"
-mantle = "{}"
-crust = "{}"
+    -- change background colours
+    surface2 = "{}",
+    surface1 = "{}",
+    surface0 = "{}",
+    base = "{}",
+    mantle = "{}",
+    crust = "{}",
+}}
 "#,
             self.rosewater,
             self.flamingo,
@@ -136,18 +138,23 @@ crust = "{}"
         )
     }
 
-    pub fn from_toml(content: &str) -> Result<Self, String> {
+    pub fn from_lua(content: &str) -> Result<Self, String> {
         let mut theme = Self::default();
 
         for line in content.lines() {
             let line = line.trim();
-            if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
+            if line.is_empty() || line.starts_with("--") || line == "return {" || line == "}" {
                 continue;
             }
 
             if let Some((key, value)) = line.split_once('=') {
                 let key = key.trim();
-                let value = value.trim().trim_matches('"').to_string();
+                let value = value
+                    .trim()
+                    .trim_end_matches(',')
+                    .trim_matches('"')
+                    .trim_matches('\'')
+                    .to_string();
 
                 match key {
                     "rosewater" => theme.rosewater = value,
@@ -185,16 +192,20 @@ crust = "{}"
     }
 }
 
-pub fn get_theme_path() -> PathBuf {
+pub fn get_config_dir() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".cateditor").join("theme.toml")
+    PathBuf::from(home).join(".config").join("rode")
+}
+
+pub fn get_theme_path() -> PathBuf {
+    get_config_dir().join("theme.lua")
 }
 
 pub fn load_theme() -> ThemeColors {
     let path = get_theme_path();
 
     if let Ok(content) = fs::read_to_string(&path) {
-        ThemeColors::from_toml(&content).unwrap_or_default()
+        ThemeColors::from_lua(&content).unwrap_or_default()
     } else {
         ThemeColors::default()
     }
@@ -209,7 +220,7 @@ pub fn save_theme(theme: &ThemeColors) -> Result<(), std::io::Error> {
     }
 
     let mut file = fs::File::create(path)?;
-    file.write_all(theme.to_toml().as_bytes())?;
+    file.write_all(theme.to_lua().as_bytes())?;
 
     Ok(())
 }

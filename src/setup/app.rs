@@ -1,17 +1,19 @@
+use crate::autocomplete::Autocomplete;
 use crate::command_palette::CommandPalette;
-use crate::config::theme_manager::{ThemeColors, load_theme};
-use crate::file_tree::FileTree;
+use crate::config::theme_manager::{load_theme, ThemeColors};
+use crate::file_tree::{FileTree, FileTreeAction};
 use crate::fuzzy_finder::FuzzyFinder;
 use crate::hotkey::command_input::CommandInput;
 use crate::hotkey::find_replace::FindReplace;
+use crate::icon_manager::IconManager;
 use crate::setup::menu;
 use crate::setup::theme;
-use crate::terminal::Terminal;
-use crate::icon_manager::IconManager;
-use crate::autocomplete::Autocomplete;
 use crate::syntax_highlighter::SyntaxHighlighter;
+use crate::terminal::Terminal;
+use crate::wakatime::{self, WakaTimeConfig};
 use eframe::egui;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 pub struct CatEditorApp {
     pub text: String,
@@ -35,6 +37,11 @@ pub struct CatEditorApp {
 
     leader_pressed: bool,
     leader_sequence: String,
+    settings_open: bool,
+
+    wakatime: WakaTimeConfig,
+    last_wakatime_entity: Option<String>,
+    last_wakatime_sent_at: Option<Instant>,
 }
 
 impl Default for CatEditorApp {
@@ -59,6 +66,10 @@ impl Default for CatEditorApp {
             current_language: None,
             leader_pressed: false,
             leader_sequence: String::new(),
+            settings_open: false,
+            wakatime: wakatime::load(),
+            last_wakatime_entity: None,
+            last_wakatime_sent_at: None,
         }
     }
 }
@@ -70,7 +81,8 @@ impl eframe::App for CatEditorApp {
             return;
         }
 
-        static FONTS_LOADED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        static FONTS_LOADED: std::sync::atomic::AtomicBool =
+            std::sync::atomic::AtomicBool::new(false);
         if !FONTS_LOADED.swap(true, std::sync::atomic::Ordering::Relaxed) {
             self.setup_fonts(ctx);
         }
@@ -83,16 +95,31 @@ impl eframe::App for CatEditorApp {
                 i.modifiers.ctrl
             };
 
-            // Only allow these shortcuts in Normal mode or when not in text editor
-            if modifier_pressed && i.key_pressed(egui::Key::Comma) {
-                if i.modifiers.shift {
-                    self.theme = load_theme();
-                } else {
-                    self.command_palette.toggle();
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::P) {
+                self.command_palette.toggle();
+            }
+
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::F) {
+                if self.current_folder.is_some() {
+                    self.fuzzy_finder.toggle();
+                } else if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                    self.current_folder = Some(path.clone());
+                    self.fuzzy_finder.set_folder(path.clone());
+                    self.file_tree.set_root(path.clone());
+                    self.terminal.set_directory(path);
+                    self.fuzzy_finder.toggle();
                 }
             }
 
-            if modifier_pressed && i.key_pressed(egui::Key::F) {
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::S) {
+                self.settings_open = true;
+            }
+
+            if modifier_pressed && i.modifiers.shift && i.key_pressed(egui::Key::Comma) {
+                self.theme = load_theme();
+            }
+
+            if modifier_pressed && !i.modifiers.shift && i.key_pressed(egui::Key::F) {
                 self.find_replace.toggle();
             }
 
@@ -100,7 +127,6 @@ impl eframe::App for CatEditorApp {
                 self.file_tree.toggle();
             }
 
-            // Opens system's default terminal in current folder
             if modifier_pressed && i.key_pressed(egui::Key::J) {
                 self.terminal.toggle();
             }
@@ -116,20 +142,29 @@ impl eframe::App for CatEditorApp {
         });
 
         theme::apply_theme(ctx, self);
+        self.show_settings_window(ctx);
 
-        // Only process if no modal dialogs are open
-        let modals_open = self.command_palette.open 
-            || self.find_replace.open 
-            || self.command_input.open 
+        let modals_open = self.command_palette.open
+            || self.find_replace.open
+            || self.command_input.open
             || self.fuzzy_finder.open;
 
         menu::show_menu_bar(ctx, self);
 
-        if let Some(file_path) = self.file_tree.show(ctx, &mut self.icon_manager) {
-            if let Ok(content) = std::fs::read_to_string(&file_path) {
-                self.text = content;
-                self.current_file = Some(file_path.display().to_string());
-                self.current_language = SyntaxHighlighter::detect_language(&file_path.display().to_string());
+        if let Some(action) = self.file_tree.show(ctx, &mut self.icon_manager) {
+            match action {
+                FileTreeAction::OpenFile(file_path) => {
+                    if let Ok(content) = std::fs::read_to_string(&file_path) {
+                        self.text = content;
+                        self.current_file = Some(file_path.display().to_string());
+                        self.current_language =
+                            SyntaxHighlighter::detect_language(&file_path.display().to_string());
+                        self.maybe_send_wakatime_heartbeat(false);
+                    }
+                }
+                FileTreeAction::OpenSettings => {
+                    self.settings_open = true;
+                }
             }
         }
 
@@ -137,8 +172,7 @@ impl eframe::App for CatEditorApp {
             self.execute_palette_command(ctx, &command);
         }
 
-        self.find_replace
-            .show(ctx, &mut self.text, &mut &mut 0);
+        self.find_replace.show(ctx, &mut self.text, &mut &mut 0);
 
         if let Some(cmd) = self.command_input.show(ctx) {
             self.command_buffer = cmd;
@@ -148,7 +182,9 @@ impl eframe::App for CatEditorApp {
             if let Ok(content) = std::fs::read_to_string(&file_path) {
                 self.text = content;
                 self.current_file = Some(file_path.display().to_string());
-                self.current_language = SyntaxHighlighter::detect_language(&file_path.display().to_string());
+                self.current_language =
+                    SyntaxHighlighter::detect_language(&file_path.display().to_string());
+                self.maybe_send_wakatime_heartbeat(false);
             }
         }
 
@@ -171,7 +207,6 @@ impl eframe::App for CatEditorApp {
 
                     ui.separator();
 
-                    // Show current folder if open
                     if let Some(folder) = &self.current_folder {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label(
@@ -184,7 +219,6 @@ impl eframe::App for CatEditorApp {
                 });
             });
 
-            // Handle leader key sequences
             if !modals_open {
                 ctx.input(|i| {
                     if i.key_pressed(egui::Key::Space) && !i.modifiers.any() {
@@ -192,18 +226,15 @@ impl eframe::App for CatEditorApp {
                         self.leader_sequence.clear();
                     }
 
-                    //keys after leader
                     if self.leader_pressed {
                         for event in &i.events {
                             if let egui::Event::Text(text) = event {
-                                // Skip the space character itself
                                 if text == " " {
                                     continue;
                                 }
-                                
+
                                 self.leader_sequence.push_str(text);
 
-                                //complete sequences 
                                 match self.leader_sequence.as_str() {
                                     "ff" => {
                                         if self.current_folder.is_some() {
@@ -212,13 +243,11 @@ impl eframe::App for CatEditorApp {
                                         self.leader_pressed = false;
                                         self.leader_sequence.clear();
                                     }
-
                                     "fb" => {
                                         self.file_tree.toggle();
                                         self.leader_pressed = false;
                                         self.leader_sequence.clear();
                                     }
-
                                     _ => {
                                         if self.leader_sequence.len() > 2 {
                                             self.leader_pressed = false;
@@ -238,6 +267,12 @@ impl eframe::App for CatEditorApp {
             } else {
                 self.leader_pressed = false;
                 self.leader_sequence.clear();
+            }
+
+            let show_welcome = self.current_file.is_none() && self.text.trim().is_empty();
+            if show_welcome {
+                self.show_welcome_screen(ui);
+                return;
             }
 
             egui::ScrollArea::vertical()
@@ -274,6 +309,47 @@ impl eframe::App for CatEditorApp {
                         let available = ui.available_size();
                         let output = ui.allocate_ui(available, |ui| text_edit.show(ui)).inner;
 
+                        let current_text_len = self.text.len();
+                        static mut LAST_TEXT_LEN: usize = 0;
+
+                        if output.response.changed() {
+                            unsafe {
+                                if current_text_len > LAST_TEXT_LEN {
+                                    if let Some(cursor_range) = output.cursor_range {
+                                        let cursor_pos = cursor_range.primary.ccursor.index;
+
+                                        if cursor_pos > 0 {
+                                            let chars: Vec<char> = self.text.chars().collect();
+                                            if cursor_pos <= chars.len() {
+                                                let prev_char = if cursor_pos > 0 {
+                                                    chars.get(cursor_pos - 1)
+                                                } else {
+                                                    None
+                                                };
+
+                                                if let Some(&ch) = prev_char {
+                                                    let closing = match ch {
+                                                        '(' => Some(')'),
+                                                        '{' => Some('}'),
+                                                        '[' => Some(']'),
+                                                        _ => None,
+                                                    };
+
+                                                    if let Some(close_char) = closing {
+                                                        self.text.insert(cursor_pos, close_char);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                LAST_TEXT_LEN = current_text_len;
+                            }
+
+                            self.maybe_send_wakatime_heartbeat(false);
+                        }
+
                         if let Some(language) = &self.current_language {
                             let tokens = self.syntax_highlighter.highlight(&self.text, language);
                             let galley = output.galley.clone();
@@ -281,22 +357,25 @@ impl eframe::App for CatEditorApp {
                             let painter = ui.painter();
 
                             for token in tokens {
-                                let color = self.syntax_highlighter.get_color_for_token(token.token_type, &self.theme);
+                                let color = self
+                                    .syntax_highlighter
+                                    .get_color_for_token(token.token_type, &self.theme);
 
-                                let start_cursor = galley.from_ccursor(egui::text::CCursor::new(token.start));
-                                let end_cursor = galley.from_ccursor(egui::text::CCursor::new(token.end));
+                                let start_cursor =
+                                    galley.from_ccursor(egui::text::CCursor::new(token.start));
+                                let end_cursor =
+                                    galley.from_ccursor(egui::text::CCursor::new(token.end));
 
                                 if start_cursor.rcursor.row == end_cursor.rcursor.row {
                                     let row_rect = galley.rows[start_cursor.rcursor.row].rect;
 
-                                    let start_x = if start_cursor.rcursor.column < galley.rows[start_cursor.rcursor.row].glyphs.len() {
-                                        galley.rows[start_cursor.rcursor.row].glyphs[start_cursor.rcursor.column].pos.x
-                                    } else {
-                                        row_rect.max.x
-                                    };
-
-                                    let end_x = if end_cursor.rcursor.column < galley.rows[end_cursor.rcursor.row].glyphs.len() {
-                                        galley.rows[end_cursor.rcursor.row].glyphs[end_cursor.rcursor.column].pos.x
+                                    let start_x = if start_cursor.rcursor.column
+                                        < galley.rows[start_cursor.rcursor.row].glyphs.len()
+                                    {
+                                        galley.rows[start_cursor.rcursor.row].glyphs
+                                            [start_cursor.rcursor.column]
+                                            .pos
+                                            .x
                                     } else {
                                         row_rect.max.x
                                     };
@@ -309,31 +388,45 @@ impl eframe::App for CatEditorApp {
                                         egui::TextStyle::Monospace.resolve(ui.style()),
                                         color,
                                     );
-
                                 }
                             }
                         }
 
-                        let cursor_pos = output.cursor_range.map(|r| r.primary.ccursor.index).unwrap_or(0);
+                        let cursor_pos = output
+                            .cursor_range
+                            .map(|r| r.primary.ccursor.index)
+                            .unwrap_or(0);
 
-                        // Handle autocomplete keyboard shortcuts
                         if self.autocomplete.active {
+                            let tab_pressed = ui.input(|i| i.key_pressed(egui::Key::Tab));
+
                             if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
                                 self.autocomplete.select_next();
                             }
                             if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
                                 self.autocomplete.select_previous();
                             }
-                            if ui.input(|i| i.key_pressed(egui::Key::Tab) || i.key_pressed(egui::Key::Enter)) {
+                            if tab_pressed {
                                 let mut cursor = cursor_pos;
                                 self.autocomplete.apply_suggestion(&mut self.text, &mut cursor);
+                                ctx.input_mut(|i| {
+                                    i.events.retain(|e| {
+                                        !matches!(
+                                            e,
+                                            egui::Event::Key {
+                                                key: egui::Key::Tab,
+                                                pressed: true,
+                                                ..
+                                            }
+                                        )
+                                    })
+                                });
                             }
                             if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                                 self.autocomplete.cancel();
                             }
                         }
 
-                        // Trigger autocomplete on Ctrl+Space
                         if ui.input(|i| {
                             let modifier = if cfg!(target_os = "macos") {
                                 i.modifiers.command
@@ -342,73 +435,98 @@ impl eframe::App for CatEditorApp {
                             };
                             modifier && i.key_pressed(egui::Key::Space)
                         }) {
-                            self.autocomplete.trigger(&self.text, cursor_pos);
+                            self.autocomplete.trigger(
+                                &self.text,
+                                cursor_pos,
+                                self.current_language.as_deref(),
+                            );
                         }
 
-                        // Auto-trigger while typing
-                        if output.response.changed() && !self.autocomplete.active {
-                            let (current_word, _) = Autocomplete::get_current_word(&self.text, cursor_pos);
-                            if current_word.len() >= 2 {
-                                self.autocomplete.trigger(&self.text, cursor_pos);
+                        if output.response.changed() {
+                            if self.autocomplete.active {
+                                self.autocomplete.trigger(
+                                    &self.text,
+                                    cursor_pos,
+                                    self.current_language.as_deref(),
+                                );
+                            } else {
+                                let (current_word, _) =
+                                    Autocomplete::get_current_word(&self.text, cursor_pos);
+                                if current_word.len() >= 2 {
+                                    self.autocomplete.trigger(
+                                        &self.text,
+                                        cursor_pos,
+                                        self.current_language.as_deref(),
+                                    );
+                                }
                             }
                         }
 
-                        // Show autocomplete popup
-                        if self.autocomplete.active && !self.autocomplete.suggestion.is_empty() {
+                        if self.autocomplete.active && !self.autocomplete.suggestions.is_empty() {
                             let galley = output.galley.clone();
-                            
+
                             if let Some(cursor_range) = output.cursor_range {
                                 let cursor = galley.from_ccursor(cursor_range.primary.ccursor);
-                                
+
                                 if cursor.rcursor.row < galley.rows.len() {
                                     let row_rect = galley.rows[cursor.rcursor.row].rect;
-                                    let cursor_x = if cursor.rcursor.column < galley.rows[cursor.rcursor.row].glyphs.len() {
-                                        galley.rows[cursor.rcursor.row].glyphs[cursor.rcursor.column].pos.x
+                                    let cursor_x = if cursor.rcursor.column
+                                        < galley.rows[cursor.rcursor.row].glyphs.len()
+                                    {
+                                        galley.rows[cursor.rcursor.row].glyphs[cursor.rcursor.column]
+                                            .pos
+                                            .x
                                     } else {
                                         row_rect.max.x
                                     };
-                                    
-                                    let popup_pos = output.galley_pos + egui::vec2(cursor_x, row_rect.max.y + 5.0);
-                                    
-                                    // Clone suggestion to avoid borrow issues
-                                    let suggestion = self.autocomplete.suggestion.clone();
+
+                                    let popup_pos =
+                                        output.galley_pos + egui::vec2(cursor_x, row_rect.max.y + 5.0);
+
+                                    let suggestions = self.autocomplete.suggestions.clone();
                                     let selected_index = self.autocomplete.selected_index;
                                     let mut clicked_index: Option<usize> = None;
-                                    
+
                                     egui::Area::new("autocomplete_popup".into())
                                         .fixed_pos(popup_pos)
                                         .order(egui::Order::Tooltip)
                                         .show(ctx, |ui| {
-                                            egui::Frame::popup(ui.style())
-                                                .show(ui, |ui| {
-                                                    ui.set_min_width(200.0);
-                                                    ui.set_max_height(200.0);
-                                                    
-                                                    egui::ScrollArea::vertical().show(ui, |ui| {
-                                                        for (idx, suggestion) in suggestion.iter().enumerate() {
-                                                            let is_selected = idx == selected_index;
-                                                            
-                                                            let icon = match suggestion.kind {
-                                                                crate::autocomplete::SuggestionKind::Function => "ƒ",
-                                                                crate::autocomplete::SuggestionKind::Variable => "𝑥",
-                                                                crate::autocomplete::SuggestionKind::Type => "𝑇",
-                                                                crate::autocomplete::SuggestionKind::Keyword => "⚡",
-                                                            };
-                                                            
-                                                            let response = ui.selectable_label(
-                                                                is_selected,
-                                                                format!("{} {}", icon, suggestion.text),
-                                                            );
-                                                            
-                                                            if response.clicked() {
-                                                                clicked_index = Some(idx);
-                                                            }
+                                            egui::Frame::popup(ui.style()).show(ui, |ui| {
+                                                ui.set_min_width(200.0);
+                                                ui.set_max_height(200.0);
+
+                                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                                    for (idx, suggestion) in
+                                                        suggestions.iter().enumerate()
+                                                    {
+                                                        let is_selected = idx == selected_index;
+
+                                                        let icon = match suggestion.kind {
+                                                            crate::autocomplete::SuggestionKind::Function => "ƒ",
+                                                            crate::autocomplete::SuggestionKind::Variable => "𝑥",
+                                                            crate::autocomplete::SuggestionKind::Method => "⚡",
+                                                            crate::autocomplete::SuggestionKind::Type => "𝑇",
+                                                            crate::autocomplete::SuggestionKind::Keyword => "⚡",
+                                                            crate::autocomplete::SuggestionKind::Constant => "◇",
+                                                            crate::autocomplete::SuggestionKind::Module => "📦",
+                                                            crate::autocomplete::SuggestionKind::Macro => "!",
+                                                            crate::autocomplete::SuggestionKind::Property => "○",
+                                                            crate::autocomplete::SuggestionKind::Snippet => "📋",
+                                                        };
+
+                                                        let response = ui.selectable_label(
+                                                            is_selected,
+                                                            format!("{} {}", icon, suggestion.text),
+                                                        );
+
+                                                        if response.clicked() {
+                                                            clicked_index = Some(idx);
                                                         }
-                                                    });
+                                                    }
                                                 });
+                                            });
                                         });
-                                    
-                                    // Apply suggestion if clicked
+
                                     if let Some(idx) = clicked_index {
                                         self.autocomplete.selected_index = idx;
                                         let mut cursor = cursor_pos;
@@ -418,7 +536,6 @@ impl eframe::App for CatEditorApp {
                             }
                         }
 
-                        // Find/replace highlighting
                         if self.find_replace.open && !self.find_replace.find_text.is_empty() {
                             let galley = output.galley.clone();
                             let text_draw_pos = output.galley_pos;
@@ -429,9 +546,7 @@ impl eframe::App for CatEditorApp {
 
                             for (start, end) in highlight_ranges {
                                 let is_current = current_match_range
-                                    .map(|(curr_start, curr_end)| {
-                                        start == curr_start && end == curr_end
-                                    })
+                                    .map(|(curr_start, curr_end)| start == curr_start && end == curr_end)
                                     .unwrap_or(false);
 
                                 let start_cursor =
@@ -491,7 +606,6 @@ impl eframe::App for CatEditorApp {
                             }
                         }
 
-                        // Always request focus
                         let something_else_has_focus = !output.response.has_focus()
                             && ctx.memory(|mem| mem.focused().is_some());
 
@@ -505,9 +619,92 @@ impl eframe::App for CatEditorApp {
 }
 
 impl CatEditorApp {
+    fn show_settings_window(&mut self, ctx: &egui::Context) {
+        if !self.settings_open {
+            return;
+        }
+
+        egui::Window::new("Settings")
+            .open(&mut self.settings_open)
+            .resizable(true)
+            .default_size(egui::vec2(620.0, 480.0))
+            .show(ctx, |ui| {
+                ui.heading("Rode Settings");
+                ui.separator();
+                ui.label("Theme is editable from the top menu: Theme.");
+                ui.label("Shortcut: Cmd/Ctrl + Shift + S");
+                ui.add_space(8.0);
+
+                if ui.button("Reload Theme").clicked() {
+                    self.theme = load_theme();
+                }
+
+                if ui.button("Open Command Palette").clicked() {
+                    self.command_palette.toggle();
+                }
+
+                ui.separator();
+                ui.heading("WakaTime");
+                ui.add_space(6.0);
+
+                ui.label("API Key");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.wakatime.api_key)
+                        .password(true)
+                        .hint_text("waka_..."),
+                );
+
+                ui.add_space(6.0);
+                ui.label("API URL");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.wakatime.api_url)
+                        .hint_text("https://api.wakatime.com/api/v1"),
+                );
+
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Save WakaTime Settings").clicked() {
+                        let _ = wakatime::save(&self.wakatime);
+                    }
+
+                    if ui.button("Use Hackatime URL").clicked() {
+                        self.wakatime.api_url =
+                            "https://hackatime.hackclub.com/api/hackatime/v1".to_string();
+                    }
+                });
+            });
+    }
+
+    fn maybe_send_wakatime_heartbeat(&mut self, is_write: bool) {
+        if self.wakatime.api_key.trim().is_empty() {
+            return;
+        }
+
+        let entity = match &self.current_file {
+            Some(path) => path.clone(),
+            None => return,
+        };
+
+        let now = Instant::now();
+        let should_send = if is_write {
+            true
+        } else {
+            self.last_wakatime_entity.as_deref() != Some(entity.as_str())
+                || self
+                    .last_wakatime_sent_at
+                    .map(|t| now.duration_since(t) >= Duration::from_secs(120))
+                    .unwrap_or(true)
+        };
+
+        if should_send && wakatime::send_heartbeat(&entity, is_write, &self.wakatime).is_ok() {
+            self.last_wakatime_entity = Some(entity);
+            self.last_wakatime_sent_at = Some(now);
+        }
+    }
+
     fn setup_fonts(&self, ctx: &egui::Context) {
-        use egui::FontFamily;
         use egui::FontData;
+        use egui::FontFamily;
 
         let mut fonts = egui::FontDefinitions::default();
 
@@ -518,7 +715,7 @@ impl CatEditorApp {
 
         fonts.font_data.insert(
             "FiraCode-Bold".to_owned(),
-            FontData::from_static(include_bytes!("../../assets/fonts/FiraCode-Bold.ttf")), 
+            FontData::from_static(include_bytes!("../../assets/fonts/FiraCode-Bold.ttf")),
         );
 
         fonts.font_data.insert(
@@ -536,15 +733,26 @@ impl CatEditorApp {
             FontData::from_static(include_bytes!("../../assets/fonts/FiraCode-SemiBold.ttf")),
         );
 
-        // use firacode for the monospace font 
-        fonts.families.get_mut(&FontFamily::Monospace).unwrap()
+        fonts
+            .families
+            .get_mut(&FontFamily::Monospace)
+            .unwrap()
             .insert(0, "FiraCode-Regular".to_owned());
-        fonts.families.get_mut(&FontFamily::Monospace).unwrap()
+        fonts
+            .families
+            .get_mut(&FontFamily::Monospace)
+            .unwrap()
             .push("FiraCode-Bold".to_owned());
-        fonts.families.get_mut(&FontFamily::Monospace).unwrap()
+        fonts
+            .families
+            .get_mut(&FontFamily::Monospace)
+            .unwrap()
             .push("FiraCode-Medium".to_owned());
 
-        fonts.families.get_mut(&FontFamily::Proportional).unwrap()
+        fonts
+            .families
+            .get_mut(&FontFamily::Proportional)
+            .unwrap()
             .insert(0, "FiraCode-Regular".to_owned());
 
         ctx.set_fonts(fonts);
@@ -552,25 +760,26 @@ impl CatEditorApp {
 
     fn execute_palette_command(&mut self, ctx: &egui::Context, command: &str) {
         match command {
-            "Theme" => {
-                // The theme menu is already shown in menu.rs, so we don't need to do anything special
-                // User can access it via the menu bar
+            "Theme" => {}
+            "Settings" => {
+                self.settings_open = true;
             }
             "Open File" => {
-                if let Some(path) = rfd::FileDialog::new().pick_file() {
-                    if let Ok(content) = std::fs::read_to_string(&path) {
-                        self.text = content;
-                        self.current_file = Some(path.display().to_string());
-                        self.current_language = SyntaxHighlighter::detect_language(&path.display().to_string());
-                    }
-                }
+                self.open_file_dialog();
+            }
+            "Open Folder" => {
+                self.open_folder_dialog();
             }
             "Save File" => {
                 if let Some(path) = &self.current_file {
-                    let _ = std::fs::write(path, &self.text);
+                    if std::fs::write(path, &self.text).is_ok() {
+                        self.maybe_send_wakatime_heartbeat(true);
+                    }
                 } else if let Some(path) = rfd::FileDialog::new().save_file() {
-                    let _ = std::fs::write(&path, &self.text);
-                    self.current_file = Some(path.display().to_string());
+                    if std::fs::write(&path, &self.text).is_ok() {
+                        self.current_file = Some(path.display().to_string());
+                        self.maybe_send_wakatime_heartbeat(true);
+                    }
                 }
             }
             "Quit" => {
@@ -582,11 +791,86 @@ impl CatEditorApp {
             }
             "Save As" => {
                 if let Some(path) = rfd::FileDialog::new().save_file() {
-                    let _ = std::fs::write(&path, &self.text);
-                    self.current_file = Some(path.display().to_string());
+                    if std::fs::write(&path, &self.text).is_ok() {
+                        self.current_file = Some(path.display().to_string());
+                        self.maybe_send_wakatime_heartbeat(true);
+                    }
                 }
             }
             _ => {}
         }
+    }
+
+    fn open_file_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new().pick_file() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                self.text = content;
+                self.current_file = Some(path.display().to_string());
+                self.current_language =
+                    SyntaxHighlighter::detect_language(&path.display().to_string());
+                self.maybe_send_wakatime_heartbeat(false);
+            }
+        }
+    }
+
+    fn open_folder_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new().pick_folder() {
+            self.current_folder = Some(path.clone());
+            self.fuzzy_finder.set_folder(path.clone());
+            self.file_tree.set_root(path.clone());
+            self.terminal.set_directory(path);
+        }
+    }
+
+    fn show_welcome_screen(&mut self, ui: &mut egui::Ui) {
+        let command_label = if cfg!(target_os = "macos") {
+            "Cmd"
+        } else {
+            "Ctrl"
+        };
+
+        ui.vertical_centered(|ui| {
+            ui.add_space((ui.available_height() * 0.22).max(40.0));
+            ui.label(
+                egui::RichText::new("Rode")
+                    .size(56.0)
+                    .strong()
+                    .color(egui::Color32::from_rgb(170, 210, 255)),
+            );
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new("Fast, minimal editing.").weak());
+            ui.add_space(20.0);
+
+            if ui
+                .add_sized([240.0, 34.0], egui::Button::new("Open File"))
+                .clicked()
+            {
+                self.open_file_dialog();
+            }
+
+            if ui
+                .add_sized([240.0, 34.0], egui::Button::new("Open Folder"))
+                .clicked()
+            {
+                self.open_folder_dialog();
+            }
+
+            if ui
+                .add_sized([240.0, 34.0], egui::Button::new("Command Palette"))
+                .clicked()
+            {
+                self.command_palette.toggle();
+            }
+
+            ui.add_space(12.0);
+            ui.label(
+                egui::RichText::new(format!(
+                    "Shortcuts: {}+Shift+P (palette), {}+Shift+F (fuzzy finder)",
+                    command_label, command_label
+                ))
+                .small()
+                .weak(),
+            );
+        });
     }
 }

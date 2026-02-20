@@ -1,30 +1,37 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# go to crate root (parent of utils/)
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# get binary name from Cargo.toml
-BIN_NAME=$(cargo metadata --no-deps --format-version 1 \
-  | jq -r '.packages[0].targets[] | select(.kind[]=="bin") | .name')
-
+BIN_NAME="rode-editor"
 OUT_DIR="$ROOT_DIR/dist"
 mkdir -p "$OUT_DIR"
 
-# macOS Apple Silicon
-cargo build --release --target aarch64-apple-darwin
-cp "target/aarch64-apple-darwin/release/$BIN_NAME" \
-   "$OUT_DIR/${BIN_NAME}-macos-arm64"
+OS="$(uname -s)"
+ARCH="$(uname -m)"
 
-# Windows
-cargo build --release --target x86_64-pc-windows-gnu
-cp "target/x86_64-pc-windows-gnu/release/${BIN_NAME}.exe" \
-   "$OUT_DIR/${BIN_NAME}-windows-x86_64.exe"
+cargo build --release --bin "$BIN_NAME"
 
-# Arch Linux
-cargo build --release --target x86_64-unknown-linux-gnu
-cp "target/x86_64-unknown-linux-gnu/release/$BIN_NAME" \
-   "$OUT_DIR/${BIN_NAME}-linux-x86_64"
-
-echo "Binaries generated in $OUT_DIR/"
+case "$OS" in 
+  Linux)
+    SRC="target/release/$BIN_NAME"
+    DEST="$OUT_DIR/${BIN_NAME}-linux-${ARCH}"
+    ;;
+  Darwin)
+    SRC="target/release/$BIN_NAME"
+    if [[ "$ARCH" == "arm64" ]]; then
+      DEST="$OUT_DIR/${BIN_NAME}-macos-arm64"
+    else
+      DEST="$OUT_DIR/${BIN_NAME}-macos-x84_64"
+    fi 
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    SRC="target/release/${BIN_NAME}.exe"
+    DEST="$OUT_DIR/${BIN_NAME}-windows-x86_64.exe"
+    ;;
+  *)
+    echo "Unsupported OS: $OS"
+    exit 1
+    ;;
+esac

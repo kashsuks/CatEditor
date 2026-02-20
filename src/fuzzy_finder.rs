@@ -102,8 +102,8 @@ impl FuzzyFinder {
                     files.push(FileEntry { path, display_name });
                 } else if path.is_dir() {
                     files.extend(self.scan_directory(&path)); // if the path is a directory rather
-                    // than a file, we can recursively
-                    // call itself to search
+                                                              // than a file, we can recursively
+                                                              // call itself to search
                 }
             }
         }
@@ -218,20 +218,23 @@ impl FuzzyFinder {
                     self.input.clear();
                 }
 
-                if input_state.key_pressed(egui::Key::ArrowDown) {
-                    if self.selected_index + 1 < self.filetered_files.len() {
-                        self.selected_index += 1;
-                    }
+                if input_state.key_pressed(egui::Key::ArrowDown) && !self.filetered_files.is_empty()
+                {
+                    self.selected_index = (self.selected_index + 1) % self.filetered_files.len();
                 }
 
-                if input_state.key_pressed(egui::Key::ArrowUp) {
-                    if self.selected_index > 0 {
+                if input_state.key_pressed(egui::Key::ArrowUp) && !self.filetered_files.is_empty() {
+                    if self.selected_index == 0 {
+                        self.selected_index = self.filetered_files.len() - 1;
+                    } else {
                         self.selected_index -= 1;
                     }
                 }
 
                 if input_state.key_pressed(egui::Key::Enter) && !self.filetered_files.is_empty() {
-                    selected_file = Some(self.filetered_files[self.selected_index].path.clone());
+                    if let Some(file) = self.filetered_files.get(self.selected_index) {
+                        selected_file = Some(file.path.clone());
+                    }
                 }
 
                 ui.add_space(10.0);
@@ -357,7 +360,7 @@ fn fuzzy_match(text: &str, pattern: &str) -> i32 {
             if i == 0 || text_chars[i - 1] == '/' || text_chars[i - 1] == '_' {
                 score += 30;
             }
-    
+
             pattern_idx += 1;
         }
     }
