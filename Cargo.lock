@@ -2901,7 +2901,6 @@ dependencies = [
  "egui",
  "image 0.24.9",
  "include_dir",
- "once_cell",
  "regex",
  "resvg",
  "rfd",
