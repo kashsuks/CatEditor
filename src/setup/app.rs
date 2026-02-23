@@ -800,36 +800,12 @@ impl CatEditorApp {
                                     }
                                 });
 
-                            if ui.button("Load from file…").clicked() {
-                                if let Some(path) = rfd::FileDialog::new()
-                                    .add_filter("Lua theme", &["lua"])
-                                    .pick_file()
-                                {
-                                    if let Ok(content) = std::fs::read_to_string(&path) {
-                                        if let Ok(loaded_theme) =
-                                            crate::config::theme_manager::ThemeColors::from_lua(&content)
-                                        {
-                                            self.theme = loaded_theme;
-                                            let name = path
-                                                .file_stem()
-                                                .and_then(|s| s.to_str())
-                                                .unwrap_or("custom")
-                                                .to_string();
-                                            self.preferences.theme_name = name;
-                                        }
-                                    }
-                                }
+                            let refresh = ui.button(egui::RichText::new("⟳").size(16.0));
+                            if refresh.clicked() {
+                                self.available_themes = list_available_themes();
                             }
+                            refresh.on_hover_text("Refresh theme list");
                         });
-
-                        ui.add_space(8.0);
-                        if ui.button("Reload Theme").clicked() {
-                            self.theme = load_theme_by_name(&self.preferences.theme_name);
-                        }
-
-                        if ui.button("Refresh Theme List").clicked() {
-                            self.available_themes = list_available_themes();
-                        }
 
                         ui.add_space(8.0);
                         if ui.button("Save Preferences").clicked() {

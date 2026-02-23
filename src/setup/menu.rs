@@ -40,11 +40,9 @@ fn show_file_menu(ui: &mut egui::Ui, ctx: &egui::Context, app: &mut CatEditorApp
         if ui.button("Save").clicked() {
             if let Some(path) = &app.current_file {
                 let _ = std::fs::write(path, &app.text);
-            } else {
-                if let Some(path) = rfd::FileDialog::new().save_file() {
-                    let _ = std::fs::write(&path, &app.text);
-                    app.current_file = Some(path.display().to_string());
-                }
+            } else if let Some(path) = rfd::FileDialog::new().save_file() {
+                let _ = std::fs::write(&path, &app.text);
+                app.current_file = Some(path.display().to_string());
             }
             ui.close_menu();
         }
@@ -123,45 +121,45 @@ fn show_theme_menu(ui: &mut egui::Ui, ctx: &egui::Context, app: &mut CatEditorAp
         egui::ScrollArea::vertical()
             .max_height(500.0)
             .show(ui, |ui| {
-                ui.label(egui::RichText::new("Colors").strong());
+                ui.label(egui::RichText::new("colors").strong());
                 ui.separator();
 
-                theme_changed |= color_input(ui, "Rosewater", &mut app.theme.rosewater);
-                theme_changed |= color_input(ui, "Flamingo", &mut app.theme.flamingo);
-                theme_changed |= color_input(ui, "Pink", &mut app.theme.pink);
-                theme_changed |= color_input(ui, "Mauve", &mut app.theme.mauve);
-                theme_changed |= color_input(ui, "Red", &mut app.theme.red);
-                theme_changed |= color_input(ui, "Maroon", &mut app.theme.maroon);
-                theme_changed |= color_input(ui, "Peach", &mut app.theme.peach);
-                theme_changed |= color_input(ui, "Yellow", &mut app.theme.yellow);
-                theme_changed |= color_input(ui, "Green", &mut app.theme.green);
-                theme_changed |= color_input(ui, "Teal", &mut app.theme.teal);
-                theme_changed |= color_input(ui, "Sky", &mut app.theme.sky);
-                theme_changed |= color_input(ui, "Sapphire", &mut app.theme.sapphire);
-                theme_changed |= color_input(ui, "Blue", &mut app.theme.blue);
-                theme_changed |= color_input(ui, "Lavender", &mut app.theme.lavender);
+                theme_changed |= color_input(ui, "primary", &mut app.theme.rosewater);
+                theme_changed |= color_input(ui, "secondary", &mut app.theme.flamingo);
+                theme_changed |= color_input(ui, "accent_1", &mut app.theme.pink);
+                theme_changed |= color_input(ui, "accent_2", &mut app.theme.mauve);
+                theme_changed |= color_input(ui, "danger", &mut app.theme.red);
+                theme_changed |= color_input(ui, "danger_alt", &mut app.theme.maroon);
+                theme_changed |= color_input(ui, "warning", &mut app.theme.peach);
+                theme_changed |= color_input(ui, "highlight", &mut app.theme.yellow);
+                theme_changed |= color_input(ui, "success", &mut app.theme.green);
+                theme_changed |= color_input(ui, "success_alt", &mut app.theme.teal);
+                theme_changed |= color_input(ui, "info", &mut app.theme.sky);
+                theme_changed |= color_input(ui, "info_alt", &mut app.theme.sapphire);
+                theme_changed |= color_input(ui, "link", &mut app.theme.blue);
+                theme_changed |= color_input(ui, "accent_3", &mut app.theme.lavender);
 
                 ui.add_space(10.0);
-                ui.label(egui::RichText::new("Text").strong());
+                ui.label(egui::RichText::new("text").strong());
                 ui.separator();
 
-                theme_changed |= color_input(ui, "Text", &mut app.theme.text);
-                theme_changed |= color_input(ui, "Subtext1", &mut app.theme.subtext1);
-                theme_changed |= color_input(ui, "Subtext0", &mut app.theme.subtext0);
-                theme_changed |= color_input(ui, "Overlay2", &mut app.theme.overlay2);
-                theme_changed |= color_input(ui, "Overlay1", &mut app.theme.overlay1);
-                theme_changed |= color_input(ui, "Overlay0", &mut app.theme.overlay0);
+                theme_changed |= color_input(ui, "text_primary", &mut app.theme.text);
+                theme_changed |= color_input(ui, "text_secondary", &mut app.theme.subtext1);
+                theme_changed |= color_input(ui, "text_muted", &mut app.theme.subtext0);
+                theme_changed |= color_input(ui, "border_strong", &mut app.theme.overlay2);
+                theme_changed |= color_input(ui, "border", &mut app.theme.overlay1);
+                theme_changed |= color_input(ui, "border_subtle", &mut app.theme.overlay0);
 
                 ui.add_space(10.0);
-                ui.label(egui::RichText::new("Background").strong());
+                ui.label(egui::RichText::new("surfaces").strong());
                 ui.separator();
 
-                theme_changed |= color_input(ui, "Surface2", &mut app.theme.surface2);
-                theme_changed |= color_input(ui, "Surface1", &mut app.theme.surface1);
-                theme_changed |= color_input(ui, "Surface0", &mut app.theme.surface0);
-                theme_changed |= color_input(ui, "Base", &mut app.theme.base);
-                theme_changed |= color_input(ui, "Mantle", &mut app.theme.mantle);
-                theme_changed |= color_input(ui, "Crust", &mut app.theme.crust);
+                theme_changed |= color_input(ui, "panel_strong", &mut app.theme.surface2);
+                theme_changed |= color_input(ui, "panel", &mut app.theme.surface1);
+                theme_changed |= color_input(ui, "panel_soft", &mut app.theme.surface0);
+                theme_changed |= color_input(ui, "background", &mut app.theme.base);
+                theme_changed |= color_input(ui, "background_alt", &mut app.theme.mantle);
+                theme_changed |= color_input(ui, "app", &mut app.theme.crust);
             });
 
         if theme_changed {
@@ -176,10 +174,8 @@ fn color_input(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
     ui.horizontal(|ui| {
         ui.label(format!("{}:", label));
 
-        // Parse current color for preview
         let preview_color = parse_color_preview(value);
 
-        // Show color preview square
         let (rect, _response) =
             ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
         ui.painter()
@@ -196,7 +192,6 @@ fn color_input(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
                 .hint_text("#rrggbb"),
         );
 
-        // Detect changes on every keystroke, not just when focus is lost
         if response.changed() {
             changed = true;
         }
@@ -215,3 +210,4 @@ fn parse_color_preview(hex: &str) -> egui::Color32 {
         egui::Color32::GRAY
     }
 }
+
