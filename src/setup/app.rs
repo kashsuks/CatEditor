@@ -1,8 +1,8 @@
 use crate::autocomplete::Autocomplete;
 use crate::command_palette::CommandPalette;
 use crate::config::preferences::{
-    load_preferences, load_theme_by_name, save_preferences, EditorPreferences,
-    list_available_themes,
+    list_available_themes, load_preferences, load_theme_by_name, save_preferences,
+    EditorPreferences,
 };
 use crate::config::theme_manager::{load_theme, ThemeColors};
 use crate::file_tree::{FileTree, FileTreeAction};
@@ -19,6 +19,12 @@ use crate::wakatime::{self, WakaTimeConfig};
 use eframe::egui;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SettingsSection {
+    Preferences,
+    WakaTime,
+}
 
 pub struct CatEditorApp {
     pub text: String,
@@ -43,6 +49,7 @@ pub struct CatEditorApp {
     leader_pressed: bool,
     leader_sequence: String,
     settings_open: bool,
+    settings_section: SettingsSection,
 
     pub preferences: EditorPreferences,
     available_themes: Vec<String>,
@@ -83,6 +90,7 @@ impl Default for CatEditorApp {
             leader_pressed: false,
             leader_sequence: String::new(),
             settings_open: false,
+            settings_section: SettingsSection::Preferences,
             preferences: prefs,
             available_themes,
             tab_size_input: tab_size_str,
@@ -161,7 +169,6 @@ impl eframe::App for CatEditorApp {
         });
 
         theme::apply_theme(ctx, self);
-        self.show_settings_window(ctx);
 
         let modals_open = self.command_palette.open
             || self.find_replace.open
@@ -288,6 +295,11 @@ impl eframe::App for CatEditorApp {
                 self.leader_sequence.clear();
             }
 
+            if self.settings_open {
+                self.show_settings_page(ui);
+                return;
+            }
+
             let show_welcome = self.current_file.is_none() && self.text.trim().is_empty();
             if show_welcome {
                 self.show_welcome_screen(ui);
@@ -364,9 +376,11 @@ impl eframe::App for CatEditorApp {
                                         }
 
                                         // auto indent when Enter creates a new line
-                                        if let Some((indent, cursor_offset)) =
-                                            Self::compute_newline_indent(&self.text, cursor_pos, &self.preferences)
-                                        {
+                                        if let Some((indent, cursor_offset)) = Self::compute_newline_indent(
+                                            &self.text,
+                                            cursor_pos,
+                                            &self.preferences,
+                                        ) {
                                             self.text.insert_str(cursor_pos, &indent);
                                             new_cursor_pos = Some(cursor_pos + cursor_offset);
                                         }
@@ -684,172 +698,179 @@ impl eframe::App for CatEditorApp {
 }
 
 impl CatEditorApp {
-    fn show_settings_window(&mut self, ctx: &egui::Context) {
-        if !self.settings_open {
-            return;
-        }
-
-        egui::Window::new("Settings")
-            .open(&mut self.settings_open)
-            .resizable(true)
-            .default_size(egui::vec2(620.0, 520.0))
-            .show(ctx, |ui| {
-                ui.heading("Rode Settings");
-                ui.separator();
-
-                // ── Preferences ──────────────────────────────────
-                egui::CollapsingHeader::new(
-                    egui::RichText::new("Preferences").strong().size(16.0),
-                )
-                .default_open(true)
-                .show(ui, |ui| {
-                    ui.add_space(4.0);
-
-                    // Tab size
-                    ui.horizontal(|ui| {
-                        ui.label("Tab Size:");
-                        let response = ui.add(
-                            egui::TextEdit::singleline(&mut self.tab_size_input)
-                                .desired_width(50.0)
-                                .hint_text("4"),
-                        );
-                        if response.lost_focus()
-                            || response.changed()
-                        {
-                            if let Ok(size) = self.tab_size_input.parse::<usize>() {
-                                let clamped = size.max(1).min(16);
-                                self.preferences.tab_size = clamped;
-                            }
-                        }
-                    });
-
-                    // Use spaces vs tabs
-                    ui.horizontal(|ui| {
-                        ui.label("Indent with:");
-                        if ui
-                            .selectable_label(self.preferences.use_spaces, "Spaces")
-                            .clicked()
-                        {
-                            self.preferences.use_spaces = true;
-                        }
-                        if ui
-                            .selectable_label(!self.preferences.use_spaces, "Tabs")
-                            .clicked()
-                        {
-                            self.preferences.use_spaces = false;
-                        }
-                    });
-
+    fn show_settings_page(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            // Left navigation rail
+            ui.allocate_ui_with_layout(
+                egui::vec2(220.0, ui.available_height()),
+                egui::Layout::top_down(egui::Align::LEFT),
+                |ui| {
+                    ui.heading("Settings");
+                    ui.add_space(8.0);
+                    ui.separator();
                     ui.add_space(8.0);
 
-                    // Theme selection
-                    ui.label("Theme:");
-                    ui.horizontal(|ui| {
-                        egui::ComboBox::from_id_salt("theme_selector")
-                            .selected_text(&self.preferences.theme_name)
-                            .show_ui(ui, |ui| {
-                                let themes = self.available_themes.clone();
-                                for theme_name in &themes {
-                                    if ui
-                                        .selectable_label(
-                                            self.preferences.theme_name == *theme_name,
-                                            theme_name,
-                                        )
-                                        .clicked()
-                                    {
-                                        self.preferences.theme_name = theme_name.clone();
-                                        self.theme = load_theme_by_name(theme_name);
-                                    }
-                                }
-                            });
+                    if ui
+                        .selectable_label(
+                            self.settings_section == SettingsSection::Preferences,
+                            "Preferences",
+                        )
+                        .clicked()
+                    {
+                        self.settings_section = SettingsSection::Preferences;
+                    }
 
-                        if ui.button("Load from file…").clicked() {
-                            if let Some(path) = rfd::FileDialog::new()
-                                .add_filter("Lua theme", &["lua"])
-                                .pick_file()
+                    if ui
+                        .selectable_label(
+                            self.settings_section == SettingsSection::WakaTime,
+                            "WakaTime",
+                        )
+                        .clicked()
+                    {
+                        self.settings_section = SettingsSection::WakaTime;
+                    }
+
+                    ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                        if ui.button("Close Settings").clicked() {
+                            self.settings_open = false;
+                        }
+                    });
+                },
+            );
+
+            ui.separator();
+
+            // Right content panel
+            ui.allocate_ui_with_layout(
+                ui.available_size(),
+                egui::Layout::top_down(egui::Align::LEFT),
+                |ui| match self.settings_section {
+                    SettingsSection::Preferences => {
+                        ui.heading("Preferences");
+                        ui.add_space(10.0);
+
+                        ui.horizontal(|ui| {
+                            ui.label("Tab Size:");
+                            let response = ui.add(
+                                egui::TextEdit::singleline(&mut self.tab_size_input)
+                                    .desired_width(50.0)
+                                    .hint_text("4"),
+                            );
+                            if response.lost_focus() || response.changed() {
+                                if let Ok(size) = self.tab_size_input.parse::<usize>() {
+                                    self.preferences.tab_size = size.clamp(1, 16);
+                                }
+                            }
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Indent with:");
+                            if ui
+                                .selectable_label(self.preferences.use_spaces, "Spaces")
+                                .clicked()
                             {
-                                if let Ok(content) = std::fs::read_to_string(&path) {
-                                    if let Ok(loaded_theme) =
-                                        crate::config::theme_manager::ThemeColors::from_lua(
-                                            &content,
-                                        )
-                                    {
-                                        self.theme = loaded_theme;
-                                        // Use filename without extension as theme name
-                                        let name = path
-                                            .file_stem()
-                                            .and_then(|s| s.to_str())
-                                            .unwrap_or("custom")
-                                            .to_string();
-                                        self.preferences.theme_name = name;
+                                self.preferences.use_spaces = true;
+                            }
+                            if ui
+                                .selectable_label(!self.preferences.use_spaces, "Tabs")
+                                .clicked()
+                            {
+                                self.preferences.use_spaces = false;
+                            }
+                        });
+
+                        ui.add_space(10.0);
+                        ui.label("Theme:");
+                        ui.horizontal(|ui| {
+                            egui::ComboBox::from_id_salt("theme_selector")
+                                .selected_text(&self.preferences.theme_name)
+                                .show_ui(ui, |ui| {
+                                    let themes = self.available_themes.clone();
+                                    for theme_name in &themes {
+                                        if ui
+                                            .selectable_label(
+                                                self.preferences.theme_name == *theme_name,
+                                                theme_name,
+                                            )
+                                            .clicked()
+                                        {
+                                            self.preferences.theme_name = theme_name.clone();
+                                            self.theme = load_theme_by_name(theme_name);
+                                        }
+                                    }
+                                });
+
+                            if ui.button("Load from file…").clicked() {
+                                if let Some(path) = rfd::FileDialog::new()
+                                    .add_filter("Lua theme", &["lua"])
+                                    .pick_file()
+                                {
+                                    if let Ok(content) = std::fs::read_to_string(&path) {
+                                        if let Ok(loaded_theme) =
+                                            crate::config::theme_manager::ThemeColors::from_lua(&content)
+                                        {
+                                            self.theme = loaded_theme;
+                                            let name = path
+                                                .file_stem()
+                                                .and_then(|s| s.to_str())
+                                                .unwrap_or("custom")
+                                                .to_string();
+                                            self.preferences.theme_name = name;
+                                        }
                                     }
                                 }
                             }
-                        }
-                    });
+                        });
 
-                    ui.add_space(4.0);
-                    if ui.button("Reload Theme").clicked() {
-                        self.theme = load_theme_by_name(&self.preferences.theme_name);
-                    }
-
-                    if ui.button("Refresh Theme List").clicked() {
-                        self.available_themes = list_available_themes();
-                    }
-
-                    ui.add_space(8.0);
-                    if ui.button("Save Preferences").clicked() {
-                        self.tab_size_input = self.preferences.tab_size.to_string();
-                        let _ = save_preferences(&self.preferences);
-                    }
-                });
-
-                ui.add_space(8.0);
-                ui.separator();
-
-                // ── Command Palette ──────────────────────────────
-                if ui.button("Open Command Palette").clicked() {
-                    self.command_palette.toggle();
-                }
-
-                ui.add_space(8.0);
-                ui.separator();
-
-                // ── WakaTime ─────────────────────────────────────
-                egui::CollapsingHeader::new(
-                    egui::RichText::new("WakaTime").strong().size(16.0),
-                )
-                .default_open(false)
-                .show(ui, |ui| {
-                    ui.add_space(6.0);
-
-                    ui.label("API Key");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.wakatime.api_key)
-                            .password(true)
-                            .hint_text("waka_..."),
-                    );
-
-                    ui.add_space(6.0);
-                    ui.label("API URL");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.wakatime.api_url)
-                            .hint_text("https://api.wakatime.com/api/v1"),
-                    );
-
-                    ui.add_space(8.0);
-                    ui.horizontal(|ui| {
-                        if ui.button("Save WakaTime Settings").clicked() {
-                            let _ = wakatime::save(&self.wakatime);
+                        ui.add_space(8.0);
+                        if ui.button("Reload Theme").clicked() {
+                            self.theme = load_theme_by_name(&self.preferences.theme_name);
                         }
 
-                        if ui.button("Use Hackatime URL").clicked() {
-                            self.wakatime.api_url =
-                                "https://hackatime.hackclub.com/api/hackatime/v1".to_string();
+                        if ui.button("Refresh Theme List").clicked() {
+                            self.available_themes = list_available_themes();
                         }
-                    });
-                });
-            });
+
+                        ui.add_space(8.0);
+                        if ui.button("Save Preferences").clicked() {
+                            self.tab_size_input = self.preferences.tab_size.to_string();
+                            let _ = save_preferences(&self.preferences);
+                        }
+                    }
+
+                    SettingsSection::WakaTime => {
+                        ui.heading("WakaTime");
+                        ui.add_space(10.0);
+
+                        ui.label("API Key");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.wakatime.api_key)
+                                .password(true)
+                                .hint_text("waka_..."),
+                        );
+
+                        ui.add_space(8.0);
+                        ui.label("API URL");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.wakatime.api_url)
+                                .hint_text("https://api.wakatime.com/api/v1"),
+                        );
+
+                        ui.add_space(10.0);
+                        ui.horizontal(|ui| {
+                            if ui.button("Save WakaTime Settings").clicked() {
+                                let _ = wakatime::save(&self.wakatime);
+                            }
+
+                            if ui.button("Use Hackatime URL").clicked() {
+                                self.wakatime.api_url =
+                                    "https://hackatime.hackclub.com/api/hackatime/v1".to_string();
+                            }
+                        });
+                    }
+                },
+            );
+        });
     }
 
     fn maybe_send_wakatime_heartbeat(&mut self, is_write: bool) {
@@ -1131,4 +1152,3 @@ impl CatEditorApp {
         }
     }
 }
-
