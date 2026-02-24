@@ -35,7 +35,7 @@ pub fn view_sidebar<'a>(file_tree: Option<&'a FileTree>, width: f32) -> Element<
     )
     .width(Length::Fixed(width))
     .height(Length::Fill)
-    .padding(4)
+    .padding(iced::Padding { top: 4.0, right: 4.0, bottom: 4.0, left: 10.0 })
     .style(sidebar_container_style);
 
     container(sidebar)
