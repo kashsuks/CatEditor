@@ -7,6 +7,7 @@ mod command_palette;
 mod config;
 mod file_tree;
 mod find_replace;
+mod fuzzy_finder;
 mod icons;
 mod message;
 mod resources;

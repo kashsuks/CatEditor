@@ -32,11 +32,16 @@ pub enum Message {
     SearchQueryChanged(String),
     SearchCompleted(Vec<SearchResult>),
     SearchResultClicked(PathBuf, usize),
-    /// File finding
+    /// File finding (Cmd+T, legacy)
     ToggleFileFinder,
     FileFinderQueryChanged(String),
     FileFinderSelect,
     FileFinderNavigate(i32),
+    /// Fuzzy Finder (Cmd+Shift+F)
+    ToggleFuzzyFinder,
+    FuzzyFinderQueryChanged(String),
+    FuzzyFinderSelect,
+    FuzzyFinderNavigate(i32),
     /// Fullscreen and window management stuff
     ToggleFullscreen(iced::window::Mode),
     EscapePressed,

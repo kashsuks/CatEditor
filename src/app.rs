@@ -9,6 +9,7 @@ use std::time::Instant;
 use crate::command_palette::CommandPalette;
 use crate::command_input::CommandInput;
 use crate::find_replace::FindReplace;
+use crate::fuzzy_finder::FuzzyFinder;
 use crate::terminal::Terminal;
 use crate::wakatime::{self, WakaTimeConfig};
 use crate::message::Message;
@@ -65,6 +66,8 @@ pub struct App {
     all_workspace_files: Vec<(String, PathBuf)>,
     recent_files: Vec<PathBuf>,
     file_finder_input_id: iced::widget::Id,
+    // Fuzzy Finder
+    fuzzy_finder: FuzzyFinder,
     // Command Palette
     command_palette: CommandPalette,
     command_palette_selected: usize,
@@ -110,6 +113,7 @@ impl Default for App {
             all_workspace_files: Vec::new(),
             recent_files: Vec::new(),
             file_finder_input_id: iced::widget::Id::unique(),
+            fuzzy_finder: FuzzyFinder::default(),
             command_palette: CommandPalette::default(),
             command_palette_selected: 0,
             command_palette_input_id: iced::widget::Id::unique(),
@@ -157,6 +161,10 @@ impl App {
                 iced::Task::none()
             }
             Message::FileClicked(path) => { // Checks if a file was clicked
+                // Close fuzzy finder if open
+                if self.fuzzy_finder.open {
+                    self.fuzzy_finder.close();
+                }
                 if let Some(ref mut tree) = self.file_tree {
                     tree.select(path.clone()); // Opens the file
                 }
@@ -254,6 +262,7 @@ impl App {
             Message::FolderOpened(path) => {
                 self.file_tree = Some(FileTree::new(path.clone()));
                 self.all_workspace_files = crate::search::collect_all_files(&path);
+                self.fuzzy_finder.set_folder(path);
                 iced::Task::none()
             }
             Message::SaveFile => {
@@ -476,6 +485,46 @@ impl App {
                 iced::Task::none()
             }
 
+            // ── Fuzzy Finder (Cmd+Shift+F) ──────────────────────────────
+            Message::ToggleFuzzyFinder => {
+                if self.fuzzy_finder.open {
+                    self.fuzzy_finder.close();
+                    iced::Task::none()
+                } else {
+                    self.fuzzy_finder.toggle();
+                    self.fuzzy_finder.update_preview();
+                    iced::widget::operation::focus(self.fuzzy_finder.input_id.clone())
+                }
+            }
+
+            Message::FuzzyFinderQueryChanged(query) => {
+                if !self.fuzzy_finder.open {
+                    return iced::Task::none();
+                }
+                self.fuzzy_finder.input = query;
+                self.fuzzy_finder.filter();
+                self.fuzzy_finder.update_preview();
+                iced::widget::operation::focus(self.fuzzy_finder.input_id.clone())
+            }
+
+            Message::FuzzyFinderNavigate(delta) => {
+                if !self.fuzzy_finder.open {
+                    return iced::Task::none();
+                }
+                self.fuzzy_finder.navigate(delta);
+                iced::Task::none()
+            }
+
+            Message::FuzzyFinderSelect => {
+                if !self.fuzzy_finder.open {
+                    return iced::Task::none();
+                }
+                if let Some(path) = self.fuzzy_finder.select() {
+                    return self.update(Message::FileClicked(path));
+                }
+                iced::Task::none()
+            }
+
             Message::EscapePressed => {
                 if self.command_palette.open {
                     self.command_palette.close();
@@ -483,6 +532,8 @@ impl App {
                     self.command_input.close();
                 } else if self.find_replace.open {
                     self.find_replace.close();
+                } else if self.fuzzy_finder.open {
+                    self.fuzzy_finder.close();
                 } else if self.file_finder_visible {
                     self.file_finder_visible = false;
                     self.file_finder_query.clear();
@@ -778,6 +829,8 @@ impl App {
 
         if self.command_palette.open {
             stack![wrapped, self.view_command_palette_overlay()].into()
+        } else if self.fuzzy_finder.open {
+            stack![wrapped, self.view_fuzzy_finder_overlay()].into()
         } else if self.file_finder_visible {
             stack![wrapped, self.view_file_finder_overlay()].into()
         } else if self.settings_open {
@@ -812,14 +865,13 @@ impl App {
                         Key::Named(iced::keyboard::key::Named::Escape) =>
                             Some(Message::EscapePressed),
                         Key::Named(iced::keyboard::key::Named::ArrowUp) => {
-                            // Arrow up navigates in command palette or file finder
-                            Some(if false { Message::CommandPaletteNavigate(-1) } else { Message::FileFinderNavigate(-1) })
+                            Some(Message::FuzzyFinderNavigate(-1))
                         }
                         Key::Named(iced::keyboard::key::Named::ArrowDown) => {
-                            Some(if false { Message::CommandPaletteNavigate(1) } else { Message::FileFinderNavigate(1) })
+                            Some(Message::FuzzyFinderNavigate(1))
                         }
                         Key::Named(iced::keyboard::key::Named::Enter) =>
-                            Some(Message::FileFinderSelect),
+                            Some(Message::FuzzyFinderSelect),
                         _ => None,
                     };
 
@@ -836,7 +888,7 @@ impl App {
                         } else if modifiers.command() && modifiers.shift() {
                             match c.as_str() {
                                 "v" | "V" => return Some(Message::PreviewMarkdown),
-                                "f" | "F" => return Some(Message::ToggleSearch),
+                                "f" | "F" => return Some(Message::ToggleFuzzyFinder),
                                 "p" | "P" => return Some(Message::ToggleCommandPalette),
                                 "s" | "S" => return Some(Message::ToggleSettings),
                                 _ => {}
@@ -1367,6 +1419,271 @@ impl App {
                 })
         )
         .on_press(Message::ToggleSettings);
+
+        stack![
+            backdrop,
+            center(opaque(overlay_box)),
+        ]
+        .into()
+    }
+
+    fn view_fuzzy_finder_overlay(&self) -> Element<'_, Message> {
+        use iced::widget::{stack, center, Space, opaque};
+        use syntect::highlighting::{HighlightIterator, HighlightState, Highlighter as SyntectHighlighter, ThemeSettings};
+        use syntect::parsing::{ParseState, ScopeStack, SyntaxSet};
+
+        // ── Search input ────────────────────────────────────────────────
+        let input = text_input("Search files...", &self.fuzzy_finder.input)
+            .id(self.fuzzy_finder.input_id.clone())
+            .on_input(Message::FuzzyFinderQueryChanged)
+            .size(15)
+            .padding(iced::Padding { top: 16.0, right: 18.0, bottom: 16.0, left: 18.0 })
+            .style(search_input_style)
+            .width(Length::Fill);
+
+        // ── Folder label ────────────────────────────────────────────────
+        let folder_label: Element<'_, Message> = if let Some(folder) = &self.fuzzy_finder.current_folder {
+            container(
+                text(format!("{}", folder.display()))
+                    .size(10)
+                    .color(THEME.text_dim)
+            )
+            .padding(iced::Padding { top: 0.0, right: 18.0, bottom: 0.0, left: 18.0 })
+            .into()
+        } else {
+            container(text("")).into()
+        };
+
+        // ── File list ───────────────────────────────────────────────────
+        let mut items: Vec<Element<'_, Message>> = Vec::new();
+
+        if self.fuzzy_finder.filtered_files.is_empty() {
+            items.push(
+                container(
+                    text("No files found")
+                        .size(13)
+                        .color(THEME.text_dim)
+                )
+                .padding(20)
+                .width(Length::Fill)
+                .center_x(Length::Fill)
+                .into()
+            );
+        } else {
+            for (idx, file) in self.fuzzy_finder.filtered_files.iter().enumerate() {
+                let is_selected = idx == self.fuzzy_finder.selected_index;
+                let path = file.path.clone();
+
+                // Get file icon
+                let icon_str = crate::icons::get_file_icon(
+                    file.path.file_name()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("")
+                );
+                let icon: Element<'_, Message> = if icon_str.ends_with(".png") {
+                    iced::widget::image::Image::new(icon_str)
+                        .width(Length::Fixed(14.0))
+                        .height(Length::Fixed(14.0))
+                        .into()
+                } else {
+                    iced::widget::svg::Svg::new(iced::widget::svg::Handle::from_path(&icon_str))
+                        .width(Length::Fixed(14.0))
+                        .height(Length::Fixed(14.0))
+                        .into()
+                };
+
+                items.push(
+                    button(
+                        row![
+                            icon,
+                            text(&file.display_name).size(13).color(
+                                if is_selected { THEME.text_primary } else { THEME.text_muted }
+                            ),
+                        ]
+                        .spacing(8)
+                        .align_y(iced::Alignment::Center)
+                    )
+                    .style(file_finder_item_style(is_selected))
+                    .on_press(Message::FileClicked(path))
+                    .padding(iced::Padding { top: 6.0, right: 10.0, bottom: 6.0, left: 10.0 })
+                    .width(Length::Fill)
+                    .into()
+                );
+            }
+        }
+
+        let file_list = scrollable(
+            column(items)
+                .spacing(2)
+                .padding(iced::Padding { top: 4.0, right: 4.0, bottom: 4.0, left: 4.0 })
+        )
+        .height(Length::Fill);
+
+        let separator_v = container(Space::new())
+            .width(Length::Fixed(1.0))
+            .height(Length::Fill)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(SURFACE_2)),
+                ..Default::default()
+            });
+
+        let separator_h = container(Space::new())
+            .width(Length::Fill)
+            .height(Length::Fixed(1.0))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(SURFACE_2)),
+                ..Default::default()
+            });
+
+        // ── Preview panel ───────────────────────────────────────────────
+        let preview: Element<'_, Message> = if let Some((preview_path, content)) = &self.fuzzy_finder.preview_cache {
+            let ext = preview_path.extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+
+            let syntax_set = SyntaxSet::load_defaults_newlines();
+            let syntax = syntax_set
+                .find_syntax_by_extension(ext)
+                .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
+            let highlighter = SyntectHighlighter::new(&THEME.syntax_theme);
+            let mut parse_state = ParseState::new(syntax);
+            let mut highlight_state = HighlightState::new(&highlighter, ScopeStack::new());
+
+            let mut line_elements: Vec<Element<'_, Message>> = Vec::new();
+
+            for (line_idx, line) in content.lines().enumerate().take(100) {
+                let line_with_newline = format!("{}\n", line);
+                let ops = parse_state
+                    .parse_line(&line_with_newline, &syntax_set)
+                    .unwrap_or_default();
+                let ranges: Vec<_> = HighlightIterator::new(
+                    &mut highlight_state,
+                    &ops,
+                    &line_with_newline,
+                    &highlighter,
+                )
+                .collect();
+
+                // Build a row: line number + highlighted spans
+                let line_num: Element<'_, Message> = container(
+                    text(format!("{}", line_idx + 1))
+                        .size(11)
+                        .color(OVERLAY_2)
+                )
+                .width(Length::Fixed(36.0))
+                .align_right(Length::Fixed(36.0))
+                .into();
+
+                let mut spans: Vec<iced::widget::text::Span<'_, iced::Font>> = Vec::new();
+                for (style, fragment) in &ranges {
+                    let txt = if fragment.ends_with('\n') {
+                        &fragment[..fragment.len() - 1]
+                    } else {
+                        fragment
+                    };
+                    if txt.is_empty() { continue; }
+                    spans.push(
+                        iced::widget::text::Span::new(txt.to_string())
+                            .color(iced::Color::from_rgba8(
+                                style.foreground.r,
+                                style.foreground.g,
+                                style.foreground.b,
+                                style.foreground.a as f32 / 255.0,
+                            ))
+                            .size(11.0)
+                    );
+                }
+
+                let code_text: Element<'_, Message> = iced::widget::rich_text(spans).into();
+
+                line_elements.push(
+                    row![line_num, code_text]
+                        .spacing(8)
+                        .into()
+                );
+            }
+
+            let preview_header = container(
+                text(
+                    preview_path.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string()
+                )
+                .size(11)
+                .color(THEME.text_dim)
+            )
+            .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 6.0, left: 12.0 });
+
+            let preview_sep = container(Space::new())
+                .width(Length::Fill)
+                .height(Length::Fixed(1.0))
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(SURFACE_2)),
+                    ..Default::default()
+                });
+
+            let preview_content = scrollable(
+                column(line_elements)
+                    .spacing(0)
+                    .padding(iced::Padding { top: 4.0, right: 8.0, bottom: 8.0, left: 8.0 })
+            )
+            .height(Length::Fill);
+
+            column![preview_header, preview_sep, preview_content]
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into()
+        } else {
+            container(
+                text("No preview available")
+                    .size(13)
+                    .color(THEME.text_dim)
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .into()
+        };
+
+        // ── Layout: left column (input + file list) | right column (preview)
+        let left_panel = column![
+            input,
+            folder_label,
+            separator_h,
+            file_list,
+        ]
+        .width(Length::FillPortion(2))
+        .height(Length::Fill);
+
+        let right_panel = container(preview)
+            .width(Length::FillPortion(3))
+            .height(Length::Fill)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(BG_BASE)),
+                ..Default::default()
+            });
+
+        let split = row![left_panel, separator_v, right_panel]
+            .height(Length::Fill);
+
+        let overlay_box = container(split)
+            .width(Length::Fixed(900.0))
+            .height(Length::Fixed(520.0))
+            .style(file_finder_panel_style);
+
+        let backdrop = mouse_area(
+            container(Space::new())
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.5))),
+                    ..Default::default()
+                })
+        )
+        .on_press(Message::ToggleFuzzyFinder);
 
         stack![
             backdrop,
