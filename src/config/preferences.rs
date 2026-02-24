@@ -21,7 +21,6 @@ impl Default for EditorPreferences {
 }
 
 impl EditorPreferences {
-    /// Returns the indent unit string based on current preferences
     pub fn indent_unit(&self) -> String {
         if self.use_spaces {
             " ".repeat(self.tab_size)
@@ -87,9 +86,8 @@ pub fn save_preferences(prefs: &EditorPreferences) -> Result<(), std::io::Error>
         fs::create_dir_all(parent)?;
     }
     let content = format!(
-        r#"-- Rode Editor Preferences
+        r#"-- Whistler Editor Preferences
 -- Edit these values to customize your editor
--- Changes are applied after saving
 
 return {{
     tab_size = {},
@@ -104,8 +102,6 @@ return {{
     Ok(())
 }
 
-/// List available theme names from the themes/ directory.
-/// Always includes "default" as the built-in theme.
 pub fn list_available_themes() -> Vec<String> {
     let mut themes = vec!["default".to_string()];
     let themes_dir = get_themes_dir();
@@ -118,19 +114,14 @@ pub fn list_available_themes() -> Vec<String> {
             }
         }
     }
-    // also check for theme files in the main config dir (besides theme.lua)
     themes
 }
 
-/// Load a theme by name. "default" returns the built-in theme.
-/// Other names look for `~/.config/rode/themes/<name>.lua`.
-/// Falls back to loading `~/.config/rode/theme.lua` if not found.
 pub fn load_theme_by_name(name: &str) -> ThemeColors {
     if name == "default" {
         return ThemeColors::default();
     }
 
-    // Try themes/ directory first
     let theme_path = get_themes_dir().join(format!("{}.lua", name));
     if let Ok(content) = fs::read_to_string(&theme_path) {
         if let Ok(theme) = ThemeColors::from_lua(&content) {
@@ -138,6 +129,5 @@ pub fn load_theme_by_name(name: &str) -> ThemeColors {
         }
     }
 
-    // Fall back to the main theme.lua
     load_theme()
 }

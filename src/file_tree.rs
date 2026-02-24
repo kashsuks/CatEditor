@@ -1,234 +1,136 @@
-use eframe::egui;
+use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-#[derive(Clone, Debug)]
-pub enum FileTreeAction {
-    OpenFile(PathBuf),
-    OpenSettings,
+/// The whole code block below represents a single entry in the file tree
+#[derive(Debug, Clone)]
+pub enum FileEntry {
+    File { // A file only has the path and name attributes
+        path: PathBuf,
+        name: String,
+    },
+    Directory { // While a directory also has children, which can be other directories, or just files
+        path: PathBuf,
+        name: String,
+        children: Vec<FileEntry>, // A vector containing elements of type FileEntry, meaning either files or other directories, like I said above
+    },
 }
 
-#[derive(Clone, Debug)]
-// A struct for the file nodes that will be used for each file
-pub struct FileNode {
-    pub path: PathBuf,
-    pub name: String,
-    pub is_dir: bool,
-    pub is_expanded: bool, // State for whether the file node is expanded (user is searching deeper) or not
-    pub children: Vec<FileNode>, // children will be be specifically for directories since files
-                           // themselves cannot have children
-}
-
-impl FileNode {
-    // Default file node definition with all the values and their specific values by default
-    //
-    // # Arguments
-    //
-    // * `path` - Relative path (to the directory root absolute path)
-    fn new(path: PathBuf) -> Self {
-        // all the values that are linked to a specific file
-        let name = path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| path.to_string_lossy().to_string());
-
-        let is_dir = path.is_dir(); // pretty self-explanatory. State for whether a specific path
-                                    // is a directory or not
-
-        Self {
-            path,
-            name,
-            is_dir,
-            is_expanded: false,
-            children: Vec::new(),
-        }
-    }
-
-    // Checks whether the current path has children under it for the file tree to display
-    fn load_children(&mut self) {
-        if !self.is_dir || !self.children.is_empty() {
-            return;
-        }
-
-        if let Ok(entries) = fs::read_dir(&self.path) {
-            let mut children: Vec<FileNode> = entries
-                .filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .filter(|p| {
-                    // skip hidden files/folders (stuff like .git and its objects will be ignored)
-                    p.file_name()
-                        .map(|n| !n.to_string_lossy().starts_with('.'))
-                        .unwrap_or(false)
-                })
-                .map(FileNode::new)
-                .collect();
-
-            // sort: directories first, then files (alphabetical)
-            children.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            });
-
-            self.children = children;
-        }
-    }
-}
-
-/// Public structure that is used for the states specifically to the file tree tab box
+#[derive(Debug, Clone)]
 pub struct FileTree {
-    pub visible: bool,
-    pub root: Option<FileNode>,
-    pub width: f32,
-}
-
-impl Default for FileTree {
-    fn default() -> Self {
-        Self {
-            visible: false, // file tree not visible by default (can be triggered by running
-            // control + b)
-            root: None, // no root file when running app on startup
-            width: 250.0,
-        }
-    }
+    pub root: PathBuf, // The root of the folder
+    pub entries: Vec<FileEntry>, // A single entry, being either a file or a directory
+    pub expanded: HashSet<PathBuf>, // The set of directory paths that are currently expanded
+        // Storing only expanded ones, not collapsed ones to save memory
+        // Collapsed ones are simply all of those that are not expanded
+    pub selected: Option<PathBuf>, // The currently selected FileEntry
 }
 
 impl FileTree {
-    /// Allows the user to toggle whether the file tree is open or not
-    pub fn toggle(&mut self) {
-        self.visible = !self.visible;
+    pub fn new(root: PathBuf) -> Self { // This creates a new file tree that is rooted at a given path
+        let entries = scan_directory(&root); // Scans the directory and builds a FileEntry vector for it
+        Self { // Creates and stores a new FileTree instance
+            root,
+            entries,
+            expanded: HashSet::new(),
+            selected: None,
+        }
     }
 
-    /// Set the root file of that specific directory so that files can be recursively searched
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Absolute path of the root file of the current directory
-    pub fn set_root(&mut self, path: PathBuf) {
-        let mut root = FileNode::new(path);
-        root.is_expanded = true;
-        root.load_children();
-        self.root = Some(root);
-        self.visible = true;
+    pub fn toggle_folder(&mut self, path: &Path) { // Allow a folder to be toggled as expanded or collapsed
+        if self.expanded.contains(path) { // Checks if the path is in the "expanded" HashSet
+            self.expanded.remove(path); // If it finds it, it removes the path from the HashSet, marking the FileEntry as collapsed
+        } else {
+            self.expanded.insert(path.to_path_buf()); // If not found, adds it to the HashSet
+            populate_children(&mut self.entries, path); // Lazily load this folder's contents
+        }
     }
 
-    pub fn show(
-        &mut self,
-        ctx: &egui::Context,
-        icon_manger: &mut crate::icon_manager::IconManager,
-    ) -> Option<FileTreeAction> {
-        if !self.visible {
-            return None;
+    pub fn is_expanded(&self, path: &Path) -> bool { // Check if folder is expanded
+        self.expanded.contains(path)
+    }
+
+    pub fn select(&mut self, path: PathBuf) { // Selecting a folder/file
+        self.selected = Some(path);
+    }
+
+    pub fn refresh(&mut self) { // Refresh the directory to see if a new file is created
+        self.entries = scan_directory(&self.root);
+        let mut expanded: Vec<PathBuf> = self.expanded.iter().cloned().collect();
+        expanded.sort_by_key(|p| p.components().count());
+        for path in expanded {
+            populate_children(&mut self.entries, &path);
+        }
+    }
+}
+
+/// List of directories to ignore when scanning, since they are hidden or just bloat
+const IGNORED_DIRS: &[&str] = &[".git", "node_modules", "target", ".DS_Store", "__pycache__", ".claude"];
+
+/// Scan a directory and return a list of FileEntry
+fn scan_directory(path: &Path) -> Vec<FileEntry> {
+    let mut entries = Vec::new(); // An empty vector of entires
+
+    let Ok(read_dir) = fs::read_dir(path) else { // Reads directory contents
+        return entries; // If the result is an error, return the empty vector
+    };
+
+    for entry in read_dir.flatten() { // Iterates through the entries
+        let entry_path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_string();
+
+        if IGNORED_DIRS.contains(&name.as_str()) { // Checks if the entry is part of the ignored
+            continue;
         }
 
-        let mut action = None;
-
-        // Keep the subtle animation alive.
-        ctx.request_repaint_after(std::time::Duration::from_millis(32));
-
-        egui::SidePanel::left("file_tree_panel")
-            .resizable(true)
-            .default_width(self.width)
-            .width_range(150.0..=500.0)
-            .show(ctx, |ui| {
-                ui.heading("Files");
-                ui.separator();
-
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        if let Some(root) = self.root.as_mut() {
-                            if let Some(file) = Self::show_node(ui, root, 0, icon_manger, ctx) {
-                                action = Some(FileTreeAction::OpenFile(file));
-                            }
-                        } else {
-                            ui.add_space(6.0);
-                            ui.label(egui::RichText::new("No folder opened").italics());
-                            ui.label(
-                                egui::RichText::new("Use Open Folder to start browsing files.")
-                                    .weak(),
-                            );
-                        }
-                    });
-
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    ui.add_space(8.0);
-                    ui.separator();
-                    ui.add_space(8.0);
-
-                    let t = ctx.input(|i| i.time) as f32;
-                    let pulse = ((t * 2.0).sin() * 0.5 + 0.5).clamp(0.0, 1.0);
-                    let gear_color = egui::Color32::from_rgb(
-                        (140.0 + pulse * 80.0) as u8,
-                        (170.0 + pulse * 50.0) as u8,
-                        240,
-                    );
-
-                    let settings_btn = ui.add_sized(
-                        [ui.available_width(), 34.0],
-                        egui::Button::new(
-                            egui::RichText::new("⚙ Settings").color(gear_color).strong(),
-                        ),
-                    );
-
-                    if settings_btn.clicked() {
-                        action = Some(FileTreeAction::OpenSettings);
-                    }
-                });
+        if entry_path.is_dir() { // Checks for nested dirs
+            entries.push(FileEntry::Directory {
+                path: entry_path,
+                name,
+                children: Vec::new(),
             });
-
-        action
+        } else { // If the entry below is a file, create a simple file
+            entries.push(FileEntry::File {
+                path: entry_path,
+                name
+            });
+        }
     }
 
-    fn show_node(
-        ui: &mut egui::Ui,
-        node: &mut FileNode,
-        depth: usize,
-        icon_manager: &mut crate::icon_manager::IconManager,
-        ctx: &egui::Context,
-    ) -> Option<PathBuf> {
-        let mut selected_file = None;
-        let indent = depth as f32 * 16.0;
-
-        ui.horizontal(|ui| {
-            ui.add_space(indent);
-
-            if node.is_dir {
-                let icon_texture = icon_manager.get_folder_icon(ctx, &node.name, node.is_expanded);
-                ui.add(egui::Image::new(icon_texture).max_size(egui::vec2(16.0, 16.0)));
-
-                let response = ui.selectable_label(false, &node.name);
-
-                if response.clicked() {
-                    node.is_expanded = !node.is_expanded;
-                    if node.is_expanded && node.children.is_empty() {
-                        node.load_children();
-                    }
-                }
-            } else {
-                let icon_texture = icon_manager.get_file_icon(ctx, &node.name);
-                ui.add(egui::Image::new(icon_texture).max_size(egui::vec2(16.0, 16.0)));
-
-                let response = ui.selectable_label(false, &node.name);
-
-                if response.clicked() {
-                    selected_file = Some(node.path.clone());
-                }
-
-                if response.hovered() {
-                    response.on_hover_text(node.path.display().to_string());
-                }
+    // Sort the entries by letter (alphabetically)
+    entries.sort_by(|a, b| {
+        match (a, b) {
+            // Extract only the name, ignore the other fields that don't matter for this
+            (FileEntry::Directory { name: name_a, .. }, FileEntry::Directory { name: name_b, .. }) => {
+                name_a.to_lowercase().cmp(&name_b.to_lowercase())
             }
-        });
-
-        if node.is_dir && node.is_expanded {
-            for child in &mut node.children {
-                if let Some(file) = Self::show_node(ui, child, depth + 1, icon_manager, ctx) {
-                    selected_file = Some(file);
-                }
+            // The case if both are files
+            (FileEntry::File { name: name_a, .. }, FileEntry::File { name: name_b, .. }) => {
+                name_a.to_lowercase().cmp(&name_b.to_lowercase())
             }
+            // File compared to a directory
+            (FileEntry::Directory { .. }, FileEntry::File { .. }) => std::cmp::Ordering::Less,
+            (FileEntry::File { .. }, FileEntry::Directory { .. }) => std::cmp::Ordering::Greater,
         }
+    });
 
-        selected_file
+    return entries;
+}
+
+fn populate_children(entries: &mut Vec<FileEntry>, target: &Path) {
+    for entry in entries.iter_mut() {
+        if let FileEntry::Directory {
+            path,
+            children,
+            ..
+        } = entry {
+            if path == target {
+                if children.is_empty() {
+                    *children = scan_directory(path);
+                }
+                return;
+            }
+            populate_children(children, target);
+        }
     }
 }

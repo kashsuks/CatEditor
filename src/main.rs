@@ -1,54 +1,43 @@
-use crate::syntax_highlighter::SyntaxHighlighter;
-use eframe::egui;
-use std::env;
+use iced::window;
 
+mod app;
 mod autocomplete;
+mod command_input;
 mod command_palette;
 mod config;
 mod file_tree;
-mod fuzzy_finder;
-mod hotkey;
-mod icon_manager;
-mod icon_theme;
-mod setup;
-mod syntax_highlighter;
-mod syntax_highlighting;
+mod find_replace;
+mod icons;
+mod message;
+mod resources;
+mod search;
+mod syntax;
 mod terminal;
+mod theme;
+mod ui;
 mod wakatime;
 
-fn main() -> eframe::Result<()> {
-    let args: Vec<String> = env::args().collect();
-    let file_path = if args.len() > 1 {
-        Some(args[1].clone())
-    } else {
-        None
-    };
+const FIRA_CODE: &[u8] = include_bytes!("../assets/fonts/FiraCode-Regular.ttf");
 
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([800.0, 600.0])
-            .with_title("CatEditor")
-            .with_fullscreen(true),
-        ..Default::default()
-    };
+fn main() -> iced::Result {
+    let icon_data = include_bytes!("../assets/icon.png");
+    let icon = window::icon::from_file_data(
+        icon_data, None)
+        .expect("Failed to load icon.");
 
-    eframe::run_native(
-        "CatEditor",
-        options,
-        Box::new(|_cc| {
-            let mut app = setup::app::CatEditorApp::default();
-
-            if let Some(path) = file_path {
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    app.text = content;
-                    app.current_language = SyntaxHighlighter::detect_language(&path);
-                    app.current_file = Some(path);
-                }
-            } else {
-                app.file_tree.visible = true;
-            }
-
-            Ok(Box::new(app))
-        }),
-    )
+    iced::application(app::App::default, app::App::update, app::App::view)
+        .title("Whistler")
+        .subscription(|app| app.subscription())
+        .font(FIRA_CODE)
+        .default_font(iced::Font {
+            family: iced::font::Family::Name("Fira Code"),
+            ..iced::Font::DEFAULT
+        })
+        .window_size((1200.0, 800.0))
+        .window(window::Settings{
+            size: [1200.0, 800.0].into(),
+            icon: Some(icon),
+            ..Default::default()
+        })
+        .run()
 }

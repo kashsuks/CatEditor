@@ -1,17 +1,13 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-// Public structure for the default terminal settings
-//
-// ## Requires
-//
-// * `last_opened_directory` - The path of the last opened directory by the user
+/// External terminal launcher - opens the OS-native terminal
+/// in the current working directory or last opened directory.
 pub struct Terminal {
     last_opened_directory: Option<PathBuf>,
 }
 
 impl Default for Terminal {
-    /// Default value and behaviour for the terminal we defined earlier
     fn default() -> Self {
         Self {
             last_opened_directory: None,
@@ -21,12 +17,15 @@ impl Default for Terminal {
 
 impl Terminal {
     /// Toggle/open the system's default terminal
-    /// This will launch a new terminal window in the current working directory or in the last opened directory if available
     pub fn toggle(&mut self) {
         self.open_system_terminal();
     }
 
-    /// Open the system's default terminal application
+    /// Set the directory that should be opened when launching the terminal
+    pub fn set_directory(&mut self, directory: PathBuf) {
+        self.last_opened_directory = Some(directory);
+    }
+
     fn open_system_terminal(&mut self) {
         let directory = self
             .last_opened_directory
@@ -47,20 +46,10 @@ impl Terminal {
         }
     }
 
-    /// Open terminal on macOS
-    /// Tries to detect the default terminal (iTerm2, Terminal.app, etc.)
-    ///
-    /// # Requires
-    ///
-    /// * `directory` - The directory that user is either currently in or was the last directory
-    ///
-    /// # Returns
-    ///
-    /// * `std::io::Result<()>` - The final Ok(()) return statement that the process was spawned
     fn open_macos_terminal(&self, directory: &PathBuf) -> std::io::Result<()> {
         let dir_str = directory.display().to_string();
 
-        // First, try iTerm2 if it's available
+        // Try iTerm2 first
         if let Ok(output) = Command::new("osascript")
             .arg("-e")
             .arg(format!(
@@ -79,7 +68,7 @@ impl Terminal {
             }
         }
 
-        // fallback case to terminal.app for macos
+        // Fallback to Terminal.app
         Command::new("osascript")
             .arg("-e")
             .arg(format!(
@@ -94,8 +83,6 @@ impl Terminal {
         Ok(())
     }
 
-    /// Open terminal on Windows
-    /// Tries Windows Terminal first, then PowerShell, then cmd
     fn open_windows_terminal(&self, directory: &PathBuf) -> std::io::Result<()> {
         let dir_str = directory.display().to_string();
 
@@ -122,11 +109,8 @@ impl Terminal {
         Ok(())
     }
 
-    /// Open terminal on Linux
-    /// Tries various common terminal emulators
     fn open_linux_terminal(&self, directory: &PathBuf) -> std::io::Result<()> {
         let dir_str = directory.display().to_string();
-
         let xterm_cmd = format!("cd '{}' && exec $SHELL", dir_str);
 
         let terminals = vec![
@@ -151,28 +135,5 @@ impl Terminal {
             std::io::ErrorKind::NotFound,
             "No supported terminal emulator found",
         ))
-    }
-
-    /// Set the directory that should be opened when launching the terminal
-    ///
-    /// # Arguments
-    ///
-    /// - `directory` (`PathBuf`) - the directory that the user is currently in
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crate::terminal;
-    ///
-    /// let _ = set_directory();
-    /// ```
-    pub fn set_directory(&mut self, directory: PathBuf) {
-        self.last_opened_directory = Some(directory);
-    }
-
-    /// This is a no-op for compatibility with the previous API
-    /// The system terminal doesn't need to be shown in the UI
-    pub fn show(&mut self, _ctx: &eframe::egui::Context) {
-        // No-op: system terminal is external
     }
 }
