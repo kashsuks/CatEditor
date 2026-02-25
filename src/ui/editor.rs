@@ -17,7 +17,7 @@ pub fn create_editor<'a>(content: &'a Content, extension: &str, _current_line: u
             |highlight, _theme| highlight.to_format(),
         )
         .style(text_editor_style)
-        .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 8.0, left: 12.0 })
+        .padding(iced::Padding { top: 4.0, right: 4.0, bottom: 4.0, left: 4.0 })
         .height(Length::Fill);
 
     editor.into()

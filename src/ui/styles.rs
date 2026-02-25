@@ -70,36 +70,38 @@ pub fn tab_close_button_style(_theme: &Theme, _status: ButtonStatus) -> ButtonSt
 }
 
 pub fn editor_container_style(_theme: &Theme) -> container::Style {
+    let t = theme();
+    let border_color = Color::from_rgba(
+        1.0 - t.bg_editor.r * 0.7,
+        1.0 - t.bg_editor.g * 0.7,
+        1.0 - t.bg_editor.b * 0.7,
+        0.12,
+    );
     container::Style {
-        background: Some(Background::Color(theme().bg_primary)),
+        background: Some(Background::Color(t.bg_primary)),
         border: Border {
-            color: Color::TRANSPARENT,
-            width: 0.0,
-            radius: BORDER_RADIUS.into(),
-        },
-        shadow: iced::Shadow {
-            color: theme().shadow_dark,
-            offset: Vector::new(0.0, 4.0),
-            blur_radius: 16.0,
+            color: border_color,
+            width: 1.0,
+            radius: 0.0.into(),
         },
         ..Default::default()
     }
 }
 
 pub fn sidebar_container_style(_theme: &Theme) -> container::Style {
-    let bg = theme().bg_secondary;
-    let bg_translucent = Color::from_rgba(bg.r, bg.g, bg.b, 0.93);
+    let t = theme();
+    let border_color = Color::from_rgba(
+        1.0 - t.bg_secondary.r * 0.7,
+        1.0 - t.bg_secondary.g * 0.7,
+        1.0 - t.bg_secondary.b * 0.7,
+        0.12,
+    );
     container::Style {
-        background: Some(Background::Color(bg_translucent)),
+        background: Some(Background::Color(t.bg_secondary)),
         border: Border {
-            color: Color::TRANSPARENT,
-            width: 0.0,
-            radius: BORDER_RADIUS.into(),
-        },
-        shadow: iced::Shadow {
-            color: theme().shadow_light,
-            offset: Vector::new(-10.0, 0.0),
-            blur_radius: 12.0,
+            color: border_color,
+            width: 1.0,
+            radius: 0.0.into(),
         },
         ..Default::default()
     }

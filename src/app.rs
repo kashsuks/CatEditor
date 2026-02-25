@@ -879,7 +879,7 @@ impl App {
             .style(editor_container_style);
 
             container(editor_container)
-                .padding(iced::Padding { top: 4.0, right: 8.0, bottom: 4.0, left: 8.0 })
+                .padding(0)
                 .width(Length::Fill)
                 .into()
         };
