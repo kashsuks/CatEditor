@@ -63,6 +63,10 @@ pub enum Message {
     ToggleCaseSensitive,
     /// Settings panel
     ToggleSettings,
+    SettingsNavigate(String),
+    SettingsTabSizeChanged(String),
+    SettingsToggleUseSpaces,
+    SettingsSavePreferences,
     /// Vim-style command input
     ToggleCommandInput,
     CommandInputChanged(String),

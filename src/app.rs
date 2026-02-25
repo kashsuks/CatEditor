@@ -8,6 +8,7 @@ use std::time::Instant;
 
 use crate::command_palette::CommandPalette;
 use crate::command_input::CommandInput;
+use crate::config::preferences::{self as prefs, EditorPreferences};
 use crate::find_replace::FindReplace;
 use crate::fuzzy_finder::FuzzyFinder;
 use crate::terminal::Terminal;
@@ -83,6 +84,9 @@ pub struct App {
     command_input_id: iced::widget::Id,
     // Settings
     settings_open: bool,
+    settings_section: String,
+    // Editor Preferences
+    editor_preferences: EditorPreferences,
     // WakaTime
     wakatime: WakaTimeConfig,
     last_wakatime_entity: Option<String>,
@@ -124,6 +128,8 @@ impl Default for App {
             command_input: CommandInput::default(),
             command_input_id: iced::widget::Id::unique(),
             settings_open: false,
+            settings_section: "general".to_string(),
+            editor_preferences: prefs::load_preferences(),
             wakatime: wakatime::load(),
             last_wakatime_entity: None,
             last_wakatime_sent_at: None,
@@ -695,6 +701,28 @@ impl App {
                 iced::Task::none()
             }
 
+            Message::SettingsNavigate(section) => {
+                self.settings_section = section;
+                iced::Task::none()
+            }
+
+            Message::SettingsTabSizeChanged(val) => {
+                if let Ok(size) = val.parse::<usize>() {
+                    self.editor_preferences.tab_size = size.max(1).min(16);
+                }
+                iced::Task::none()
+            }
+
+            Message::SettingsToggleUseSpaces => {
+                self.editor_preferences.use_spaces = !self.editor_preferences.use_spaces;
+                iced::Task::none()
+            }
+
+            Message::SettingsSavePreferences => {
+                let _ = prefs::save_preferences(&self.editor_preferences);
+                iced::Task::none()
+            }
+
             // Vim command input
             Message::ToggleCommandInput => {
                 if self.command_input.open {
@@ -774,34 +802,40 @@ impl App {
     pub fn view(&self) -> Element<'_, Message> {
         use iced::widget::stack;
 
-        let tab_bar = self.view_tab_bar();
-        let editor_widget = self.view_editor();
-        let status_bar = self.view_status_bar();
-
-        // Build editor column with optional find/replace at the top and command input at the bottom
-        let mut editor_col_items: Vec<Element<'_, Message>> = Vec::new();
-        if self.find_replace.open {
-            editor_col_items.push(self.view_find_replace_panel());
-        }
-        editor_col_items.push(tab_bar);
-        editor_col_items.push(editor_widget);
-        if self.command_input.open {
-            editor_col_items.push(self.view_command_input_bar());
-        }
-        editor_col_items.push(status_bar);
-
-        let editor_container = if self.active_tab.is_some() {
-            container(column(editor_col_items))
+        // When settings is open, replace the editor area with the settings panel
+        let editor_area: Element<'_, Message> = if self.settings_open {
+            self.view_settings_panel()
         } else {
-            self.view_welcome_screen()
-        }
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(editor_container_style);
+            let tab_bar = self.view_tab_bar();
+            let editor_widget = self.view_editor();
+            let status_bar = self.view_status_bar();
 
-        let editor_area = container(editor_container)
-            .padding(2)
-            .width(Length::Fill);
+            // Build editor column with optional find/replace at the top and command input at the bottom
+            let mut editor_col_items: Vec<Element<'_, Message>> = Vec::new();
+            if self.find_replace.open {
+                editor_col_items.push(self.view_find_replace_panel());
+            }
+            editor_col_items.push(tab_bar);
+            editor_col_items.push(editor_widget);
+            if self.command_input.open {
+                editor_col_items.push(self.view_command_input_bar());
+            }
+            editor_col_items.push(status_bar);
+
+            let editor_container = if self.active_tab.is_some() {
+                container(column(editor_col_items))
+            } else {
+                self.view_welcome_screen()
+            }
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(editor_container_style);
+
+            container(editor_container)
+                .padding(2)
+                .width(Length::Fill)
+                .into()
+        };
 
         let base_content: Element<'_, Message> = if self.sidebar_visible {
             let sidebar = view_sidebar(self.file_tree.as_ref(), self.sidebar_width);
@@ -833,8 +867,6 @@ impl App {
             stack![wrapped, self.view_fuzzy_finder_overlay()].into()
         } else if self.file_finder_visible {
             stack![wrapped, self.view_file_finder_overlay()].into()
-        } else if self.settings_open {
-            stack![wrapped, self.view_settings_panel()].into()
         } else if self.search_visible {
             let search_panel = container(self.view_search_panel())
                 .padding(iced::Padding { top: 20.0, right: 0.0, bottom: 0.0, left: 20.0 })
@@ -1357,73 +1389,363 @@ impl App {
     }
 
     fn view_settings_panel(&self) -> Element<'_, Message> {
-        use iced::widget::{stack, center, Space, opaque};
+        use iced::widget::Space;
 
-        let heading = text("Settings")
+        // ── Sections for the left nav ────────────────────────────────
+        let sections = vec![
+            ("general", "General"),
+            ("editor", "Editor"),
+            ("wakatime", "WakaTime"),
+        ];
+
+        let nav_items: Vec<Element<'_, Message>> = sections
+            .into_iter()
+            .map(|(key, label)| {
+                let is_active = self.settings_section == key;
+                let label_color = if is_active { THEME.text_primary } else { THEME.text_muted };
+                let bg = if is_active {
+                    Some(Background::Color(THEME.bg_secondary))
+                } else {
+                    None
+                };
+
+                let btn = button(
+                    text(label).size(13).color(label_color)
+                )
+                .on_press(Message::SettingsNavigate(key.to_string()))
+                .style(move |_theme, _status| button::Style {
+                    background: bg,
+                    border: iced::Border::default(),
+                    text_color: label_color,
+                    ..Default::default()
+                })
+                .padding(iced::Padding { top: 8.0, right: 16.0, bottom: 8.0, left: 16.0 })
+                .width(Length::Fill);
+
+                btn.into()
+            })
+            .collect();
+
+        let nav_header = text("Settings")
+            .size(14)
+            .color(THEME.text_primary);
+
+        let close_btn = button(
+            text("×").size(16).color(THEME.text_muted)
+        )
+        .on_press(Message::ToggleSettings)
+        .style(|_theme, _status| button::Style {
+            background: None,
+            border: iced::Border::default(),
+            text_color: THEME.text_muted,
+            ..Default::default()
+        })
+        .padding(iced::Padding { top: 2.0, right: 8.0, bottom: 2.0, left: 8.0 });
+
+        let nav_top = row![nav_header, Space::new().width(Length::Fill), close_btn]
+            .align_y(iced::Alignment::Center)
+            .padding(iced::Padding { top: 12.0, right: 12.0, bottom: 8.0, left: 16.0 });
+
+        let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        let mut nav_col_items: Vec<Element<'_, Message>> = vec![
+            nav_top.into(),
+            separator.into(),
+        ];
+        nav_col_items.extend(nav_items);
+
+        let nav_sidebar = container(
+            scrollable(column(nav_col_items).spacing(2).padding(iced::Padding { top: 0.0, right: 0.0, bottom: 8.0, left: 0.0 }))
+        )
+        .width(Length::Fixed(180.0))
+        .height(Length::Fill)
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(BG_MANTLE)),
+            border: iced::Border {
+                color: Color::from_rgba(1.0, 1.0, 1.0, 0.04),
+                width: 0.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        });
+
+        // ── Right content area ─────────────────────────────────────────
+        let content_view: Element<'_, Message> = match self.settings_section.as_str() {
+            "general" => self.view_settings_general(),
+            "editor" => self.view_settings_editor(),
+            "wakatime" => self.view_settings_wakatime(),
+            _ => self.view_settings_general(),
+        };
+
+        let content_scrollable = scrollable(
+            container(content_view)
+                .padding(iced::Padding { top: 24.0, right: 32.0, bottom: 24.0, left: 32.0 })
+                .width(Length::Fill)
+        );
+
+        let content_area = container(content_scrollable)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(THEME.bg_editor)),
+                ..Default::default()
+            });
+
+        // ── Vertical separator between nav and content ──────────────
+        let vert_sep = container(Space::new().width(Length::Fixed(1.0)).height(Length::Fill))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        row![nav_sidebar, vert_sep, content_area]
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+    }
+
+    fn view_settings_general(&self) -> Element<'_, Message> {
+        use iced::widget::Space;
+
+        let heading = text("General")
             .size(18)
             .color(THEME.text_primary);
 
-        let wakatime_section = column![
-            text("WakaTime").size(14).color(THEME.text_muted),
-            text("API Key").size(11).color(THEME.text_dim),
+        let desc = text("General application settings and information.")
+            .size(12)
+            .color(THEME.text_dim);
+
+        let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        let version_row = row![
+            text("Version").size(13).color(THEME.text_muted).width(Length::Fixed(140.0)),
+            text("1.0.0").size(13).color(THEME.text_primary),
+        ]
+        .spacing(12)
+        .align_y(iced::Alignment::Center);
+
+        let app_name_row = row![
+            text("Application").size(13).color(THEME.text_muted).width(Length::Fixed(140.0)),
+            text("Rode Editor").size(13).color(THEME.text_primary),
+        ]
+        .spacing(12)
+        .align_y(iced::Alignment::Center);
+
+        let framework_row = row![
+            text("Framework").size(13).color(THEME.text_muted).width(Length::Fixed(140.0)),
+            text("iced 0.14").size(13).color(THEME.text_primary),
+        ]
+        .spacing(12)
+        .align_y(iced::Alignment::Center);
+
+        column![
+            heading,
+            desc,
+            separator,
+            app_name_row,
+            version_row,
+            framework_row,
+        ]
+        .spacing(12)
+        .width(Length::Fill)
+        .into()
+    }
+
+    fn view_settings_editor(&self) -> Element<'_, Message> {
+        use iced::widget::Space;
+
+        let heading = text("Editor")
+            .size(18)
+            .color(THEME.text_primary);
+
+        let desc = text("Configure editor behavior and formatting.")
+            .size(12)
+            .color(THEME.text_dim);
+
+        let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        // Tab size
+        let tab_size_row = row![
+            column![
+                text("Tab Size").size(13).color(THEME.text_muted),
+                text("Number of spaces per indentation level").size(11).color(THEME.text_dim),
+            ].spacing(2).width(Length::FillPortion(2)),
+            text_input("4", &self.editor_preferences.tab_size.to_string())
+                .on_input(Message::SettingsTabSizeChanged)
+                .size(13)
+                .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 8.0, left: 12.0 })
+                .style(search_input_style)
+                .width(Length::Fixed(80.0)),
+        ]
+        .spacing(16)
+        .align_y(iced::Alignment::Center);
+
+        // Use spaces
+        let spaces_label = if self.editor_preferences.use_spaces { "Spaces" } else { "Tabs" };
+        let spaces_row = row![
+            column![
+                text("Indent Using").size(13).color(THEME.text_muted),
+                text("Choose between spaces or tabs for indentation").size(11).color(THEME.text_dim),
+            ].spacing(2).width(Length::FillPortion(2)),
+            button(
+                text(spaces_label).size(12).color(THEME.text_primary)
+            )
+            .on_press(Message::SettingsToggleUseSpaces)
+            .style(|_theme, _status| button::Style {
+                background: Some(Background::Color(THEME.bg_secondary)),
+                border: iced::Border {
+                    color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: THEME.text_primary,
+                ..Default::default()
+            })
+            .padding(iced::Padding { top: 6.0, right: 16.0, bottom: 6.0, left: 16.0 }),
+        ]
+        .spacing(16)
+        .align_y(iced::Alignment::Center);
+
+        // Save button
+        let save_btn = button(
+            text("Save Preferences").size(12).color(THEME.text_primary)
+        )
+        .on_press(Message::SettingsSavePreferences)
+        .style(|_theme, _status| button::Style {
+            background: Some(Background::Color(ACCENT_PURPLE.scale_alpha(0.2))),
+            border: iced::Border {
+                color: ACCENT_PURPLE.scale_alpha(0.4),
+                width: 1.0,
+                radius: 4.0.into(),
+            },
+            text_color: THEME.text_primary,
+            ..Default::default()
+        })
+        .padding(iced::Padding { top: 8.0, right: 20.0, bottom: 8.0, left: 20.0 });
+
+        column![
+            heading,
+            desc,
+            separator,
+            tab_size_row,
+            container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+                    ..Default::default()
+                }),
+            spaces_row,
+            container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+                    ..Default::default()
+                }),
+            Space::new().height(Length::Fixed(8.0)),
+            save_btn,
+        ]
+        .spacing(12)
+        .width(Length::Fill)
+        .into()
+    }
+
+    fn view_settings_wakatime(&self) -> Element<'_, Message> {
+        use iced::widget::Space;
+
+        let heading = text("WakaTime")
+            .size(18)
+            .color(THEME.text_primary);
+
+        let desc = text("Configure WakaTime integration for activity tracking.")
+            .size(12)
+            .color(THEME.text_dim);
+
+        let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        // API Key
+        let api_key_row = row![
+            column![
+                text("API Key").size(13).color(THEME.text_muted),
+                text("Your WakaTime API key for authentication").size(11).color(THEME.text_dim),
+            ].spacing(2).width(Length::FillPortion(2)),
             text_input("waka_xxxxx", &self.wakatime.api_key)
                 .on_input(Message::WakaTimeApiKeyChanged)
                 .size(13)
                 .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 8.0, left: 12.0 })
                 .style(search_input_style)
-                .width(Length::Fill),
-            text("API URL").size(11).color(THEME.text_dim),
+                .width(Length::FillPortion(3)),
+        ]
+        .spacing(16)
+        .align_y(iced::Alignment::Center);
+
+        // API URL
+        let api_url_row = row![
+            column![
+                text("API URL").size(13).color(THEME.text_muted),
+                text("WakaTime API endpoint URL").size(11).color(THEME.text_dim),
+            ].spacing(2).width(Length::FillPortion(2)),
             text_input("https://api.wakatime.com/api/v1", &self.wakatime.api_url)
                 .on_input(Message::WakaTimeApiUrlChanged)
                 .size(13)
                 .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 8.0, left: 12.0 })
                 .style(search_input_style)
-                .width(Length::Fill),
-            button(
-                text("Save WakaTime Settings").size(12).color(THEME.text_primary)
-            )
-            .on_press(Message::SaveWakaTimeSettings)
-            .style(tab_close_button_style)
-            .padding(iced::Padding { top: 6.0, right: 14.0, bottom: 6.0, left: 14.0 }),
-        ]
-        .spacing(8);
-
-        let content = column![
-            heading,
-            container(iced::widget::Space::new()
-                .width(Length::Fill)
-                .height(Length::Fixed(1.0)))
-                .style(|_theme| container::Style {
-                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
-                    ..Default::default()
-                }),
-            wakatime_section,
+                .width(Length::FillPortion(3)),
         ]
         .spacing(16)
-        .padding(24);
+        .align_y(iced::Alignment::Center);
 
-        let overlay_box = container(
-            scrollable(content).height(Length::Shrink)
+        // Save button
+        let save_btn = button(
+            text("Save WakaTime Settings").size(12).color(THEME.text_primary)
         )
-        .width(Length::Fixed(480.0))
-        .max_height(500.0)
-        .style(file_finder_panel_style);
+        .on_press(Message::SaveWakaTimeSettings)
+        .style(|_theme, _status| button::Style {
+            background: Some(Background::Color(ACCENT_PURPLE.scale_alpha(0.2))),
+            border: iced::Border {
+                color: ACCENT_PURPLE.scale_alpha(0.4),
+                width: 1.0,
+                radius: 4.0.into(),
+            },
+            text_color: THEME.text_primary,
+            ..Default::default()
+        })
+        .padding(iced::Padding { top: 8.0, right: 20.0, bottom: 8.0, left: 20.0 });
 
-        let backdrop = mouse_area(
-            container(Space::new())
-                .width(Length::Fill)
-                .height(Length::Fill)
+        column![
+            heading,
+            desc,
+            separator,
+            api_key_row,
+            container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
                 .style(|_theme| container::Style {
-                    background: Some(Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.45))),
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
                     ..Default::default()
-                })
-        )
-        .on_press(Message::ToggleSettings);
-
-        stack![
-            backdrop,
-            center(opaque(overlay_box)),
+                }),
+            api_url_row,
+            container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+                    ..Default::default()
+                }),
+            Space::new().height(Length::Fixed(8.0)),
+            save_btn,
         ]
+        .spacing(12)
+        .width(Length::Fill)
         .into()
     }
 
