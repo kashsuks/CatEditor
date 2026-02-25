@@ -18,7 +18,7 @@ use syntect::parsing::{
 use std::ops::Range;
 use std::sync::Arc;
 
-use crate::theme::THEME;
+use crate::theme::theme;
 
 #[derive(Clone, PartialEq)]
 pub struct Settings {
@@ -52,7 +52,7 @@ impl IcedHighlighter for VscodeHighlighter {
 
     fn new(settings: &Self::Settings) -> Self {
         let syntax_set = SyntaxSet::load_defaults_newlines();
-        let theme = Arc::new(THEME.syntax_theme.clone());
+        let theme = Arc::new(theme().syntax_theme.clone());
 
         let syntax = syntax_set
             .find_syntax_by_extension(&settings.extension)

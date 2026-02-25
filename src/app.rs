@@ -87,6 +87,7 @@ pub struct App {
     settings_section: String,
     // Editor Preferences
     editor_preferences: EditorPreferences,
+    active_theme_name: String,
     // WakaTime
     wakatime: WakaTimeConfig,
     last_wakatime_entity: Option<String>,
@@ -130,6 +131,7 @@ impl Default for App {
             settings_open: false,
             settings_section: "general".to_string(),
             editor_preferences: prefs::load_preferences(),
+            active_theme_name: "Catppuccin Mocha".to_string(),
             wakatime: wakatime::load(),
             last_wakatime_entity: None,
             last_wakatime_sent_at: None,
@@ -749,6 +751,25 @@ impl App {
                 iced::Task::none()
             }
 
+            Message::SettingsSelectTheme(name) => {
+                let new_theme = crate::theme::builtin_theme(&name);
+                crate::theme::set_theme(new_theme);
+                self.active_theme_name = name;
+                iced::Task::none()
+            }
+
+            Message::SettingsReloadTheme => {
+                // Hot-reload theme.lua from ~/.config/rode/
+                use crate::config::theme_manager;
+                let lua_theme = theme_manager::load_theme();
+                // Convert the lua ThemeColors (hex strings) to an iced ThemeColors
+                // by writing it out and reloading — or parse hex directly
+                let t = crate::theme::ThemeColors::from_lua_theme(&lua_theme);
+                crate::theme::set_theme(t);
+                self.active_theme_name = "Custom (theme.lua)".to_string();
+                iced::Task::none()
+            }
+
             // Vim command input
             Message::ToggleCommandInput => {
                 if self.command_input.open {
@@ -858,7 +879,7 @@ impl App {
             .style(editor_container_style);
 
             container(editor_container)
-                .padding(2)
+                .padding(iced::Padding { top: 4.0, right: 8.0, bottom: 4.0, left: 8.0 })
                 .width(Length::Fill)
                 .into()
         };
@@ -883,7 +904,7 @@ impl App {
             .width(Length::Fill)
             .height(Length::Fill)
             .style(|_theme| container::Style {
-                background: Some(Background::Color(THEME.bg_editor)),
+                background: Some(Background::Color(theme().bg_editor)),
                 ..Default::default()
             });
 
@@ -953,7 +974,8 @@ impl App {
                             }
                         } else if modifiers.command() {
                             match c.as_str() {
-                                "r" => return Some(Message::ToggleSidebar),
+                                "b" => return Some(Message::ToggleSidebar),
+                            "r" => return Some(Message::ToggleSidebar),
                                 "o" => return Some(Message::OpenFolderDialog),
                                 "w" => return Some(Message::CloseActiveTab),
                                 "s" => return Some(Message::SaveFile),
@@ -984,14 +1006,14 @@ impl App {
                 let is_active = self.active_tab == Some(idx);
                 let is_modified = matches!(&tab.kind, TabKind::Editor { modified: true, .. });
                 let close_icon = if is_modified {
-                    text("●").size(10).color(THEME.text_muted)
+                    text("●").size(10).color(theme().text_muted)
                 } else {
-                    text("x").size(10).color(THEME.text_dim)
+                    text("x").size(10).color(theme().text_dim)
                 };
 
                 button(
                     row![
-                        text(&tab.name).size(12).color(THEME.text_muted),
+                        text(&tab.name).size(12).color(theme().text_muted),
                         button(close_icon)
                             .style(tab_close_button_style)
                             .on_press(Message::TabClosed(idx))
@@ -1033,7 +1055,7 @@ impl App {
                     container(
                         text(&result.file_name)
                             .size(11)
-                            .color(THEME.text_secondary)
+                            .color(theme().text_secondary)
                     )
                     .padding(iced::Padding { top: 6.0, right: 6.0, bottom: 2.0, left: 6.0 })
                     .into()
@@ -1048,7 +1070,7 @@ impl App {
                         button(
                             text(line_text)
                                 .size(11)
-                                .color(THEME.text_muted)
+                                .color(theme().text_muted)
                         )
                         .style(tree_button_style)
                         .on_press(Message::SearchResultClicked(path, line_num))
@@ -1063,7 +1085,7 @@ impl App {
                         container(
                             text(format!("  ... and {} more", result.matches.len() - 3))
                                 .size(10)
-                                .color(THEME.text_dim)
+                                .color(theme().text_dim)
                         )
                         .padding(iced::Padding { top: 1.0, right: 6.0, bottom: 2.0, left: 12.0 })
                         .into()
@@ -1124,7 +1146,7 @@ impl App {
             .unwrap_or_default();
 
         let left = row![
-            text(file_info).size(10).color(THEME.text_dim),
+            text(file_info).size(10).color(theme().text_dim),
         ]
         .spacing(8)
         .align_y(iced::Alignment::Center);
@@ -1132,7 +1154,7 @@ impl App {
         let right = row![
             text(format!("Ln {}, Col {}", self.cursor_line, self.cursor_col))
                 .size(10)
-                .color(THEME.text_placeholder),
+                .color(theme().text_placeholder),
         ]
         .spacing(8)
         .align_y(iced::Alignment::Center);
@@ -1159,10 +1181,10 @@ impl App {
 
         container(
             column![
-                text(folder_name).size(24).color(THEME.text_muted),
+                text(folder_name).size(24).color(theme().text_muted),
                 text("Select a file from the sidebar to begin editing")
                     .size(13)
-                    .color(THEME.text_placeholder),
+                    .color(theme().text_placeholder),
             ]
             .spacing(12)
             .align_x(iced::Alignment::Center)
@@ -1243,10 +1265,10 @@ impl App {
                 button(
                     row![
                         text(&cmd.name).size(13).color(
-                            if is_selected { THEME.text_primary } else { THEME.text_muted }
+                            if is_selected { theme().text_primary } else { theme().text_muted }
                         ),
                         iced::widget::Space::new().width(Length::Fill),
-                        text(shortcut_text).size(11).color(THEME.text_dim),
+                        text(shortcut_text).size(11).color(theme().text_dim),
                     ]
                     .align_y(iced::Alignment::Center)
                 )
@@ -1319,7 +1341,7 @@ impl App {
 
         let match_info = text(self.find_replace.match_status())
             .size(11)
-            .color(THEME.text_dim);
+            .color(theme().text_dim);
 
         let case_btn = button(
             text(if self.find_replace.case_sensitive { "Aa" } else { "aa" })
@@ -1339,17 +1361,17 @@ impl App {
             .style(tab_close_button_style)
             .padding(iced::Padding { top: 3.0, right: 6.0, bottom: 3.0, left: 6.0 });
 
-        let replace_btn = button(text("Replace").size(11).color(THEME.text_muted))
+        let replace_btn = button(text("Replace").size(11).color(theme().text_muted))
             .on_press(Message::ReplaceOne)
             .style(tab_close_button_style)
             .padding(iced::Padding { top: 3.0, right: 8.0, bottom: 3.0, left: 8.0 });
 
-        let replace_all_btn = button(text("All").size(11).color(THEME.text_muted))
+        let replace_all_btn = button(text("All").size(11).color(theme().text_muted))
             .on_press(Message::ReplaceAll)
             .style(tab_close_button_style)
             .padding(iced::Padding { top: 3.0, right: 8.0, bottom: 3.0, left: 8.0 });
 
-        let close_btn = button(text("✕").size(12).color(THEME.text_muted))
+        let close_btn = button(text("✕").size(12).color(theme().text_muted))
             .on_press(Message::ToggleFindReplace)
             .style(tab_close_button_style)
             .padding(iced::Padding { top: 3.0, right: 6.0, bottom: 3.0, left: 6.0 });
@@ -1379,7 +1401,7 @@ impl App {
         .padding(iced::Padding { top: 10.0, right: 14.0, bottom: 10.0, left: 14.0 })
         .width(Length::Fill)
         .style(|_theme| container::Style {
-            background: Some(Background::Color(THEME.bg_secondary)),
+            background: Some(Background::Color(theme().bg_secondary)),
             border: iced::Border {
                 color: Color::from_rgba(1.0, 1.0, 1.0, 0.06),
                 width: 1.0,
@@ -1403,7 +1425,7 @@ impl App {
         container(input)
             .width(Length::Fill)
             .style(|_theme| container::Style {
-                background: Some(Background::Color(THEME.bg_secondary)),
+                background: Some(Background::Color(theme().bg_secondary)),
                 border: iced::Border {
                     color: Color::from_rgba(1.0, 1.0, 1.0, 0.06),
                     width: 1.0,
@@ -1420,7 +1442,8 @@ impl App {
         // ── Sections for the left nav ────────────────────────────────
         let sections = vec![
             ("general", "General"),
-            ("editor", "Editor"),
+            ("preferences", "Preferences"),
+            ("theme", "Theme"),
             ("wakatime", "WakaTime"),
         ];
 
@@ -1428,9 +1451,9 @@ impl App {
             .into_iter()
             .map(|(key, label)| {
                 let is_active = self.settings_section == key;
-                let label_color = if is_active { THEME.text_primary } else { THEME.text_muted };
+                let label_color = if is_active { theme().text_primary } else { theme().text_muted };
                 let bg = if is_active {
-                    Some(Background::Color(THEME.bg_secondary))
+                    Some(Background::Color(theme().bg_secondary))
                 } else {
                     None
                 };
@@ -1454,16 +1477,16 @@ impl App {
 
         let nav_header = text("Settings")
             .size(14)
-            .color(THEME.text_primary);
+            .color(theme().text_primary);
 
         let close_btn = button(
-            text("×").size(16).color(THEME.text_muted)
+            text("×").size(16).color(theme().text_muted)
         )
         .on_press(Message::ToggleSettings)
         .style(|_theme, _status| button::Style {
             background: None,
             border: iced::Border::default(),
-            text_color: THEME.text_muted,
+            text_color: theme().text_muted,
             ..Default::default()
         })
         .padding(iced::Padding { top: 2.0, right: 8.0, bottom: 2.0, left: 8.0 });
@@ -1490,7 +1513,7 @@ impl App {
         .width(Length::Fixed(180.0))
         .height(Length::Fill)
         .style(|_theme| container::Style {
-            background: Some(Background::Color(BG_MANTLE)),
+            background: Some(Background::Color(theme().bg_secondary)),
             border: iced::Border {
                 color: Color::from_rgba(1.0, 1.0, 1.0, 0.04),
                 width: 0.0,
@@ -1502,7 +1525,8 @@ impl App {
         // ── Right content area ─────────────────────────────────────────
         let content_view: Element<'_, Message> = match self.settings_section.as_str() {
             "general" => self.view_settings_general(),
-            "editor" => self.view_settings_editor(),
+            "preferences" => self.view_settings_preferences(),
+            "theme" => self.view_settings_theme(),
             "wakatime" => self.view_settings_wakatime(),
             _ => self.view_settings_general(),
         };
@@ -1517,7 +1541,7 @@ impl App {
             .width(Length::Fill)
             .height(Length::Fill)
             .style(|_theme| container::Style {
-                background: Some(Background::Color(THEME.bg_editor)),
+                background: Some(Background::Color(theme().bg_editor)),
                 ..Default::default()
             });
 
@@ -1539,11 +1563,11 @@ impl App {
 
         let heading = text("General")
             .size(18)
-            .color(THEME.text_primary);
+            .color(theme().text_primary);
 
         let desc = text("General application settings and information.")
             .size(12)
-            .color(THEME.text_dim);
+            .color(theme().text_dim);
 
         let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
             .style(|_theme| container::Style {
@@ -1552,22 +1576,22 @@ impl App {
             });
 
         let version_row = row![
-            text("Version").size(13).color(THEME.text_muted).width(Length::Fixed(140.0)),
-            text("1.0.0").size(13).color(THEME.text_primary),
+            text("Version").size(13).color(theme().text_muted).width(Length::Fixed(140.0)),
+            text("1.0.0").size(13).color(theme().text_primary),
         ]
         .spacing(12)
         .align_y(iced::Alignment::Center);
 
         let app_name_row = row![
-            text("Application").size(13).color(THEME.text_muted).width(Length::Fixed(140.0)),
-            text("Rode Editor").size(13).color(THEME.text_primary),
+            text("Application").size(13).color(theme().text_muted).width(Length::Fixed(140.0)),
+            text("Rode Editor").size(13).color(theme().text_primary),
         ]
         .spacing(12)
         .align_y(iced::Alignment::Center);
 
         let framework_row = row![
-            text("Framework").size(13).color(THEME.text_muted).width(Length::Fixed(140.0)),
-            text("iced 0.14").size(13).color(THEME.text_primary),
+            text("Framework").size(13).color(theme().text_muted).width(Length::Fixed(140.0)),
+            text("iced 0.14").size(13).color(theme().text_primary),
         ]
         .spacing(12)
         .align_y(iced::Alignment::Center);
@@ -1585,16 +1609,16 @@ impl App {
         .into()
     }
 
-    fn view_settings_editor(&self) -> Element<'_, Message> {
+    fn view_settings_preferences(&self) -> Element<'_, Message> {
         use iced::widget::Space;
 
-        let heading = text("Editor")
+        let heading = text("Preferences")
             .size(18)
-            .color(THEME.text_primary);
+            .color(theme().text_primary);
 
         let desc = text("Configure editor behavior and formatting.")
             .size(12)
-            .color(THEME.text_dim);
+            .color(theme().text_dim);
 
         let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
             .style(|_theme| container::Style {
@@ -1605,8 +1629,8 @@ impl App {
         // Tab size
         let tab_size_row = row![
             column![
-                text("Tab Size").size(13).color(THEME.text_muted),
-                text("Number of spaces per indentation level").size(11).color(THEME.text_dim),
+                text("Tab Size").size(13).color(theme().text_muted),
+                text("Number of spaces per indentation level").size(11).color(theme().text_dim),
             ].spacing(2).width(Length::FillPortion(2)),
             text_input("4", &self.editor_preferences.tab_size.to_string())
                 .on_input(Message::SettingsTabSizeChanged)
@@ -1622,21 +1646,21 @@ impl App {
         let spaces_label = if self.editor_preferences.use_spaces { "Spaces" } else { "Tabs" };
         let spaces_row = row![
             column![
-                text("Indent Using").size(13).color(THEME.text_muted),
-                text("Choose between spaces or tabs for indentation").size(11).color(THEME.text_dim),
+                text("Indent Using").size(13).color(theme().text_muted),
+                text("Choose between spaces or tabs for indentation").size(11).color(theme().text_dim),
             ].spacing(2).width(Length::FillPortion(2)),
             button(
-                text(spaces_label).size(12).color(THEME.text_primary)
+                text(spaces_label).size(12).color(theme().text_primary)
             )
             .on_press(Message::SettingsToggleUseSpaces)
             .style(|_theme, _status| button::Style {
-                background: Some(Background::Color(THEME.bg_secondary)),
+                background: Some(Background::Color(theme().bg_secondary)),
                 border: iced::Border {
                     color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
                     width: 1.0,
                     radius: 4.0.into(),
                 },
-                text_color: THEME.text_primary,
+                text_color: theme().text_primary,
                 ..Default::default()
             })
             .padding(iced::Padding { top: 6.0, right: 16.0, bottom: 6.0, left: 16.0 }),
@@ -1646,7 +1670,7 @@ impl App {
 
         // Save button
         let save_btn = button(
-            text("Save Preferences").size(12).color(THEME.text_primary)
+            text("Save Preferences").size(12).color(theme().text_primary)
         )
         .on_press(Message::SettingsSavePreferences)
         .style(|_theme, _status| button::Style {
@@ -1656,7 +1680,7 @@ impl App {
                 width: 1.0,
                 radius: 4.0.into(),
             },
-            text_color: THEME.text_primary,
+            text_color: theme().text_primary,
             ..Default::default()
         })
         .padding(iced::Padding { top: 8.0, right: 20.0, bottom: 8.0, left: 20.0 });
@@ -1685,16 +1709,148 @@ impl App {
         .into()
     }
 
+    fn view_settings_theme(&self) -> Element<'_, Message> {
+        use iced::widget::Space;
+        use crate::theme::BUILTIN_THEMES;
+
+        let heading = text("Theme")
+            .size(18)
+            .color(theme().text_primary);
+
+        let desc = text("Select a color theme for the editor.")
+            .size(12)
+            .color(theme().text_dim);
+
+        let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        // Built-in theme buttons
+        let mut theme_items: Vec<Element<'_, Message>> = Vec::new();
+        for name in BUILTIN_THEMES {
+            let is_active = self.active_theme_name == *name;
+            let label_color = if is_active { theme().text_primary } else { theme().text_muted };
+            let bg_color = if is_active {
+                Some(Background::Color(ACCENT_PURPLE.scale_alpha(0.15)))
+            } else {
+                Some(Background::Color(theme().bg_secondary))
+            };
+            let border_color = if is_active {
+                ACCENT_PURPLE.scale_alpha(0.4)
+            } else {
+                Color::from_rgba(1.0, 1.0, 1.0, 0.06)
+            };
+
+            let btn = button(
+                text(*name).size(13).color(label_color)
+            )
+            .on_press(Message::SettingsSelectTheme(name.to_string()))
+            .style(move |_theme, _status| button::Style {
+                background: bg_color,
+                border: iced::Border {
+                    color: border_color,
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                text_color: label_color,
+                ..Default::default()
+            })
+            .padding(iced::Padding { top: 10.0, right: 16.0, bottom: 10.0, left: 16.0 })
+            .width(Length::Fill);
+
+            theme_items.push(btn.into());
+        }
+
+        // Custom theme (theme.lua) option
+        let is_custom = self.active_theme_name == "Custom (theme.lua)";
+        let custom_color = if is_custom { theme().text_primary } else { theme().text_muted };
+        let custom_bg = if is_custom {
+            Some(Background::Color(ACCENT_PURPLE.scale_alpha(0.15)))
+        } else {
+            Some(Background::Color(theme().bg_secondary))
+        };
+        let custom_border = if is_custom {
+            ACCENT_PURPLE.scale_alpha(0.4)
+        } else {
+            Color::from_rgba(1.0, 1.0, 1.0, 0.06)
+        };
+
+        let custom_label = button(
+            text("Custom (theme.lua)").size(13).color(custom_color)
+        )
+        .on_press(Message::SettingsReloadTheme)
+        .style(move |_theme, _status| button::Style {
+            background: custom_bg,
+            border: iced::Border {
+                color: custom_border,
+                width: 1.0,
+                radius: 6.0.into(),
+            },
+            text_color: custom_color,
+            ..Default::default()
+        })
+        .padding(iced::Padding { top: 10.0, right: 16.0, bottom: 10.0, left: 16.0 })
+        .width(Length::Fill);
+        theme_items.push(custom_label.into());
+
+        let theme_list = column(theme_items).spacing(6);
+
+        // Reload button (icon-only ↻)
+        let reload_sep = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+                ..Default::default()
+            });
+
+        let reload_desc = text("Reload theme.lua from ~/.config/rode/")
+            .size(11)
+            .color(theme().text_dim);
+
+        let reload_btn = button(
+            text("↻").size(18).color(theme().text_primary)
+        )
+        .on_press(Message::SettingsReloadTheme)
+        .style(|_theme, _status| button::Style {
+            background: Some(Background::Color(theme().bg_secondary)),
+            border: iced::Border {
+                color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+                width: 1.0,
+                radius: 6.0.into(),
+            },
+            text_color: theme().text_primary,
+            ..Default::default()
+        })
+        .padding(iced::Padding { top: 6.0, right: 12.0, bottom: 6.0, left: 12.0 });
+
+        let reload_row = row![reload_desc, Space::new().width(Length::Fill), reload_btn]
+            .spacing(12)
+            .align_y(iced::Alignment::Center);
+
+        column![
+            heading,
+            desc,
+            separator,
+            theme_list,
+            reload_sep,
+            reload_row,
+        ]
+        .spacing(12)
+        .width(Length::Fill)
+        .into()
+    }
+
     fn view_settings_wakatime(&self) -> Element<'_, Message> {
         use iced::widget::Space;
 
         let heading = text("WakaTime")
             .size(18)
-            .color(THEME.text_primary);
+            .color(theme().text_primary);
 
         let desc = text("Configure WakaTime integration for activity tracking.")
             .size(12)
-            .color(THEME.text_dim);
+            .color(theme().text_dim);
 
         let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
             .style(|_theme| container::Style {
@@ -1705,8 +1861,8 @@ impl App {
         // API Key
         let api_key_row = row![
             column![
-                text("API Key").size(13).color(THEME.text_muted),
-                text("Your WakaTime API key for authentication").size(11).color(THEME.text_dim),
+                text("API Key").size(13).color(theme().text_muted),
+                text("Your WakaTime API key for authentication").size(11).color(theme().text_dim),
             ].spacing(2).width(Length::FillPortion(2)),
             text_input("waka_xxxxx", &self.wakatime.api_key)
                 .on_input(Message::WakaTimeApiKeyChanged)
@@ -1721,8 +1877,8 @@ impl App {
         // API URL
         let api_url_row = row![
             column![
-                text("API URL").size(13).color(THEME.text_muted),
-                text("WakaTime API endpoint URL").size(11).color(THEME.text_dim),
+                text("API URL").size(13).color(theme().text_muted),
+                text("WakaTime API endpoint URL").size(11).color(theme().text_dim),
             ].spacing(2).width(Length::FillPortion(2)),
             text_input("https://api.wakatime.com/api/v1", &self.wakatime.api_url)
                 .on_input(Message::WakaTimeApiUrlChanged)
@@ -1736,7 +1892,7 @@ impl App {
 
         // Save button
         let save_btn = button(
-            text("Save WakaTime Settings").size(12).color(THEME.text_primary)
+            text("Save WakaTime Settings").size(12).color(theme().text_primary)
         )
         .on_press(Message::SaveWakaTimeSettings)
         .style(|_theme, _status| button::Style {
@@ -1746,7 +1902,7 @@ impl App {
                 width: 1.0,
                 radius: 4.0.into(),
             },
-            text_color: THEME.text_primary,
+            text_color: theme().text_primary,
             ..Default::default()
         })
         .padding(iced::Padding { top: 8.0, right: 20.0, bottom: 8.0, left: 20.0 });
@@ -1794,7 +1950,7 @@ impl App {
             container(
                 text(format!("{}", folder.display()))
                     .size(10)
-                    .color(THEME.text_dim)
+                    .color(theme().text_dim)
             )
             .padding(iced::Padding { top: 0.0, right: 18.0, bottom: 0.0, left: 18.0 })
             .into()
@@ -1810,7 +1966,7 @@ impl App {
                 container(
                     text("No files found")
                         .size(13)
-                        .color(THEME.text_dim)
+                        .color(theme().text_dim)
                 )
                 .padding(20)
                 .width(Length::Fill)
@@ -1846,7 +2002,7 @@ impl App {
                         row![
                             icon,
                             text(&file.display_name).size(13).color(
-                                if is_selected { THEME.text_primary } else { THEME.text_muted }
+                                if is_selected { theme().text_primary } else { theme().text_muted }
                             ),
                         ]
                         .spacing(8)
@@ -1894,7 +2050,8 @@ impl App {
             let syntax = syntax_set
                 .find_syntax_by_extension(ext)
                 .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
-            let highlighter = SyntectHighlighter::new(&THEME.syntax_theme);
+            let current_theme = theme();
+            let highlighter = SyntectHighlighter::new(&current_theme.syntax_theme);
             let mut parse_state = ParseState::new(syntax);
             let mut highlight_state = HighlightState::new(&highlighter, ScopeStack::new());
 
@@ -1960,7 +2117,7 @@ impl App {
                         .to_string()
                 )
                 .size(11)
-                .color(THEME.text_dim)
+                .color(theme().text_dim)
             )
             .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 6.0, left: 12.0 });
 
@@ -1987,7 +2144,7 @@ impl App {
             container(
                 text("No preview available")
                     .size(13)
-                    .color(THEME.text_dim)
+                    .color(theme().text_dim)
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -2059,7 +2216,7 @@ impl App {
                     container(
                         text("Recent Files")
                             .size(10)
-                            .color(THEME.text_dim)
+                            .color(theme().text_dim)
                     )
                     .padding(iced::Padding { top: 8.0, right: 8.0, bottom: 4.0, left: 14.0 })
                     .into()
@@ -2086,8 +2243,8 @@ impl App {
                 items.push(
                     button(
                         row![
-                            text(display).size(13).color(if is_selected { THEME.text_primary } else { THEME.text_muted }),
-                            text(parent).size(11).color(THEME.text_dim),
+                            text(display).size(13).color(if is_selected { theme().text_primary } else { theme().text_muted }),
+                            text(parent).size(11).color(theme().text_dim),
                         ]
                         .spacing(10)
                         .align_y(iced::Alignment::Center)
@@ -2107,7 +2264,7 @@ impl App {
                 items.push(
                     button(
                         text(display).size(13).color(
-                            if is_selected { THEME.text_primary } else { THEME.text_muted }
+                            if is_selected { theme().text_primary } else { theme().text_muted }
                         )
                     )
                     .style(file_finder_item_style(is_selected))

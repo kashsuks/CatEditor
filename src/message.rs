@@ -67,6 +67,8 @@ pub enum Message {
     SettingsTabSizeChanged(String),
     SettingsToggleUseSpaces,
     SettingsSavePreferences,
+    SettingsSelectTheme(String),
+    SettingsReloadTheme,
     /// Vim-style command input
     ToggleCommandInput,
     CommandInputChanged(String),

@@ -35,7 +35,7 @@ pub fn view_sidebar<'a>(file_tree: Option<&'a FileTree>, width: f32) -> Element<
     )
     .width(Length::Fixed(width))
     .height(Length::Fill)
-    .padding(iced::Padding { top: 4.0, right: 4.0, bottom: 4.0, left: 10.0 })
+    .padding(iced::Padding { top: 8.0, right: 8.0, bottom: 8.0, left: 12.0 })
     .style(sidebar_container_style);
 
     container(sidebar)
@@ -52,8 +52,8 @@ fn view_file_tree(tree: &FileTree) -> Element<'_, Message> {
 fn view_empty_sidebar<'a>() -> Element<'a, Message> {
     container(
         column![
-            text("No folder open").size(13).color(THEME.text_muted),
-            text("Cmd+O to open").size(11).color(THEME.text_placeholder),
+            text("No folder open").size(13).color(theme().text_muted),
+            text("Cmd+O to open").size(11).color(theme().text_placeholder),
         ]
         .spacing(4)
         .align_x(iced::Alignment::Center)

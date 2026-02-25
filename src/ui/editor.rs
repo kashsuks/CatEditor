@@ -1,50 +1,12 @@
 use iced::keyboard::{key, Key};
-use iced::widget::{column, container, row, scrollable, text};
 use iced::widget::text_editor::{TextEditor, Content, Binding, KeyPress, Motion};
 use iced::{Element, Length};
 
 use crate::message::Message;
 use crate::syntax::{VscodeHighlighter, Settings};
-use crate::theme::*;
 use crate::ui::styles::text_editor_style;
 
-/// Font size used for line numbers (should match editor font size).
-const LINE_NUMBER_SIZE: f32 = 14.0;
-/// Width of the line number gutter column.
-const GUTTER_WIDTH: f32 = 48.0;
-
-pub fn create_editor<'a>(content: &'a Content, extension: &str, current_line: usize) -> Element<'a, Message> {
-    let line_count = content.line_count();
-
-    // ── Line number gutter ──────────────────────────────────────────────
-    let mut numbers: Vec<Element<'_, Message>> = Vec::with_capacity(line_count);
-    for i in 1..=line_count {
-        let color = if i == current_line { TEXT_1 } else { OVERLAY_2 };
-        numbers.push(
-            container(
-                text(format!("{}", i))
-                    .size(LINE_NUMBER_SIZE)
-                    .color(color)
-            )
-            .width(Length::Fill)
-            .align_right(Length::Fill)
-            .into(),
-        );
-    }
-
-    let gutter: Element<'_, Message> = container(
-        scrollable(
-            column(numbers)
-                .spacing(4)
-                .padding(iced::Padding { top: 7.0, right: 8.0, bottom: 0.0, left: 4.0 })
-        )
-        .height(Length::Fill)
-    )
-    .width(Length::Fixed(GUTTER_WIDTH))
-    .height(Length::Fill)
-    .into();
-
-    // ── Text editor ─────────────────────────────────────────────────────
+pub fn create_editor<'a>(content: &'a Content, extension: &str, _current_line: usize) -> Element<'a, Message> {
     let editor = TextEditor::new(content)
         .on_action(Message::EditorAction)
         .key_binding(editor_key_bindings)
@@ -55,11 +17,10 @@ pub fn create_editor<'a>(content: &'a Content, extension: &str, current_line: us
             |highlight, _theme| highlight.to_format(),
         )
         .style(text_editor_style)
+        .padding(iced::Padding { top: 8.0, right: 12.0, bottom: 8.0, left: 12.0 })
         .height(Length::Fill);
 
-    row![gutter, editor]
-        .height(Length::Fill)
-        .into()
+    editor.into()
 }
 
 fn editor_key_bindings(key_press: KeyPress) -> Option<Binding<Message>> {
