@@ -70,13 +70,8 @@ impl ThemeColors {
         format!(
             r#"-- Rode Theme Configuration
 -- Edit these hex color values to customize your theme
--- Changes will be applied automatically
---  1. Edit colours in the Theme menu (auto-saved and applied)
---  2. Force reload with Cmd + , + A (Mac) or Ctrl + , + A (Windows/Linux)
---  3. Restart the application
 
 return {{
-    -- base colours
     rosewater = "{}",
     flamingo = "{}",
     pink = "{}",
@@ -91,16 +86,12 @@ return {{
     sapphire = "{}",
     blue = "{}",
     lavender = "{}",
-
-    -- text editing
     text = "{}",
     subtext1 = "{}",
     subtext0 = "{}",
     overlay2 = "{}",
     overlay1 = "{}",
     overlay0 = "{}",
-
-    -- change background colours
     surface2 = "{}",
     surface1 = "{}",
     surface0 = "{}",
@@ -109,32 +100,11 @@ return {{
     crust = "{}",
 }}
 "#,
-            self.rosewater,
-            self.flamingo,
-            self.pink,
-            self.mauve,
-            self.red,
-            self.maroon,
-            self.peach,
-            self.yellow,
-            self.green,
-            self.teal,
-            self.sky,
-            self.sapphire,
-            self.blue,
-            self.lavender,
-            self.text,
-            self.subtext1,
-            self.subtext0,
-            self.overlay2,
-            self.overlay1,
-            self.overlay0,
-            self.surface2,
-            self.surface1,
-            self.surface0,
-            self.base,
-            self.mantle,
-            self.crust
+            self.rosewater, self.flamingo, self.pink, self.mauve, self.red, self.maroon,
+            self.peach, self.yellow, self.green, self.teal, self.sky, self.sapphire,
+            self.blue, self.lavender, self.text, self.subtext1, self.subtext0,
+            self.overlay2, self.overlay1, self.overlay0, self.surface2, self.surface1,
+            self.surface0, self.base, self.mantle, self.crust,
         )
     }
 
@@ -203,7 +173,6 @@ pub fn get_theme_path() -> PathBuf {
 
 pub fn load_theme() -> ThemeColors {
     let path = get_theme_path();
-
     if let Ok(content) = fs::read_to_string(&path) {
         ThemeColors::from_lua(&content).unwrap_or_default()
     } else {
@@ -213,14 +182,10 @@ pub fn load_theme() -> ThemeColors {
 
 pub fn save_theme(theme: &ThemeColors) -> Result<(), std::io::Error> {
     let path = get_theme_path();
-
-    // Create directory if it doesn't exist
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-
     let mut file = fs::File::create(path)?;
     file.write_all(theme.to_lua().as_bytes())?;
-
     Ok(())
 }

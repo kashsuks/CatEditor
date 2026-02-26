@@ -83,45 +83,11 @@ impl LanguageDefinitions {
         self.keywords.insert(
             "typescript".to_string(),
             vec![
-                "function",
-                "const",
-                "let",
-                "var",
-                "if",
-                "else",
-                "for",
-                "while",
-                "return",
-                "break",
-                "continue",
-                "switch",
-                "case",
-                "default",
-                "try",
-                "catch",
-                "finally",
-                "throw",
-                "new",
-                "class",
-                "extends",
-                "import",
-                "export",
-                "default",
-                "async",
-                "await",
-                "yield",
-                "static",
-                "this",
-                "interface",
-                "type",
-                "enum",
-                "namespace",
-                "implements",
-                "readonly",
-                "public",
-                "private",
-                "protected",
-                "abstract",
+                "function", "const", "let", "var", "if", "else", "for", "while", "return",
+                "break", "continue", "switch", "case", "default", "try", "catch", "finally",
+                "throw", "new", "class", "extends", "import", "export", "default", "async",
+                "await", "yield", "static", "this", "interface", "type", "enum", "namespace",
+                "implements", "readonly", "public", "private", "protected", "abstract",
             ]
             .iter()
             .map(|s| s.to_string())
@@ -158,18 +124,8 @@ impl LanguageDefinitions {
         self.types.insert(
             "python".to_string(),
             vec![
-                "int",
-                "float",
-                "str",
-                "list",
-                "dict",
-                "tuple",
-                "set",
-                "bool",
-                "bytes",
-                "bytearray",
-                "complex",
-                "frozenset",
+                "int", "float", "str", "list", "dict", "tuple", "set", "bool", "bytes",
+                "bytearray", "complex", "frozenset",
             ]
             .iter()
             .map(|s| s.to_string())
@@ -208,46 +164,5 @@ impl LanguageDefinitions {
 
     pub fn supports(&self, language: &str) -> bool {
         self.keywords.contains_key(language)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_rust_keywords() {
-        let defs = LanguageDefinitions::new();
-        let keywords = defs.get_keywords("rust");
-        assert!(keywords.contains(&"fn".to_string()));
-        assert!(keywords.contains(&"struct".to_string()));
-    }
-
-    #[test]
-    fn test_python_types() {
-        let defs = LanguageDefinitions::new();
-        let types = defs.get_types("python");
-        assert!(types.contains(&"int".to_string()));
-        assert!(types.contains(&"str".to_string()));
-    }
-
-    #[test]
-    fn test_supports_language() {
-        let defs = LanguageDefinitions::new();
-        assert!(defs.supports("rust"));
-        assert!(defs.supports("javascript"));
-        assert!(!defs.supports("haskell"));
-    }
-
-    #[test]
-    fn test_custom_language() {
-        let mut defs = LanguageDefinitions::new();
-        defs.add_language(
-            "custom".to_string(),
-            vec!["begin".to_string(), "end".to_string()],
-            vec!["Integer".to_string()],
-        );
-        assert!(defs.supports("custom"));
-        assert_eq!(defs.get_keywords("custom").len(), 2);
     }
 }

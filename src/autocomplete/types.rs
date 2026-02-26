@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-/// Structure for info related to autocomplete suggestions
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Suggestion {
     pub text: String,
     pub kind: SuggestionKind,
-    pub detail: Option<String>, // any additional context such as
-    // function signatures
+    pub detail: Option<String>,
     pub score: f32,
 }
 
@@ -20,7 +18,6 @@ impl Suggestion {
         }
     }
 
-    /// Actually create a suggestion with the given score
     pub fn with_score(text: String, kind: SuggestionKind, score: f32) -> Self {
         Self {
             text,
@@ -30,7 +27,6 @@ impl Suggestion {
         }
     }
 
-    /// Create a suggestion with the given detail
     pub fn with_detail(text: String, kind: SuggestionKind, detail: String) -> Self {
         Self {
             text,
@@ -41,7 +37,6 @@ impl Suggestion {
     }
 }
 
-/// The types of suggestions with graunlar categories
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SuggestionKind {
     Variable,
@@ -57,8 +52,6 @@ pub enum SuggestionKind {
 }
 
 impl SuggestionKind {
-    /// Get a display icon for this suggestion kind
-    /// TODO: Use actual proper icons online instead of emojis
     pub fn icon(&self) -> &'static str {
         match self {
             SuggestionKind::Function => "ƒ",
@@ -74,9 +67,6 @@ impl SuggestionKind {
         }
     }
 
-    /// Get the sort priority
-    /// lower = higher priority
-    /// Based on a ranking system
     pub fn sort_priority(&self) -> u8 {
         match self {
             SuggestionKind::Keyword => 0,

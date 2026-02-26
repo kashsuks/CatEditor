@@ -6,9 +6,7 @@ use crate::autocomplete::{
 };
 use std::collections::HashSet;
 
-/// Main autocomplete engine
-///
-/// Provides intelligent code completion with fuzzy matching, context awareness,
+/// Main autocomplete engine with fuzzy matching, context awareness,
 /// and language-specific suggestions.
 pub struct Autocomplete {
     pub active: bool,
@@ -18,7 +16,6 @@ pub struct Autocomplete {
     pub prefix: String,
 
     language_defs: LanguageDefinitions,
-
     recent_identifiers: Vec<String>,
     max_recent: usize,
 }
@@ -96,7 +93,6 @@ impl Autocomplete {
         identifiers
     }
 
-    /// Infer what kind of identifier this is based on context and patterns
     fn infer_identifier_kind(
         &self,
         text: &str,
@@ -129,6 +125,18 @@ impl Autocomplete {
         SuggestionKind::Variable
     }
 
+    /// Detect the language from a file extension string (e.g. "rs" -> "rust")
+    pub fn detect_language(ext: &str) -> Option<String> {
+        match ext {
+            "rs" => Some("rust".to_string()),
+            "js" | "mjs" | "cjs" => Some("javascript".to_string()),
+            "ts" => Some("typescript".to_string()),
+            "tsx" | "jsx" => Some("typescript".to_string()),
+            "py" => Some("python".to_string()),
+            _ => None,
+        }
+    }
+
     pub fn trigger(&mut self, text: &str, cursor_pos: usize, language: Option<&str>) {
         let (prefix, start_pos) = Self::get_current_word(text, cursor_pos);
 
@@ -148,10 +156,8 @@ impl Autocomplete {
         }
 
         self.add_type_suggestions(&prefix, language, &context, &mut all_suggestions);
-
         self.add_identifier_suggestions(text, &prefix, &context, &mut all_suggestions);
 
-        // Sort by score (highest first)
         all_suggestions.sort_by(|a, b| {
             b.score
                 .partial_cmp(&a.score)
@@ -161,7 +167,6 @@ impl Autocomplete {
 
         let mut seen = HashSet::new();
         all_suggestions.retain(|s| seen.insert(s.text.clone()));
-
         all_suggestions.truncate(20);
 
         self.suggestions = all_suggestions;
@@ -275,39 +280,9 @@ impl Autocomplete {
         }
     }
 
-    pub fn apply_suggestion(&mut self, text: &mut String, cursor_pos: &mut usize) -> bool {
-        if let Some(suggestion) = self.get_selected() {
-            let completion = &suggestion.text;
-
-            if self.trigger_position > text.len() {
-                self.active = false;
-                return false;
-            }
-
-            let safe_cursor = (*cursor_pos).min(text.len());
-
-            if self.trigger_position > safe_cursor {
-                self.active = false;
-                return false;
-            }
-
-            text.replace_range(self.trigger_position..safe_cursor, completion);
-            *cursor_pos = self.trigger_position + completion.len();
-
-            self.active = false;
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn cancel(&mut self) {
         self.active = false;
         self.suggestions.clear();
         self.selected_index = 0;
-    }
-
-    pub fn add_language(&mut self, language: String, keywords: Vec<String>, types: Vec<String>) {
-        self.language_defs.add_language(language, keywords, types);
     }
 }
