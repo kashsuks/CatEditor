@@ -3,17 +3,9 @@ use iced::advanced::text::highlighter::Highlighter as IcedHighlighter;
 use iced::{Color, Font};
 
 use syntect::highlighting::{
-    HighlightIterator,
-    HighlightState,
-    Highlighter as SyntectHighlighter,
-    Style,
-    Theme as SynTheme,
+    HighlightIterator, HighlightState, Highlighter as SyntectHighlighter, Style, Theme as SynTheme,
 };
-use syntect::parsing::{
-    ParseState,
-    ScopeStack,
-    SyntaxSet
-};
+use syntect::parsing::{ParseState, ScopeStack, SyntaxSet};
 
 use std::ops::Range;
 use std::sync::Arc;
@@ -73,7 +65,8 @@ impl IcedHighlighter for VscodeHighlighter {
     }
 
     fn update(&mut self, new_settings: &Self::Settings) {
-        let syntax = self.syntax_set
+        let syntax = self
+            .syntax_set
             .find_syntax_by_extension(&new_settings.extension)
             .unwrap_or_else(|| self.syntax_set.find_syntax_plain_text());
         self.syntax_name = syntax.name.clone();

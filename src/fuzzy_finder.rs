@@ -38,8 +38,16 @@ impl Default for FuzzyFinder {
 
 /// Directories to skip while scanning.
 const IGNORED_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".DS_Store", "__pycache__",
-    ".claude", ".vscode", "dist", "build", ".next",
+    ".git",
+    "node_modules",
+    "target",
+    ".DS_Store",
+    "__pycache__",
+    ".claude",
+    ".vscode",
+    "dist",
+    "build",
+    ".next",
 ];
 
 impl FuzzyFinder {
@@ -116,7 +124,10 @@ impl FuzzyFinder {
 
     /// Select the currently highlighted entry; returns its path.
     pub fn select(&mut self) -> Option<PathBuf> {
-        let path = self.filtered_files.get(self.selected_index).map(|f| f.path.clone());
+        let path = self
+            .filtered_files
+            .get(self.selected_index)
+            .map(|f| f.path.clone());
         self.close();
         path
     }
@@ -135,11 +146,7 @@ impl FuzzyFinder {
         // Read first ~200 lines for preview (no need to load huge files)
         let content = fs::read_to_string(&entry.path)
             .unwrap_or_else(|_| String::from("[binary or unreadable file]"));
-        let truncated: String = content
-            .lines()
-            .take(200)
-            .collect::<Vec<_>>()
-            .join("\n");
+        let truncated: String = content.lines().take(200).collect::<Vec<_>>().join("\n");
         self.preview_cache = Some((entry.path.clone(), truncated));
     }
 
@@ -165,7 +172,9 @@ fn scan_directory(dir: &Path, root: &Path) -> Vec<FileEntry> {
     for entry in entries.flatten() {
         let path = entry.path();
 
-        let Some(name) = path.file_name() else { continue };
+        let Some(name) = path.file_name() else {
+            continue;
+        };
         let name_str = name.to_string_lossy();
 
         // Skip hidden files/dirs and ignored directories
@@ -182,10 +191,7 @@ fn scan_directory(dir: &Path, root: &Path) -> Vec<FileEntry> {
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .to_string();
-            files.push(FileEntry {
-                path,
-                display_name,
-            });
+            files.push(FileEntry { path, display_name });
         } else if path.is_dir() {
             files.extend(scan_directory(&path, root));
         }
@@ -217,7 +223,11 @@ fn fuzzy_match(text: &str, pattern: &str) -> i32 {
             }
 
             // Bonus for word-boundary matches
-            if i == 0 || text_chars[i - 1] == '/' || text_chars[i - 1] == '_' || text_chars[i - 1] == '.' {
+            if i == 0
+                || text_chars[i - 1] == '/'
+                || text_chars[i - 1] == '_'
+                || text_chars[i - 1] == '.'
+            {
                 score += 30;
             }
 

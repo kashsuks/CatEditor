@@ -1,6 +1,6 @@
+use crate::search::SearchResult;
 use iced::widget::text_editor::Action;
 use std::path::PathBuf;
-use crate::search::SearchResult;
 
 #[derive(Debug, Clone)]
 pub enum Message {

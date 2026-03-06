@@ -1,13 +1,13 @@
-use iced::widget::{text, column, row, button, scrollable, container};
-use iced::widget::svg::{Svg, Handle};
 use iced::widget::image;
+use iced::widget::svg::{Handle, Svg};
+use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Element, Length};
 
 use crate::file_tree::{FileEntry, FileTree};
 use crate::icons::{get_file_icon, get_folder_icon};
 use crate::message::Message;
 use crate::theme::*;
-use crate::ui::styles::{tree_button_style, sidebar_container_style};
+use crate::ui::styles::{sidebar_container_style, tree_button_style};
 
 /// Create an icon element from a path, choosing Svg or Image widget based on extension.
 fn icon_widget<'a>(icon_path: &str) -> Element<'a, Message> {
@@ -30,17 +30,18 @@ pub fn view_sidebar<'a>(file_tree: Option<&'a FileTree>, width: f32) -> Element<
         None => view_empty_sidebar(),
     };
 
-    let sidebar = container(
-        scrollable(sidebar_content).height(Length::Fill)
-    )
-    .width(Length::Fixed(width))
-    .height(Length::Fill)
-    .padding(iced::Padding { top: 2.0, right: 2.0, bottom: 2.0, left: 4.0 })
-    .style(sidebar_container_style);
+    let sidebar = container(scrollable(sidebar_content).height(Length::Fill))
+        .width(Length::Fixed(width))
+        .height(Length::Fill)
+        .padding(iced::Padding {
+            top: 2.0,
+            right: 2.0,
+            bottom: 2.0,
+            left: 4.0,
+        })
+        .style(sidebar_container_style);
 
-    container(sidebar)
-        .padding(0)
-        .into()
+    container(sidebar).padding(0).into()
 }
 
 fn view_file_tree(tree: &FileTree) -> Element<'_, Message> {
@@ -53,10 +54,12 @@ fn view_empty_sidebar<'a>() -> Element<'a, Message> {
     container(
         column![
             text("No folder open").size(13).color(theme().text_muted),
-            text("Cmd+O to open").size(11).color(theme().text_placeholder),
+            text("Cmd+O to open")
+                .size(11)
+                .color(theme().text_placeholder),
         ]
         .spacing(4)
-        .align_x(iced::Alignment::Center)
+        .align_x(iced::Alignment::Center),
     )
     .width(Length::Fill)
     .height(Length::Fill)
@@ -75,7 +78,11 @@ fn render_entries<'a>(
 
     for entry in entries {
         match entry {
-            FileEntry::Directory { path, name, children } => {
+            FileEntry::Directory {
+                path,
+                name,
+                children,
+            } => {
                 let is_expanded = tree.is_expanded(path);
                 let icon_path = get_folder_icon(name, is_expanded);
 
@@ -88,11 +95,16 @@ fn render_entries<'a>(
                         text(name).size(13),
                     ]
                     .spacing(6)
-                    .align_y(iced::Alignment::Center)
+                    .align_y(iced::Alignment::Center),
                 )
                 .style(tree_button_style)
                 .on_press(Message::FolderToggled(path.clone()))
-                .padding(iced::Padding { top: 6.0, right: 10.0, bottom: 6.0, left: 10.0 })
+                .padding(iced::Padding {
+                    top: 6.0,
+                    right: 10.0,
+                    bottom: 6.0,
+                    left: 10.0,
+                })
                 .width(Length::Fill);
 
                 items.push(btn.into());
@@ -113,11 +125,16 @@ fn render_entries<'a>(
                         text(name).size(13),
                     ]
                     .spacing(6)
-                    .align_y(iced::Alignment::Center)
+                    .align_y(iced::Alignment::Center),
                 )
                 .style(tree_button_style)
                 .on_press(Message::FileClicked(path.clone()))
-                .padding(iced::Padding { top: 6.0, right: 10.0, bottom: 6.0, left: 10.0 })
+                .padding(iced::Padding {
+                    top: 6.0,
+                    right: 10.0,
+                    bottom: 6.0,
+                    left: 10.0,
+                })
                 .width(Length::Fill);
 
                 items.push(btn.into());

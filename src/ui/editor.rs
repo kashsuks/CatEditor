@@ -1,10 +1,10 @@
 use iced::keyboard::{key, Key};
+use iced::widget::text_editor::{Binding, Content, KeyPress, Motion, TextEditor};
 use iced::widget::{column, container, row, text};
-use iced::widget::text_editor::{TextEditor, Content, Binding, KeyPress, Motion};
 use iced::{Background, Border, Element, Length};
 
 use crate::message::Message;
-use crate::syntax::{VscodeHighlighter, Settings};
+use crate::syntax::{Settings, VscodeHighlighter};
 use crate::theme::theme;
 use crate::ui::styles::text_editor_style;
 
@@ -28,24 +28,34 @@ pub fn create_editor<'a>(
         gutter_lines.push(
             container(text("...").size(12).color(theme().text_dim))
                 .width(Length::Fixed(52.0))
-                .padding(iced::Padding { top: 0.0, right: 8.0, bottom: 0.0, left: 0.0 })
+                .padding(iced::Padding {
+                    top: 0.0,
+                    right: 8.0,
+                    bottom: 0.0,
+                    left: 0.0,
+                })
                 .align_right(Length::Fixed(52.0))
-                .into()
+                .into(),
         );
     }
 
     for line in start_line..=end_line {
         let is_active = line == active_line;
         gutter_lines.push(
-            container(
-                text(format!("{line:>4}"))
-                    .size(12)
-                    .color(if is_active { theme().text_primary } else { theme().text_dim })
-            )
+            container(text(format!("{line:>4}")).size(12).color(if is_active {
+                theme().text_primary
+            } else {
+                theme().text_dim
+            }))
             .width(Length::Fixed(52.0))
-            .padding(iced::Padding { top: 0.0, right: 8.0, bottom: 0.0, left: 0.0 })
+            .padding(iced::Padding {
+                top: 0.0,
+                right: 8.0,
+                bottom: 0.0,
+                left: 0.0,
+            })
             .align_right(Length::Fixed(52.0))
-            .into()
+            .into(),
         );
     }
 
@@ -53,27 +63,34 @@ pub fn create_editor<'a>(
         gutter_lines.push(
             container(text("...").size(12).color(theme().text_dim))
                 .width(Length::Fixed(52.0))
-                .padding(iced::Padding { top: 0.0, right: 8.0, bottom: 0.0, left: 0.0 })
+                .padding(iced::Padding {
+                    top: 0.0,
+                    right: 8.0,
+                    bottom: 0.0,
+                    left: 0.0,
+                })
                 .align_right(Length::Fixed(52.0))
-                .into()
+                .into(),
         );
     }
 
-    let gutter = container(
-        column(gutter_lines)
-            .spacing(0)
-    )
-    .width(Length::Fixed(56.0))
-    .padding(iced::Padding { top: 4.0, right: 2.0, bottom: 4.0, left: 2.0 })
-    .style(|_theme| container::Style {
-        background: None,
-        border: Border {
-            color: iced::Color::TRANSPARENT,
-            width: 0.0,
-            radius: 0.0.into(),
-        },
-        ..Default::default()
-    });
+    let gutter = container(column(gutter_lines).spacing(0))
+        .width(Length::Fixed(56.0))
+        .padding(iced::Padding {
+            top: 4.0,
+            right: 2.0,
+            bottom: 4.0,
+            left: 2.0,
+        })
+        .style(|_theme| container::Style {
+            background: None,
+            border: Border {
+                color: iced::Color::TRANSPARENT,
+                width: 0.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        });
 
     let editor = TextEditor::new(content)
         .on_action(Message::EditorAction)
@@ -85,18 +102,20 @@ pub fn create_editor<'a>(
             |highlight, _theme| highlight.to_format(),
         )
         .style(text_editor_style)
-        .padding(iced::Padding { top: 4.0, right: 4.0, bottom: 4.0, left: 4.0 })
+        .padding(iced::Padding {
+            top: 4.0,
+            right: 4.0,
+            bottom: 4.0,
+            left: 4.0,
+        })
         .height(Length::Fill);
 
-    container(
-        row![gutter, editor]
-            .height(Length::Fill)
-    )
-    .style(|_theme| container::Style {
-        background: Some(Background::Color(theme().bg_editor)),
-        ..Default::default()
-    })
-    .into()
+    container(row![gutter, editor].height(Length::Fill))
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(theme().bg_editor)),
+            ..Default::default()
+        })
+        .into()
 }
 
 fn editor_key_bindings(key_press: KeyPress) -> Option<Binding<Message>> {
@@ -111,7 +130,8 @@ fn editor_key_bindings(key_press: KeyPress) -> Option<Binding<Message>> {
     match key_press.key.as_ref() {
         Key::Named(key::Named::Backspace) => {
             if modifiers.command() {
-                Some(Binding::Sequence(vec![ // Detects when the cmd key is pressed and begin a sequence
+                Some(Binding::Sequence(vec![
+                    // Detects when the cmd key is pressed and begin a sequence
                     Binding::Select(Motion::Home),
                     Binding::Backspace, // If home + backspace is detected, remove whole line
                 ]))

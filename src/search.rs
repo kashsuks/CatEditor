@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct SearchMatch {
@@ -52,7 +52,8 @@ pub fn search_workspace(root: &PathBuf, query: &str) -> Vec<SearchResult> {
         if !matches.is_empty() {
             results.push(SearchResult {
                 path: path.to_path_buf(),
-                file_name: path.file_name()
+                file_name: path
+                    .file_name()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .to_string(),
@@ -80,7 +81,8 @@ pub fn collect_all_files(root: &PathBuf) -> Vec<(String, PathBuf)> {
             continue;
         }
 
-        let display = path.strip_prefix(root)
+        let display = path
+            .strip_prefix(root)
             .unwrap_or(path)
             .to_string_lossy()
             .to_string();
@@ -90,7 +92,6 @@ pub fn collect_all_files(root: &PathBuf) -> Vec<(String, PathBuf)> {
 
     files
 }
-
 
 pub fn fuzzy_find_files(
     query: &str,
@@ -102,7 +103,8 @@ pub fn fuzzy_find_files(
     let mut scored: Vec<(i64, String, PathBuf)> = files
         .iter()
         .filter_map(|(display, abs_path)| {
-            matcher.fuzzy_match(display, query)
+            matcher
+                .fuzzy_match(display, query)
                 .map(|score| (score, display.clone(), abs_path.clone()))
         })
         .collect();

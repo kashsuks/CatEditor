@@ -1,7 +1,7 @@
-use iced::widget::button::{Style as ButtonStyle, Status as ButtonStatus};
+use iced::border::Radius;
+use iced::widget::button::{Status as ButtonStatus, Style as ButtonStyle};
 use iced::widget::container;
 use iced::widget::text_editor;
-use iced::border::Radius;
 use iced::{Background, Border, Color, Theme, Vector};
 
 use crate::theme::*;
@@ -111,7 +111,12 @@ pub fn status_bar_style(_theme: &Theme) -> container::Style {
         border: Border {
             color: theme().border_very_subtle,
             width: 0.0,
-            radius: Radius { top_left: 0.0, top_right: 0.0, bottom_right: 0.0, bottom_left: 0.0 },
+            radius: Radius {
+                top_left: 0.0,
+                top_right: 0.0,
+                bottom_right: 0.0,
+                bottom_left: 0.0,
+            },
         },
         ..Default::default()
     }
@@ -123,7 +128,12 @@ pub fn tab_bar_style(_theme: &Theme) -> container::Style {
         border: Border {
             color: Color::TRANSPARENT,
             width: 0.0,
-            radius: Radius { top_left: 0.0, top_right: 0.0, bottom_right: 0.0, bottom_left: 0.0 },
+            radius: Radius {
+                top_left: 0.0,
+                top_right: 0.0,
+                bottom_right: 0.0,
+                bottom_left: 0.0,
+            },
         },
         ..Default::default()
     }
@@ -181,7 +191,10 @@ pub fn search_panel_style(_theme: &Theme) -> container::Style {
     }
 }
 
-pub fn search_input_style(_theme: &Theme, _status: iced::widget::text_input::Status) -> iced::widget::text_input::Style {
+pub fn search_input_style(
+    _theme: &Theme,
+    _status: iced::widget::text_input::Status,
+) -> iced::widget::text_input::Style {
     iced::widget::text_input::Style {
         background: Background::Color(Color::TRANSPARENT),
         border: Border {
@@ -231,7 +244,11 @@ pub fn file_finder_item_style(is_selected: bool) -> impl Fn(&Theme, ButtonStatus
 
         ButtonStyle {
             background,
-            text_color: if is_selected { theme().text_primary } else { theme().text_muted },
+            text_color: if is_selected {
+                theme().text_primary
+            } else {
+                theme().text_muted
+            },
             border: Border {
                 color: Color::TRANSPARENT,
                 width: 0.0,
