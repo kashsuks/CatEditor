@@ -6,7 +6,7 @@ use iced::{Background, Border, Element, Length};
 use crate::features::lsp::InlineDiagnostic;
 use crate::features::syntax::{Settings, VscodeHighlighter};
 use crate::message::Message;
-use crate::theme::{theme, ACCENT_RED, ACCENT_SKY, ACCENT_YELLOW};
+use crate::theme::theme;
 use crate::ui::styles::text_editor_style;
 
 pub const GUTTER_VISIBLE_LINES: usize = 60;
@@ -43,27 +43,26 @@ pub fn create_editor<'a>(
 
     for line in start_line..=end_line {
         let is_active = line == active_line;
-        let marker = marker_for_line(line, diagnostics);
+        let has_diagnostic = diagnostics.iter().any(|d| d.line == line);
         gutter_lines.push(
-            container(
-                row![
-                    text(marker.0).size(12).color(marker.1),
-                    text(format!("{line:>4}")).size(12).color(if is_active {
-                        theme().text_primary
-                    } else {
-                        theme().text_dim
-                    }),
-                ]
-                .spacing(6),
-            )
-            .width(Length::Fixed(64.0))
+            container(text(format!("{line:>4}")).size(12).color(if is_active {
+                theme().text_primary
+            } else {
+                // Keep line numbers minimal while still hinting this line has diagnostics.
+                if has_diagnostic {
+                    theme().text_secondary
+                } else {
+                    theme().text_dim
+                }
+            }))
+            .width(Length::Fixed(52.0))
             .padding(iced::Padding {
                 top: 0.0,
                 right: 8.0,
                 bottom: 0.0,
                 left: 0.0,
             })
-            .align_right(Length::Fixed(64.0))
+            .align_right(Length::Fixed(52.0))
             .into(),
         );
     }
@@ -84,7 +83,7 @@ pub fn create_editor<'a>(
     }
 
     let gutter = container(column(gutter_lines).spacing(0))
-        .width(Length::Fixed(68.0))
+        .width(Length::Fixed(56.0))
         .padding(iced::Padding {
             top: 4.0,
             right: 2.0,
@@ -169,32 +168,6 @@ fn editor_key_bindings(key_press: KeyPress) -> Option<Binding<Message>> {
             }
         }
         _ => Binding::from_key_press(key_press),
-    }
-}
-
-fn marker_for_line(line: usize, diagnostics: &[InlineDiagnostic]) -> (&'static str, iced::Color) {
-    let mut has_error = false;
-    let mut has_warning = false;
-    let mut has_info = false;
-
-    for diag in diagnostics.iter().filter(|d| d.line == line) {
-        if diag.severity == lsp_types::DiagnosticSeverity::ERROR {
-            has_error = true;
-        } else if diag.severity == lsp_types::DiagnosticSeverity::WARNING {
-            has_warning = true;
-        } else {
-            has_info = true;
-        }
-    }
-
-    if has_error {
-        ("●", ACCENT_RED)
-    } else if has_warning {
-        ("●", ACCENT_YELLOW)
-    } else if has_info {
-        ("●", ACCENT_SKY)
-    } else {
-        (" ", theme().text_dim)
     }
 }
 

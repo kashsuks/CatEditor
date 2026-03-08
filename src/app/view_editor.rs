@@ -188,31 +188,20 @@ impl App {
             .spacing(8)
             .align_y(iced::Alignment::Center);
 
-        let (errors, warnings) = self
+        let current_line_diag = self
             .active_tab
             .and_then(|idx| self.tabs.get(idx))
             .map(|tab| tab.path.clone())
             .and_then(|path| self.lsp_diagnostics.get(&path))
-            .map(|items| {
-                let errors = items
-                    .iter()
-                    .filter(|d| d.severity == lsp_types::DiagnosticSeverity::ERROR)
-                    .count();
-                let warnings = items
-                    .iter()
-                    .filter(|d| d.severity == lsp_types::DiagnosticSeverity::WARNING)
-                    .count();
-                (errors, warnings)
-            })
-            .unwrap_or((0, 0));
+            .and_then(|items| items.iter().find(|d| d.line == self.cursor_line))
+            .map(|d| d.message.clone())
+            .unwrap_or_default();
 
         let right = row![
-            text(format!("E:{errors} W:{warnings}"))
-                .size(10)
-                .color(theme().text_placeholder),
             text(format!("Ln {}, Col {}", self.cursor_line, self.cursor_col))
                 .size(10)
                 .color(theme().text_placeholder),
+            text(current_line_diag).size(10).color(theme().text_secondary),
         ]
         .spacing(8)
         .align_y(iced::Alignment::Center);
