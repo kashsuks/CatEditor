@@ -65,7 +65,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: cargo build --release --locked
+        run: cargo build --release
 
       - name: Package
         shell: bash
@@ -96,7 +96,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Build
-        run: cargo build --release --locked --target x86_64-pc-windows-msvc
+        run: cargo build --release --target x86_64-pc-windows-msvc
 
       - name: Package
         shell: bash
@@ -134,14 +134,14 @@ jobs:
           echo "path=$SDK" >> "$GITHUB_OUTPUT"
 
       - name: Build aarch64
-        run: cargo build --release --locked --target aarch64-apple-darwin
+        run: cargo build --release --target aarch64-apple-darwin
 
       - name: Build x86_64
         env:
           SDKROOT: ${{ steps.sdk.outputs.path }}
           CFLAGS: "-target x86_64-apple-macos12.0"
           CXXFLAGS: "-target x86_64-apple-macos12.0"
-        run: cargo build --release --locked --target x86_64-apple-darwin
+        run: cargo build --release --target x86_64-apple-darwin
 
       - name: Create universal binary with lipo
         shell: bash
@@ -383,7 +383,7 @@ jobs:
 
           build() {
               cd "$srcdir/rode-$pkgver"
-              cargo build --release --locked
+              cargo build --release
           }
 
           package() {
