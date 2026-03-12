@@ -247,6 +247,8 @@ GEM
       sawyer (~> 0.9)
     pathutil (0.16.2)
       forwardable-extended (~> 2.6)
+    pinel-theme (0.1.0)
+      jekyll (>= 3.9.0)
     public_suffix (5.1.1)
     racc (1.8.1)
     rb-fsevent (0.11.2)
@@ -282,6 +284,7 @@ PLATFORMS
 
 DEPENDENCIES
   github-pages
+  pinel-theme (~> 0.1.0)
 
 BUNDLED WITH
    2.5.23

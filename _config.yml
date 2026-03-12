@@ -1,14 +1,18 @@
-title: My Project Docs
-description: Documentation for My Project
-theme: null
-remote_theme: just-the-docs/just-the-docs
+title: Pinel
+description: "Blazingly fast code editor in Rust"
+url: ""
+baseurl: ""
 
-color_scheme: dark
-search_enabled: true
+theme: pinel-theme
 
-aux_links:
-  "Main Repository":
-    - "https://github.com/kashsuks/Rode"
+collections:
+  docs:
+    output: true
+    permalink: /docs/:path/
 
-plugins:
-  - jekyll-remote-theme
+defaults:
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "docs"
