@@ -204,6 +204,8 @@ function build() {
     pageTitle: siteConfig.title,
     metaDescription: siteConfig.description,
     navHomeActive: ' class="active"',
+    navInstallActive: "",
+    navAboutActive: "",
     navDocsActive: "",
     body: homeBody,
     searchData: searchDataJs,
@@ -226,6 +228,8 @@ function build() {
       pageTitle: `${singleDoc.title} — ${siteConfig.title}`,
       metaDescription: singleDoc.description || siteConfig.description,
       navHomeActive: "",
+      navInstallActive: "",
+      navAboutActive: "",
       navDocsActive: ' class="active"',
       body: docBody,
       searchData: searchDataJs,
@@ -238,7 +242,39 @@ function build() {
     fs.writeFileSync(path.join(outDir, "index.html"), html);
   }
 
-  console.log("Built docs → _site/docs/");
+  // --- Install page ---
+  const installBody = fs.readFileSync(path.join(PAGES_DIR, "install.html"), "utf-8");
+  const installHtml = renderBase({
+    pageTitle: `Install — ${siteConfig.title}`,
+    metaDescription: "Install Pinel on macOS, Linux, or Windows",
+    navHomeActive: "",
+    navInstallActive: ' class="active"',
+    navAboutActive: "",
+    navDocsActive: "",
+    body: installBody,
+    searchData: searchDataJs,
+    firstDocUrl,
+    siteTitle: siteConfig.title,
+  });
+  fs.writeFileSync(path.join(SITE_DIR, "install.html"), installHtml);
+
+  // --- About page ---
+  const aboutBody = fs.readFileSync(path.join(PAGES_DIR, "about.html"), "utf-8");
+  const aboutHtml = renderBase({
+    pageTitle: `About — ${siteConfig.title}`,
+    metaDescription: "Learn more about Pinel",
+    navHomeActive: "",
+    navInstallActive: "",
+    navAboutActive: ' class="active"',
+    navDocsActive: "",
+    body: aboutBody,
+    searchData: searchDataJs,
+    firstDocUrl,
+    siteTitle: siteConfig.title,
+  });
+  fs.writeFileSync(path.join(SITE_DIR, "about.html"), aboutHtml);
+
+  console.log("Built site → _site/ (home, install, about, docs)");
 }
 
 // ---------------------------------------------------------------------------

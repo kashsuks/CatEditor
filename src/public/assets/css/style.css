@@ -157,6 +157,98 @@ img {
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.hero-buttons .other-ways-hero {
+  width: 100%;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.hero-buttons .other-ways-hero a {
+  color: #9399b2;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hero-buttons .other-ways-hero a:hover {
+  color: #b4befe;
+}
+
+/* Hero install box */
+.install-box-hero {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #28283d;
+  border: 1px solid rgba(147, 153, 178, 0.2);
+  border-radius: 10px;
+  padding: 0.9rem 1.25rem;
+  margin-bottom: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.install-box-hero:hover {
+  border-color: #00ffd2;
+  background: #2d2d4a;
+}
+
+.install-box-hero .install-command {
+  background: none;
+  padding: 0;
+  font-size: 0.95rem;
+  color: #b4befe;
+}
+
+.install-box-hero .install-copy-icon {
+  display: flex;
+  align-items: center;
+  color: #9399b2;
+  transition: color 0.3s ease;
+}
+
+.install-box-hero:hover .install-copy-icon {
+  color: #00ffd2;
+}
+
+.install-box-hero .install-copy-icon .check-icon {
+  display: none;
+  color: #00ffd2;
+}
+
+.install-box-hero .copied-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: #00ffd2;
+  opacity: 0;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.install-box-hero.copied {
+  border-color: #00ffd2;
+  background: rgba(0, 255, 210, 0.1);
+}
+
+.install-box-hero.copied .install-command {
+  color: #00ffd2;
+}
+
+.install-box-hero.copied .install-copy-icon .copy-icon {
+  display: none;
+}
+
+.install-box-hero.copied .install-copy-icon .check-icon {
+  display: block;
+}
+
+.install-box-hero.copied .copied-text {
+  opacity: 1;
+  margin-top: 24px;
 }
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
@@ -592,6 +684,214 @@ img {
   text-align: center;
   color: #9399b2;
   font-size: 0.9rem;
+}
+
+/* ── Install page ───────────────────────────────────────────────────────── */
+
+.install-hero {
+  text-align: center;
+  padding: 4rem 2rem 2rem;
+  border-bottom: 1px solid rgba(147, 153, 178, 0.2);
+}
+
+.install-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #b4befe;
+  margin-bottom: 0.5rem;
+}
+
+.install-subtitle {
+  color: #9399b2;
+  font-size: 1.1rem;
+}
+
+.install-section {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.install-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: #28283d;
+  border: 1px solid rgba(147, 153, 178, 0.2);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.install-box:hover {
+  border-color: #00ffd2;
+  background: #2d2d4a;
+}
+
+.install-box .install-command {
+  background: none;
+  padding: 0;
+  font-size: 1rem;
+  color: #b4befe;
+}
+
+.install-copy-icon {
+  display: flex;
+  align-items: center;
+  color: #9399b2;
+  transition: color 0.3s ease;
+}
+
+.install-box:hover .install-copy-icon {
+  color: #00ffd2;
+}
+
+.install-copy-icon .check-icon {
+  display: none;
+  color: #00ffd2;
+}
+
+.install-box .copied-text {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  color: #00ffd2;
+  opacity: 0;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.install-box.copied {
+  border-color: #00ffd2;
+  background: rgba(0, 255, 210, 0.1);
+}
+
+.install-box.copied .install-command {
+  color: #00ffd2;
+}
+
+.install-box.copied .copy-icon {
+  display: none;
+}
+
+.install-box.copied .check-icon {
+  display: block;
+}
+
+.install-box.copied .copied-text {
+  opacity: 1;
+  bottom: -32px;
+}
+
+.install-platform {
+  margin-top: 2rem;
+  color: #9399b2;
+  font-size: 0.9rem;
+}
+
+.current-download {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  background: #28283d;
+  border: 1px solid rgba(147, 153, 178, 0.2);
+  border-radius: 12px;
+}
+
+.current-download h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9399b2;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #00ffd2;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 255, 210, 0.1);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.download-link:hover {
+  background: rgba(0, 255, 210, 0.2);
+  color: #1affd7;
+}
+
+.other-ways {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+}
+
+.other-ways a {
+  color: #9399b2;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.other-ways a:hover {
+  color: #b4befe;
+}
+
+/* ── About page ──────────────────────────────────────────────────────────── */
+
+.about-hero {
+  text-align: center;
+  padding: 4rem 2rem 2rem;
+  border-bottom: 1px solid rgba(147, 153, 178, 0.2);
+}
+
+.about-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #b4befe;
+}
+
+.about-content {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+.about-content p {
+  color: #9399b2;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.about-content h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #cba6f7;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.about-content ul {
+  list-style: none;
+  padding: 0;
+}
+
+.about-content ul li {
+  color: #9399b2;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.about-content ul li strong {
+  color: #b4befe;
 }
 
 /* ── Mobile sidebar toggle ─────────────────────────────────────────────── */

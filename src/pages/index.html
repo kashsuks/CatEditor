@@ -1,8 +1,24 @@
 <section class="hero">
   <h1>Welcome to <span>Pinel</span></h1>
+  
+  <div class="install-box-hero" id="installBox" onclick="copyInstall()">
+    <code class="install-command">curl -fsSL https://pinel.netlify.app/install.sh | sh</code>
+    <span class="install-copy-icon">
+      <svg class="copy-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <svg class="check-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </span>
+    <span class="copied-text">Copied to Clipboard</span>
+  </div>
+
   <div class="hero-buttons">
     <a href="#" class="btn btn-primary" id="downloadBtn">Download Now</a>
     <a href="{{ firstDocUrl }}" class="btn btn-secondary">Documentation</a>
+    <p class="other-ways-hero"><a href="/docs/#getting-started">Other ways to install</a></p>
   </div>
 </section>
 
@@ -21,6 +37,19 @@
     btn.textContent = 'Download for Linux';
     btn.href = '#download-linux';
   }
+
+  window.copyInstall = function() {
+    var command = 'curl -fsSL https://pinel.netlify.app/install.sh | sh';
+    navigator.clipboard.writeText(command).then(function() {
+      var installBox = document.getElementById('installBox');
+      if (installBox) {
+        installBox.classList.add('copied');
+        setTimeout(function() {
+          installBox.classList.remove('copied');
+        }, 2000);
+      }
+    });
+  };
 })();
 </script>
 
