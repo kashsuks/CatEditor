@@ -128,17 +128,11 @@ function loadSingleDoc() {
 
   const headings = [];
   const renderer = new marked.Renderer();
-  renderer.heading = (text, level, raw) => {
-    const baseText =
-      typeof raw === "string" && raw.length
-        ? raw
-        : typeof text === "string"
-        ? text
-        : String(text ?? "");
-    const plain = baseText.replace(/<[^>]+>/g, "");
+  renderer.heading = ({ text, depth }) => {
+    const plain = typeof text === "string" ? text : String(text ?? "");
     const id = slugify(plain);
-    headings.push({ level, text: plain, id });
-    return `<h${level} id="${id}">${escapeHtml(plain)}</h${level}>\n`;
+    headings.push({ level: depth, text: plain, id });
+    return `<h${depth} id="${id}">${escapeHtml(plain)}</h${depth}>\n`;
   };
 
   const html = marked.parse(content, { renderer });
