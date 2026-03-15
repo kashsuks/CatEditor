@@ -10,7 +10,7 @@ use iced::window;
 use iced::{Background, Color, Element, Length, Subscription};
 use iced_code_editor::CodeEditor;
 use iced_term::Terminal as IcedTerminal;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -146,6 +146,9 @@ pub struct App {
     pending_sensitive_open: Option<PathBuf>,
 
     autocomplete: Autocomplete,
+
+    developer_logs: VecDeque<(Instant, String)>,
+    developer_panel_visible: bool,
 }
 
 impl Default for App {
@@ -256,10 +259,24 @@ impl Default for App {
             lsp: crate::features::lsp::LspManager::new(),
             lsp_diagnostics: HashMap::new(),
             lsp_overlay: iced_code_editor::LspOverlayState::new(),
-            lsp_enabled: false,
+            lsp_enabled: true,
             lsp_server_keys: HashMap::new(),
             pending_sensitive_open: None,
             autocomplete: Autocomplete::new(),
+            developer_logs: VecDeque::new(),
+            developer_panel_visible: false,
+        }
+    }
+}
+
+impl App {
+    pub fn dev_log(&mut self, message: String) {
+        if self.editor_preferences.developer_mode {
+            let now = Instant::now();
+            self.developer_logs.push_back((now, message));
+            if self.developer_logs.len() > 1000 {
+                self.developer_logs.pop_front();
+            }
         }
     }
 }

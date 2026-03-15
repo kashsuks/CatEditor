@@ -207,21 +207,29 @@ impl App {
                             let kind_color = |kind: &crate::autocomplete::types::SuggestionKind| {
                                 use crate::autocomplete::types::SuggestionKind;
                                 match kind {
-                                    SuggestionKind::Keyword  => Color::from_rgb(0.796, 0.651, 0.969), // purple #cba6f7
-                                    SuggestionKind::Function => Color::from_rgb(0.000, 0.663, 1.000), // blue   #00a9ff
-                                    SuggestionKind::Method   => Color::from_rgb(0.537, 0.863, 0.922), // cyan   #89dceb
-                                    SuggestionKind::Type     => Color::from_rgb(0.976, 0.886, 0.686), // yellow #f9e2af
-                                    SuggestionKind::Constant => Color::from_rgb(0.976, 0.886, 0.686), // yellow
-                                    SuggestionKind::Variable => Color::from_rgb(0.706, 0.745, 0.996), // fg    #b4befe
-                                    SuggestionKind::Property => Color::from_rgb(0.000, 0.663, 1.000), // blue
-                                    SuggestionKind::Module   => Color::from_rgb(0.537, 0.863, 0.922), // cyan
-                                    SuggestionKind::Macro    => Color::from_rgb(0.000, 1.000, 0.824), // green #00ffd2
-                                    SuggestionKind::Snippet  => Color::from_rgb(0.976, 0.886, 0.686), // yellow
+                                    SuggestionKind::Keyword => Color::from_rgb(0.796, 0.651, 0.969), // purple #cba6f7
+                                    SuggestionKind::Function => {
+                                        Color::from_rgb(0.000, 0.663, 1.000)
+                                    } // blue   #00a9ff
+                                    SuggestionKind::Method => Color::from_rgb(0.537, 0.863, 0.922), // cyan   #89dceb
+                                    SuggestionKind::Type => Color::from_rgb(0.976, 0.886, 0.686), // yellow #f9e2af
+                                    SuggestionKind::Constant => {
+                                        Color::from_rgb(0.976, 0.886, 0.686)
+                                    } // yellow
+                                    SuggestionKind::Variable => {
+                                        Color::from_rgb(0.706, 0.745, 0.996)
+                                    } // fg    #b4befe
+                                    SuggestionKind::Property => {
+                                        Color::from_rgb(0.000, 0.663, 1.000)
+                                    } // blue
+                                    SuggestionKind::Module => Color::from_rgb(0.537, 0.863, 0.922), // cyan
+                                    SuggestionKind::Macro => Color::from_rgb(0.000, 1.000, 0.824), // green #00ffd2
+                                    SuggestionKind::Snippet => Color::from_rgb(0.976, 0.886, 0.686), // yellow
                                 }
                             };
 
                             let accent_purple = Color::from_rgb(0.796, 0.651, 0.969); // #cba6f7
-                            let bg_modal = Color::from_rgb(0.149, 0.149, 0.212);      // #262637
+                            let bg_modal = Color::from_rgb(0.149, 0.149, 0.212); // #262637
                             let bg_selected = Color::from_rgba(0.796, 0.651, 0.969, 0.18); // purple @18%
                             let divider = Color::from_rgba(1.0, 1.0, 1.0, 0.06);
 
@@ -252,23 +260,17 @@ impl App {
                                         row![
                                             // Colored kind icon
                                             container(
-                                                text(suggestion.kind.icon())
-                                                    .size(11)
-                                                    .color(ic)
+                                                text(suggestion.kind.icon()).size(11).color(ic)
                                             )
                                             .width(Length::Fixed(20.0))
                                             .center_x(Length::Fixed(20.0)),
                                             // Completion text
-                                            text(&suggestion.text)
-                                                .size(12)
-                                                .color(label_color),
+                                            text(&suggestion.text).size(12).color(label_color),
                                             iced::widget::Space::new().width(Length::Fill),
                                             // Kind label (right-aligned)
                                             text(format!("{:?}", suggestion.kind).to_lowercase())
                                                 .size(10)
-                                                .color(Color::from_rgba(
-                                                    ic.r, ic.g, ic.b, 0.65,
-                                                )),
+                                                .color(Color::from_rgba(ic.r, ic.g, ic.b, 0.65,)),
                                         ]
                                         .spacing(6)
                                         .align_y(iced::Alignment::Center),
@@ -315,16 +317,18 @@ impl App {
                                         left: 8.0,
                                     })
                                     .width(Length::Fill)
-                                    .style(move |_theme| container::Style {
-                                        background: Some(iced::Background::Color(
-                                            Color::from_rgba(0.796, 0.651, 0.969, 0.06)
-                                        )),
-                                        border: iced::Border {
-                                            color: divider,
-                                            width: 1.0,
-                                            radius: 0.0.into(),
-                                        },
-                                        ..Default::default()
+                                    .style(move |_theme| {
+                                        container::Style {
+                                            background: Some(iced::Background::Color(
+                                                Color::from_rgba(0.796, 0.651, 0.969, 0.06),
+                                            )),
+                                            border: iced::Border {
+                                                color: divider,
+                                                width: 1.0,
+                                                radius: 0.0.into(),
+                                            },
+                                            ..Default::default()
+                                        }
                                     }),
                                 )
                                 .width(Length::Fill)
@@ -355,7 +359,8 @@ impl App {
                                 });
 
                             // Position the panel below the cursor
-                            let cursor_pos = code_editor.cursor_screen_position()
+                            let cursor_pos = code_editor
+                                .cursor_screen_position()
                                 .unwrap_or(iced::Point::new(48.0, 20.0));
                             let x = cursor_pos.x.clamp(0.0, 500.0);
                             let y = (cursor_pos.y + 20.0).clamp(0.0, 560.0);

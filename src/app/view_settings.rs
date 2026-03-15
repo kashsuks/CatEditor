@@ -38,6 +38,7 @@ impl App {
             ("general", "General"),
             ("preferences", "Preferences"),
             ("wakatime", "WakaTime"),
+            ("developer", "Developer"),
         ];
 
         let nav_items: Vec<Element<'_, Message>> = sections
@@ -128,6 +129,7 @@ impl App {
             "general" => self.view_settings_general(),
             "preferences" => self.view_settings_preferences(),
             "wakatime" => self.view_settings_wakatime(),
+            "developer" => self.view_settings_developer(),
             _ => self.view_settings_general(),
         };
 
@@ -301,20 +303,17 @@ impl App {
             ]
             .spacing(2)
             .width(Length::FillPortion(2)),
-            text_input(
-                "40",
-                &self.editor_preferences.line_number_width.to_string()
-            )
-            .on_input(Message::SettingsLineNumberWidthChanged)
-            .size(13)
-            .padding(iced::Padding {
-                top: 8.0,
-                right: 12.0,
-                bottom: 8.0,
-                left: 12.0
-            })
-            .style(search_input_style)
-            .width(Length::Fixed(80.0)),
+            text_input("40", &self.editor_preferences.line_number_width.to_string())
+                .on_input(Message::SettingsLineNumberWidthChanged)
+                .size(13)
+                .padding(iced::Padding {
+                    top: 8.0,
+                    right: 12.0,
+                    bottom: 8.0,
+                    left: 12.0
+                })
+                .style(search_input_style)
+                .width(Length::Fixed(80.0)),
         ]
         .spacing(16)
         .align_y(iced::Alignment::Center);
@@ -486,6 +485,220 @@ impl App {
             ),
             Space::new().height(Length::Fixed(8.0)),
             save_btn,
+        ]
+        .spacing(12)
+        .width(Length::Fill)
+        .into()
+    }
+
+    pub(super) fn view_settings_developer(&self) -> Element<'_, Message> {
+        use iced::widget::Space;
+
+        let heading = text("Developer").size(18).color(theme().text_primary);
+        let desc = text("Debug logging and development tools. Logs may contain sensitive data.")
+            .size(12)
+            .color(theme().text_dim);
+
+        let separator = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.06))),
+                ..Default::default()
+            });
+
+        let developer_mode_label = if self.editor_preferences.developer_mode {
+            "Enabled"
+        } else {
+            "Disabled"
+        };
+        let developer_mode_btn = button(
+            text(developer_mode_label)
+                .size(12)
+                .color(theme().text_primary),
+        )
+        .on_press(Message::SettingsToggleDeveloperMode)
+        .style(|_theme, _status| button::Style {
+            background: Some(Background::Color(
+                if self.editor_preferences.developer_mode {
+                    Color::from_rgba(0.2, 0.8, 0.2, 0.3)
+                } else {
+                    theme().bg_secondary
+                },
+            )),
+            border: iced::Border {
+                color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+                width: 1.0,
+                radius: 4.0.into(),
+            },
+            text_color: theme().text_primary,
+            ..Default::default()
+        })
+        .padding(iced::Padding {
+            top: 6.0,
+            right: 16.0,
+            bottom: 6.0,
+            left: 16.0,
+        });
+
+        let developer_mode_row = row![
+            column![
+                text("Developer Mode").size(13).color(theme().text_muted),
+                text("Enable debug logging for LSP events and actions")
+                    .size(11)
+                    .color(theme().text_dim),
+            ]
+            .spacing(2)
+            .width(Length::FillPortion(2)),
+            developer_mode_btn,
+        ]
+        .spacing(16)
+        .align_y(iced::Alignment::Center);
+
+        let lsp_enabled_label = if self.lsp_enabled {
+            "Enabled"
+        } else {
+            "Disabled"
+        };
+        let lsp_status_btn = button(text(lsp_enabled_label).size(12).color(theme().text_primary))
+            .on_press(Message::ToggleLsp)
+            .style(|_theme, _status| button::Style {
+                background: Some(Background::Color(if self.lsp_enabled {
+                    Color::from_rgba(0.2, 0.8, 0.2, 0.3)
+                } else {
+                    theme().bg_secondary
+                })),
+                border: iced::Border {
+                    color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: theme().text_primary,
+                ..Default::default()
+            })
+            .padding(iced::Padding {
+                top: 6.0,
+                right: 16.0,
+                bottom: 6.0,
+                left: 16.0,
+            });
+
+        let lsp_row = row![
+            column![
+                text("LSP Support").size(13).color(theme().text_muted),
+                text("Enable Language Server Protocol for autocompletion and hover")
+                    .size(11)
+                    .color(theme().text_dim),
+            ]
+            .spacing(2)
+            .width(Length::FillPortion(2)),
+            lsp_status_btn,
+        ]
+        .spacing(16)
+        .align_y(iced::Alignment::Center);
+
+        let clear_logs_btn = button(text("Clear Logs").size(12).color(theme().text_primary))
+            .on_press(Message::ClearDeveloperLogs)
+            .style(|_theme, _status| button::Style {
+                background: Some(Background::Color(theme().bg_secondary)),
+                border: iced::Border {
+                    color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: theme().text_primary,
+                ..Default::default()
+            })
+            .padding(iced::Padding {
+                top: 6.0,
+                right: 16.0,
+                bottom: 6.0,
+                left: 16.0,
+            });
+
+        let log_count = self.developer_logs.len();
+        let logs_header = row![
+            text("Debug Logs").size(13).color(theme().text_muted),
+            Space::new().width(Length::Fill),
+            text(format!("{} entries", log_count))
+                .size(11)
+                .color(theme().text_dim),
+            clear_logs_btn,
+        ]
+        .align_y(iced::Alignment::Center);
+
+        let log_entries: Vec<Element<'_, Message>> = self
+            .developer_logs
+            .iter()
+            .rev()
+            .take(50)
+            .map(|(time, msg)| {
+                let secs = time.elapsed().as_secs();
+                let time_str = if secs < 60 {
+                    format!("{}s", secs)
+                } else if secs < 3600 {
+                    format!("{}m", secs / 60)
+                } else {
+                    format!("{}h", secs / 3600)
+                };
+                let msg = msg.clone();
+                let time_str = time_str.clone();
+                container(row![
+                    text(time_str).size(10).color(theme().text_dim),
+                    Space::new().width(Length::Fixed(8.0)),
+                    text(msg)
+                        .size(11)
+                        .color(theme().text_primary)
+                        .width(Length::Fill),
+                ])
+                .padding(iced::Padding {
+                    top: 2.0,
+                    right: 8.0,
+                    bottom: 2.0,
+                    left: 8.0,
+                })
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.02))),
+                    ..Default::default()
+                })
+                .into()
+            })
+            .collect();
+
+        let logs_panel: Element<'_, Message> = if log_entries.is_empty() {
+            container(
+                text("No logs yet. Enable developer mode and trigger actions to see logs.")
+                    .size(11)
+                    .color(theme().text_dim),
+            )
+            .padding(16)
+            .into()
+        } else {
+            scrollable(column(log_entries).spacing(2))
+                .height(Length::Fixed(300.0))
+                .into()
+        };
+
+        column![
+            heading,
+            desc,
+            separator,
+            developer_mode_row,
+            container(Space::new().width(Length::Fill).height(Length::Fixed(1.0))).style(
+                |_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+                    ..Default::default()
+                }
+            ),
+            lsp_row,
+            container(Space::new().width(Length::Fill).height(Length::Fixed(1.0))).style(
+                |_theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+                    ..Default::default()
+                }
+            ),
+            Space::new().height(Length::Fixed(8.0)),
+            logs_header,
+            Space::new().height(Length::Fixed(8.0)),
+            logs_panel,
         ]
         .spacing(12)
         .width(Length::Fill)

@@ -391,45 +391,45 @@ pub fn builtin_theme(name: &str) -> ThemeColors {
 //   gray    #9399b2
 
 fn pinel_blueberry_dark() -> ThemeColors {
-    let bg = Color::from_rgb(0.118, 0.118, 0.180);      // #1e1e2e
+    let bg = Color::from_rgb(0.118, 0.118, 0.180); // #1e1e2e
     let bg_raised = Color::from_rgb(0.149, 0.149, 0.212); // #262637 — sidebar / panels
     let bg_surface = Color::from_rgb(0.192, 0.196, 0.267); // #313244 — elevated surfaces
-    let fg = Color::from_rgb(0.706, 0.745, 0.996);      // #b4befe
-    let red = Color::from_rgb(0.875, 0.271, 0.463);     // #df4576
-    let green = Color::from_rgb(0.000, 1.000, 0.824);   // #00ffd2
-    let blue = Color::from_rgb(0.000, 0.663, 1.000);    // #00a9ff
-    let yellow = Color::from_rgb(0.976, 0.886, 0.686);  // #f9e2af
-    let purple = Color::from_rgb(0.796, 0.651, 0.969);  // #cba6f7
-    let cyan = Color::from_rgb(0.537, 0.863, 0.922);    // #89dceb
-    let gray = Color::from_rgb(0.576, 0.600, 0.698);    // #9399b2
+    let fg = Color::from_rgb(0.706, 0.745, 0.996); // #b4befe
+    let red = Color::from_rgb(0.875, 0.271, 0.463); // #df4576
+    let green = Color::from_rgb(0.000, 1.000, 0.824); // #00ffd2
+    let blue = Color::from_rgb(0.000, 0.663, 1.000); // #00a9ff
+    let yellow = Color::from_rgb(0.976, 0.886, 0.686); // #f9e2af
+    let purple = Color::from_rgb(0.796, 0.651, 0.969); // #cba6f7
+    let cyan = Color::from_rgb(0.537, 0.863, 0.922); // #89dceb
+    let gray = Color::from_rgb(0.576, 0.600, 0.698); // #9399b2
 
     // Text hierarchy built from the fg / gray
-    let text_primary = fg;                                // #b4befe — vivid, readable
+    let text_primary = fg; // #b4befe — vivid, readable
     let text_secondary = Color::from_rgb(0.651, 0.678, 0.784); // #a6adc8
-    let text_muted = gray;                               // #9399b2
+    let text_muted = gray; // #9399b2
     let text_dim = Color::from_rgb(0.498, 0.518, 0.612); // #7f849c
     let text_placeholder = Color::from_rgb(0.424, 0.439, 0.525); // #6c7086
 
-    let border_subtle = Color::from_rgb(0.271, 0.278, 0.353);   // #45475a
+    let border_subtle = Color::from_rgb(0.271, 0.278, 0.353); // #45475a
     let border_very_subtle = Color::from_rgb(0.192, 0.196, 0.267); // #313244
 
     let syn = build_syntax_theme(
         "Pinel Blueberry Dark",
-        fg,        // foreground
-        bg,        // background
-        fg,        // caret
+        fg,         // foreground
+        bg,         // background
+        fg,         // caret
         bg_surface, // line highlight
-        gray,      // comments
-        purple,    // keywords
-        blue,      // functions
-        cyan,      // types
-        green,     // strings
-        yellow,    // numbers
-        yellow,    // constants
-        fg,        // variables
-        blue,      // properties
-        cyan,      // operators
-        text_dim,  // punctuation
+        gray,       // comments
+        purple,     // keywords
+        blue,       // functions
+        cyan,       // types
+        green,      // strings
+        yellow,     // numbers
+        yellow,     // constants
+        fg,         // variables
+        blue,       // properties
+        cyan,       // operators
+        text_dim,   // punctuation
     );
 
     ThemeColors {
@@ -468,17 +468,17 @@ fn pinel_blueberry_dark() -> ThemeColors {
 //   gray    #7c7f93
 
 fn pinel_blueberry_light() -> ThemeColors {
-    let bg = Color::from_rgb(0.937, 0.945, 0.961);      // #eff1f5
+    let bg = Color::from_rgb(0.937, 0.945, 0.961); // #eff1f5
     let bg_raised = Color::from_rgb(0.894, 0.906, 0.929); // #e4e7ee
     let bg_surface = Color::from_rgb(0.847, 0.863, 0.894); // #d8dbE4
-    let fg = Color::from_rgb(0.298, 0.310, 0.412);      // #4c4f69
-    let red = Color::from_rgb(0.824, 0.059, 0.224);     // #d20f39
-    let green = Color::from_rgb(0.251, 0.627, 0.169);   // #40a02b
-    let blue = Color::from_rgb(0.118, 0.400, 0.961);    // #1e66f5
-    let yellow = Color::from_rgb(0.875, 0.557, 0.114);  // #df8e1d
-    let purple = Color::from_rgb(0.533, 0.224, 0.937);  // #8839ef
-    let cyan = Color::from_rgb(0.090, 0.573, 0.600);    // #179299
-    let gray = Color::from_rgb(0.486, 0.498, 0.576);    // #7c7f93
+    let fg = Color::from_rgb(0.298, 0.310, 0.412); // #4c4f69
+    let red = Color::from_rgb(0.824, 0.059, 0.224); // #d20f39
+    let green = Color::from_rgb(0.251, 0.627, 0.169); // #40a02b
+    let blue = Color::from_rgb(0.118, 0.400, 0.961); // #1e66f5
+    let yellow = Color::from_rgb(0.875, 0.557, 0.114); // #df8e1d
+    let purple = Color::from_rgb(0.533, 0.224, 0.937); // #8839ef
+    let cyan = Color::from_rgb(0.090, 0.573, 0.600); // #179299
+    let gray = Color::from_rgb(0.486, 0.498, 0.576); // #7c7f93
 
     let text_primary = fg;
     let text_secondary = Color::from_rgb(0.376, 0.396, 0.510); // #606481 approx
@@ -486,7 +486,7 @@ fn pinel_blueberry_light() -> ThemeColors {
     let text_dim = Color::from_rgb(0.620, 0.635, 0.715); // #9e9fb5 approx
     let text_placeholder = Color::from_rgb(0.706, 0.722, 0.796); // #b4b7c9 approx
 
-    let border_subtle = Color::from_rgb(0.788, 0.808, 0.855);   // #c9ceda
+    let border_subtle = Color::from_rgb(0.788, 0.808, 0.855); // #c9ceda
     let border_very_subtle = Color::from_rgb(0.847, 0.863, 0.894); // same as bg_surface
 
     let syn = build_syntax_theme(

@@ -96,6 +96,12 @@ pub enum Message {
     DismissNotification,
     LspTick,
 
+    // Developer mode
+    ToggleDeveloperPanel,
+    ClearDeveloperLogs,
+    SettingsToggleDeveloperMode,
+    ToggleLsp,
+
     // Updater
     CheckForUpdate,
     UpdateAvailable(crate::features::updater::UpdateInfo),

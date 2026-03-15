@@ -12,6 +12,8 @@ pub struct EditorPreferences {
     pub window_height: f32,
     /// Width of the line-number gutter in logical pixels (default 40).
     pub line_number_width: f32,
+    /// Enable developer mode with debug logging
+    pub developer_mode: bool,
 }
 
 impl Default for EditorPreferences {
@@ -23,6 +25,7 @@ impl Default for EditorPreferences {
             window_width: 1200.0,
             window_height: 800.0,
             line_number_width: 40.0,
+            developer_mode: false,
         }
     }
 }
@@ -125,6 +128,9 @@ fn parse_preferences(content: &str) -> EditorPreferences {
                         prefs.line_number_width = w.max(20.0).min(120.0);
                     }
                 }
+                "developer_mode" => {
+                    prefs.developer_mode = value == "true";
+                }
                 _ => {}
             }
         }
@@ -206,6 +212,8 @@ return {{
     window_height = {},
     -- Width of the line-number gutter in logical pixels (20–120)
     line_number_width = {},
+    -- Enable developer mode with debug logging (WARNING: Logs may contain sensitive data)
+    developer_mode = {},
 }}
 "#,
         prefs.tab_size,
@@ -214,6 +222,7 @@ return {{
         prefs.window_width,
         prefs.window_height,
         prefs.line_number_width,
+        prefs.developer_mode,
     );
     let mut file = fs::File::create(path)?;
     file.write_all(content.as_bytes())?;
