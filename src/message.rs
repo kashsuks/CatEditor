@@ -1,20 +1,14 @@
 use crate::features::search::SearchResult;
+use iced_code_editor::LspOverlayMessage;
 use iced_term::Event as TerminalEvent;
 use std::path::PathBuf;
-
-#[derive(Debug, Clone, Copy)]
-pub enum VimKey {
-    Char(char),
-    Ctrl(char),
-    Escape,
-    Enter,
-    Backspace,
-}
 
 #[derive(Debug, Clone)]
 pub enum Message {
     /// Text editing stuff — forwarded from iced-code-editor
     CodeEditorEvent(iced_code_editor::Message),
+    /// LSP overlay events (hover, completion selection)
+    LspOverlay(LspOverlayMessage),
     /// Content changed notification (text, is_modified) for bookkeeping
     CodeEditorContentChanged,
     FileClicked(PathBuf),
@@ -99,7 +93,6 @@ pub enum Message {
     SaveWakaTimeSettings,
 
     DismissNotification,
-    VimKeyPressed(VimKey),
     LspTick,
 
     // Updater

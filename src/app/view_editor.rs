@@ -176,26 +176,41 @@ impl App {
         if let Some(idx) = self.active_tab {
             if let Some(tab) = self.tabs.get(idx) {
                 match &tab.kind {
-                    TabKind::Editor {
-                        code_editor,
-                        ..
-                    } => {
-                        let editor = container(
-                            code_editor.view().map(Message::CodeEditorEvent),
-                        )
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .style(|_theme| container::Style {
-                            background: Some(iced::Background::Color(theme().bg_editor)),
-                            ..Default::default()
-                        });
+                    TabKind::Editor { code_editor, .. } => {
+                        let editor = container(code_editor.view().map(Message::CodeEditorEvent))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .style(|_theme| container::Style {
+                                background: Some(iced::Background::Color(theme().bg_editor)),
+                                ..Default::default()
+                            });
 
-                        let show_panel = self.autocomplete.active
-                            && !self.autocomplete.suggestions.is_empty();
+                        // LSP overlay (hover docs + completion from LSP server)
+                        let lsp_overlay = if self.lsp_enabled {
+                            iced_code_editor::view_lsp_overlay(
+                                &self.lsp_overlay,
+                                code_editor,
+                                &iced::Theme::CatppuccinMocha,
+                                13.0,
+                                20.0,
+                                Message::LspOverlay,
+                            )
+                        } else {
+                            container(iced::widget::Space::new()).into()
+                        };
+
+                        let show_panel =
+                            self.autocomplete.active && !self.autocomplete.suggestions.is_empty();
                         if show_panel {
                             let mut items: Vec<Element<'_, Message>> = Vec::new();
                             let visible_count = self.autocomplete.suggestions.len().min(8);
-                            for (i, suggestion) in self.autocomplete.suggestions.iter().take(visible_count).enumerate() {
+                            for (i, suggestion) in self
+                                .autocomplete
+                                .suggestions
+                                .iter()
+                                .take(visible_count)
+                                .enumerate()
+                            {
                                 let is_selected = i == self.autocomplete.selected_index;
                                 let bg_color = if is_selected {
                                     Some(iced::Background::Color(theme().selection))
@@ -213,9 +228,7 @@ impl App {
                                             text(suggestion.kind.icon())
                                                 .size(12)
                                                 .color(theme().text_placeholder),
-                                            text(&suggestion.text)
-                                                .size(12)
-                                                .color(label_color),
+                                            text(&suggestion.text).size(12).color(label_color),
                                         ]
                                         .spacing(8)
                                         .align_y(iced::Alignment::Center),
@@ -287,13 +300,16 @@ impl App {
                                 .width(Length::Fill)
                                 .height(Length::Fill);
 
-                            return stack![editor, positioned_panel]
+                            return stack![editor, positioned_panel, lsp_overlay]
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .into();
                         }
 
-                        return editor.into();
+                        return stack![editor, lsp_overlay]
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .into();
                     }
                     TabKind::Preview { md_items } => {
                         return scrollable(
@@ -379,19 +395,6 @@ impl App {
         let left = row![text(file_info).size(10).color(theme().text_dim),]
             .spacing(8)
             .align_y(iced::Alignment::Center);
-        let vim_mode_label = match self.vim_mode {
-            VimMode::Normal => "NORMAL",
-            VimMode::Insert => "INSERT",
-        };
-        let vim_state = if self.vim_pending.is_empty() && self.vim_count.is_empty() {
-            vim_mode_label.to_string()
-        } else {
-            format!(
-                "{vim_mode_label} {}{}",
-                self.vim_count,
-                self.vim_pending
-            )
-        };
 
         let current_line_diag = self
             .active_tab
@@ -403,11 +406,12 @@ impl App {
             .unwrap_or_default();
 
         let right = row![
-            text(vim_state).size(10).color(theme().text_muted),
             text(format!("Ln {}, Col {}", self.cursor_line, self.cursor_col))
                 .size(10)
                 .color(theme().text_placeholder),
-            text(current_line_diag).size(10).color(theme().text_secondary),
+            text(current_line_diag)
+                .size(10)
+                .color(theme().text_secondary),
         ]
         .spacing(8)
         .align_y(iced::Alignment::Center);

@@ -3,19 +3,19 @@
 //! This module defines [`App`] and splits its behavior into focused submodules:
 //! event updates, subscriptions, commands, and view builders.
 
-use iced_code_editor::CodeEditor;
 use iced::widget::{
     button, column, container, markdown, mouse_area, row, scrollable, stack, text, text_input,
 };
 use iced::window;
 use iced::{Background, Color, Element, Length, Subscription};
+use iced_code_editor::CodeEditor;
 use iced_term::Terminal as IcedTerminal;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crate::config::preferences::{self as prefs, EditorPreferences};
 use crate::autocomplete::engine::Autocomplete;
+use crate::config::preferences::{self as prefs, EditorPreferences};
 use crate::features::command_input::CommandInput;
 use crate::features::command_palette::CommandPalette;
 use crate::features::file_tree::FileTree;
@@ -26,10 +26,9 @@ use crate::features::updater::UpdateInfo;
 use crate::message::Message;
 use crate::theme::*;
 use crate::ui::{
-    editor_container_style, empty_editor, file_finder_item_style,
-    file_finder_panel_style, search_input_style, search_panel_style,
-    sidebar_editor_separator_style, status_bar_style, tab_bar_style, tab_button_style,
-    tab_close_button_style, tree_button_style, view_sidebar,
+    editor_container_style, empty_editor, file_finder_item_style, file_finder_panel_style,
+    search_input_style, search_panel_style, sidebar_editor_separator_style, status_bar_style,
+    tab_bar_style, tab_button_style, tab_close_button_style, tree_button_style, view_sidebar,
 };
 use crate::wakatime::{self, WakaTimeConfig};
 
@@ -37,7 +36,6 @@ mod commands;
 mod lifecycle;
 mod subscription;
 mod update;
-mod vim;
 mod view_editor;
 mod view_finders;
 mod view_integrations;
@@ -75,26 +73,6 @@ pub struct Tab {
 pub struct Notification {
     pub message: String,
     pub shown_at: Instant,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VimMode {
-    Normal,
-    Insert,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum VimFindKind {
-    ForwardTo,
-    ForwardTill,
-    BackwardTo,
-    BackwardTill,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct VimFindState {
-    pub kind: VimFindKind,
-    pub needle: char,
 }
 
 pub struct App {
@@ -159,15 +137,13 @@ pub struct App {
     notification: Option<Notification>,
     update_banner: Option<UpdateInfo>,
 
-    lsp: crate::features::lsp::LspBridge,
+    lsp: crate::features::lsp::LspManager,
     lsp_diagnostics: HashMap<PathBuf, Vec<crate::features::lsp::InlineDiagnostic>>,
+    lsp_overlay: iced_code_editor::LspOverlayState,
+    lsp_enabled: bool,
+    lsp_server_keys: HashMap<PathBuf, &'static str>,
 
     pending_sensitive_open: Option<PathBuf>,
-
-    vim_mode: VimMode,
-    vim_pending: String,
-    vim_count: String,
-    vim_last_find: Option<VimFindState>,
 
     autocomplete: Autocomplete,
 }
@@ -242,7 +218,6 @@ impl Default for App {
                     ..Default::default()
                 };
 
-
                 match IcedTerminal::new(0, settings) {
                     Ok(term) => Some(term),
                     Err(err) => {
@@ -270,13 +245,12 @@ impl Default for App {
             last_wakatime_sent_at: None,
             notification: None,
             update_banner: None,
-            lsp: crate::features::lsp::LspBridge::new(None),
+            lsp: crate::features::lsp::LspManager::new(),
             lsp_diagnostics: HashMap::new(),
+            lsp_overlay: iced_code_editor::LspOverlayState::new(),
+            lsp_enabled: false,
+            lsp_server_keys: HashMap::new(),
             pending_sensitive_open: None,
-            vim_mode: VimMode::Insert,
-            vim_pending: String::new(),
-            vim_count: String::new(),
-            vim_last_find: None,
             autocomplete: Autocomplete::new(),
         }
     }

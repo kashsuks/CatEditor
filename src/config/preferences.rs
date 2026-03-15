@@ -47,9 +47,7 @@ pub fn load_preferences() -> EditorPreferences {
     let legacy = legacy_preferences_path();
 
     let primary_prefs = read_preferences_from(&primary);
-    let legacy_prefs = legacy
-        .as_ref()
-        .and_then(|path| read_preferences_from(path));
+    let legacy_prefs = legacy.as_ref().and_then(|path| read_preferences_from(path));
 
     match (primary_prefs, legacy_prefs) {
         (Some(prefs), None) => prefs,
@@ -75,7 +73,12 @@ pub fn load_preferences() -> EditorPreferences {
 
 fn legacy_preferences_path() -> Option<PathBuf> {
     let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".config").join("pinel").join("preferences.lua"))
+    Some(
+        PathBuf::from(home)
+            .join(".config")
+            .join("pinel")
+            .join("preferences.lua"),
+    )
 }
 
 fn parse_preferences(content: &str) -> EditorPreferences {
@@ -195,11 +198,7 @@ return {{
     window_height = {},
 }}
 "#,
-        prefs.tab_size,
-        prefs.use_spaces,
-        prefs.theme_name,
-        prefs.window_width,
-        prefs.window_height,
+        prefs.tab_size, prefs.use_spaces, prefs.theme_name, prefs.window_width, prefs.window_height,
     );
     let mut file = fs::File::create(path)?;
     file.write_all(content.as_bytes())?;

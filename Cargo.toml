@@ -46,4 +46,4 @@ tokio-lsp = "0.1.1"
 tokio = { version = "1", features = ["rt-multi-thread", "process", "io-util", "sync", "time"] }
 url = "2.5"
 ropey = "1.6"
-iced-code-editor = "0.3"
+iced-code-editor = { version = "0.3.7", features = ["lsp-process"] }

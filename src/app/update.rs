@@ -20,6 +20,34 @@ impl App {
         )
     }
 
+    pub(super) fn vim_refresh_cursor_style(&mut self) {
+        if self.terminal_open {
+            if let Some(idx) = self.active_tab {
+                if let Some(tab) = self.tabs.get_mut(idx) {
+                    if let TabKind::Editor {
+                        ref mut code_editor,
+                        ..
+                    } = tab.kind
+                    {
+                        code_editor.lose_focus();
+                    }
+                }
+            }
+            return;
+        }
+
+        if let Some(idx) = self.active_tab {
+            if let Some(tab) = self.tabs.get_mut(idx) {
+                if let TabKind::Editor {
+                    ref code_editor, ..
+                } = tab.kind
+                {
+                    code_editor.request_focus();
+                }
+            }
+        }
+    }
+
     pub(super) fn toggle_terminal_panel(&mut self) -> iced::Task<Message> {
         if self.terminal_pane.is_none() {
             if let Some(ref tree) = self.file_tree {
@@ -50,7 +78,7 @@ impl App {
         match message {
             Message::CodeEditorEvent(event) => {
                 // Autocomplete keyboard navigation — intercept before editor processing
-                if self.vim_mode == VimMode::Insert && self.autocomplete.active {
+                if self.autocomplete.active {
                     if let EditorMessage::ArrowKey(dir, false) = &event {
                         match dir {
                             iced_code_editor::ArrowDirection::Up => {
@@ -84,10 +112,46 @@ impl App {
                             ref mut buffer,
                         } = tab.kind
                         {
+                            // Check for LSP completion acceptance first
+                            if self.lsp_overlay.completion_visible 
+                                && matches!(event, EditorMessage::Enter) 
+                            {
+                                if let Some(selected) = self.lsp_overlay.selected_item() {
+                                    // Get the text before cursor to find word start
+                                    let content = code_editor.content();
+                                    let line = content.lines().nth(self.cursor_line.saturating_sub(1)).unwrap_or("");
+                                    let before_cursor = &line[..self.cursor_col.saturating_sub(1).min(line.len())];
+                                    
+                                    let chars: Vec<char> = before_cursor.chars().collect();
+                                    let word_start = chars.iter()
+                                        .enumerate()
+                                        .rev()
+                                        .find(|(_, c)| !c.is_alphanumeric() && **c != '_')
+                                        .map(|(i, _)| i + 1)
+                                        .unwrap_or(0);
+                                    
+                                    let prefix_len = before_cursor.len() - word_start;
+                                    let delete_text = &line[word_start..self.cursor_col.saturating_sub(1).min(line.len())];
+                                    
+                                    // Delete the prefix and insert completion
+                                    for _ in 0..delete_text.len() {
+                                        let _ = code_editor.update(&EditorMessage::Backspace);
+                                    }
+                                    for ch in selected.chars() {
+                                        let _ = code_editor.update(&EditorMessage::CharacterInput(ch));
+                                    }
+                                    
+                                    self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                                    self.vim_refresh_cursor_style();
+                                    return iced::Task::none();
+                                }
+                            }
+
                             if mapped_task.is_none()
                                 && matches!(event, EditorMessage::Enter)
                                 && (!self.autocomplete.active
                                     || self.autocomplete.suggestions.is_empty())
+                                && !self.lsp_overlay.completion_visible
                             {
                                 let before = code_editor.content();
                                 let indent = smart_indent_for_enter(
@@ -96,21 +160,15 @@ impl App {
                                     &indent_unit,
                                 );
                                 let insert = format!("\n{indent}");
-                                let task = code_editor.update(
-                                    &EditorMessage::Paste(insert),
-                                );
+                                let task = code_editor.update(&EditorMessage::Paste(insert));
                                 let after = code_editor.content();
                                 buffer.set_text(&after);
                                 let indent_cols = indent_visual_width(&indent, tab_size);
-                                manual_cursor_update = Some((
-                                    cursor_line_before.saturating_add(1),
-                                    indent_cols + 1,
-                                ));
+                                manual_cursor_update =
+                                    Some((cursor_line_before.saturating_add(1), indent_cols + 1));
                                 lsp_path = Some(tab.path.clone());
                                 lsp_content = Some(after);
-                                mapped_task = Some(
-                                    task.map(Message::CodeEditorEvent),
-                                );
+                                mapped_task = Some(task.map(Message::CodeEditorEvent));
                             }
 
                             if mapped_task.is_none()
@@ -124,9 +182,8 @@ impl App {
 
                                 let mut before = code_editor.content();
                                 for ch in indent.chars() {
-                                    let task = code_editor.update(
-                                        &EditorMessage::CharacterInput(ch),
-                                    );
+                                    let task =
+                                        code_editor.update(&EditorMessage::CharacterInput(ch));
                                     tasks.push(task);
                                     let after = code_editor.content();
                                     buffer.set_text(&after);
@@ -140,10 +197,8 @@ impl App {
                                 ));
                                 lsp_path = Some(tab.path.clone());
                                 lsp_content = Some(code_editor.content());
-                                mapped_task = Some(
-                                    iced::Task::batch(tasks)
-                                        .map(Message::CodeEditorEvent),
-                                );
+                                mapped_task =
+                                    Some(iced::Task::batch(tasks).map(Message::CodeEditorEvent));
                             }
 
                             if mapped_task.is_none() {
@@ -159,10 +214,8 @@ impl App {
                                 autocomplete_refresh =
                                     Some((event.clone(), after.clone(), tab.path.clone()));
 
-                                mapped_task = Some(
-                                    iced::Task::batch(tasks)
-                                        .map(Message::CodeEditorEvent),
-                                );
+                                mapped_task =
+                                    Some(iced::Task::batch(tasks).map(Message::CodeEditorEvent));
                             }
                         }
                     }
@@ -202,22 +255,27 @@ impl App {
                         let should_send =
                             match (&self.last_wakatime_entity, &self.last_wakatime_sent_at) {
                                 (Some(last_entity), Some(last_time)) => {
-                                    &entity != last_entity
-                                        || last_time.elapsed().as_secs() >= 120
+                                    &entity != last_entity || last_time.elapsed().as_secs() >= 120
                                 }
                                 _ => true,
                             };
                         if should_send {
-                            let _ = wakatime::client::send_heartbeat(
-                                &entity,
-                                false,
-                                &self.wakatime,
-                            );
+                            let _ =
+                                wakatime::client::send_heartbeat(&entity, false, &self.wakatime);
                             self.last_wakatime_entity = Some(entity);
                             self.last_wakatime_sent_at = Some(Instant::now());
                         }
-                        if let Some(content) = lsp_content {
-                            self.lsp.change_document(path, content);
+
+                        // LSP: request completion on character input
+                        if self.lsp_enabled {
+                            if let Some(idx2) = self.active_tab {
+                                if let Some(tab) = self.tabs.get_mut(idx2) {
+                                    if let TabKind::Editor { ref mut code_editor, .. } = tab.kind {
+                                        code_editor.lsp_flush_pending_changes();
+                                        code_editor.lsp_request_completion();
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -228,6 +286,73 @@ impl App {
                 iced::Task::none()
             }
             Message::CodeEditorContentChanged => iced::Task::none(),
+            Message::LspOverlay(event) => {
+                match event {
+                    iced_code_editor::LspOverlayMessage::CompletionSelected(index) => {
+                        if let Some(completion) = self.lsp_overlay.completion_items.get(index).cloned() {
+                            if let Some(idx) = self.active_tab {
+                                if let Some(tab) = self.tabs.get_mut(idx) {
+                                    if let TabKind::Editor {
+                                        ref mut code_editor,
+                                        ..
+                                    } = tab.kind
+                                    {
+                                        let content = code_editor.content();
+                                        let line_text = content
+                                            .lines()
+                                            .nth(self.cursor_line.saturating_sub(1))
+                                            .unwrap_or("");
+                                        let before_cursor = &line_text
+                                            [..self.cursor_col.saturating_sub(1).min(line_text.len())];
+                                        let chars: Vec<char> = before_cursor.chars().collect();
+                                        let word_start = chars
+                                            .iter()
+                                            .enumerate()
+                                            .rev()
+                                            .find(|(_, c)| !c.is_alphanumeric() && **c != '_')
+                                            .map(|(i, _)| i + 1)
+                                            .unwrap_or(0);
+                                        let prefix_len = before_cursor.len() - word_start;
+
+                                        // Delete prefix
+                                        for _ in 0..prefix_len {
+                                            let _ = code_editor.update(&EditorMessage::Backspace);
+                                        }
+                                        // Insert completion
+                                        for ch in completion.chars() {
+                                            let _ = code_editor.update(&EditorMessage::CharacterInput(ch));
+                                        }
+
+                                        self.cursor_col = self.cursor_col.saturating_sub(prefix_len) + completion.len();
+                                    }
+                                }
+                            }
+                            self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                        }
+                    }
+                    iced_code_editor::LspOverlayMessage::CompletionNavigateUp => {
+                        self.lsp_overlay.navigate(-1);
+                    }
+                    iced_code_editor::LspOverlayMessage::CompletionNavigateDown => {
+                        self.lsp_overlay.navigate(1);
+                    }
+                    iced_code_editor::LspOverlayMessage::CompletionConfirm => {
+                        if let Some(selected_text) = self.lsp_overlay.selected_item() {
+                            return self.update(Message::LspOverlay(
+                                iced_code_editor::LspOverlayMessage::CompletionSelected(
+                                    self.lsp_overlay.completion_selected,
+                                ),
+                            ));
+                        }
+                    }
+                    iced_code_editor::LspOverlayMessage::CompletionClosed => {
+                        self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                    }
+                    iced_code_editor::LspOverlayMessage::HoverEntered => {}
+                    iced_code_editor::LspOverlayMessage::HoverExited => {}
+                }
+                iced::Task::none()
+            }
             Message::FolderToggled(path) => {
                 if let Some(ref mut tree) = self.file_tree {
                     tree.toggle_folder(&path);
@@ -255,8 +380,11 @@ impl App {
             Message::TabClosed(idx) => {
                 if idx < self.tabs.len() {
                     let path = self.tabs[idx].path.clone();
-                    self.lsp.close_document(path.clone());
+                    if let TabKind::Editor { ref mut code_editor, .. } = self.tabs[idx].kind {
+                        code_editor.detach_lsp();
+                    }
                     self.lsp_diagnostics.remove(&path);
+                    self.lsp_server_keys.remove(&path);
                     self.tabs.remove(idx);
                     if self.tabs.is_empty() {
                         self.active_tab = None;
@@ -268,14 +396,18 @@ impl App {
                         }
                     }
                 }
+                self.lsp_overlay = iced_code_editor::LspOverlayState::new();
                 self.vim_refresh_cursor_style();
                 iced::Task::none()
             }
             Message::CloseActiveTab => {
                 if let Some(idx) = self.active_tab {
                     let path = self.tabs[idx].path.clone();
-                    self.lsp.close_document(path.clone());
+                    if let TabKind::Editor { ref mut code_editor, .. } = self.tabs[idx].kind {
+                        code_editor.detach_lsp();
+                    }
                     self.lsp_diagnostics.remove(&path);
+                    self.lsp_server_keys.remove(&path);
                     self.tabs.remove(idx);
                     if self.tabs.is_empty() {
                         self.active_tab = None;
@@ -283,6 +415,7 @@ impl App {
                         self.active_tab = Some(self.tabs.len() - 1);
                     }
                 }
+                self.lsp_overlay = iced_code_editor::LspOverlayState::new();
                 self.vim_refresh_cursor_style();
                 iced::Task::none()
             }
@@ -304,8 +437,8 @@ impl App {
                     .to_string_lossy()
                     .to_string();
                 let opened_path = path.clone();
-                let opened_text = content.clone();
-                let ext = path.extension()
+                let ext = path
+                    .extension()
                     .and_then(|e| e.to_str())
                     .unwrap_or("txt")
                     .to_string();
@@ -330,14 +463,39 @@ impl App {
                 self.autocomplete.cancel();
                 self.vim_refresh_cursor_style();
 
-                self.lsp.open_document(opened_path, opened_text);
+                // Attach LSP client to the editor
+                if self.lsp_enabled && opened_path.is_absolute() {
+                    if let Some(language) = iced_code_editor::lsp_language_for_path(&opened_path) {
+                        let root_hint = opened_path.parent();
+                        match self.lsp.create_client(language.server_key, root_hint) {
+                            Ok(client) => {
+                                let uri = format!("file://{}", opened_path.display());
+                                let document = iced_code_editor::LspDocument::new(uri, language.language_id);
+                                if let Some(tab) = self.tabs.last_mut() {
+                                    if let TabKind::Editor { ref mut code_editor, .. } = tab.kind {
+                                        code_editor.set_lsp_enabled(true);
+                                        code_editor.attach_lsp(client, document);
+                                    }
+                                }
+                                self.lsp_server_keys.insert(opened_path, language.server_key);
+                            }
+                            Err(e) => {
+                                eprintln!("LSP: {}", e);
+                            }
+                        }
+                    }
+                }
                 iced::Task::none()
             }
             Message::TabSelected(idx) => {
                 if idx < self.tabs.len() {
                     self.active_tab = Some(idx);
                     if let Some(tab) = self.tabs.get_mut(idx) {
-                        if let TabKind::Editor { ref mut code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref mut code_editor,
+                            ..
+                        } = tab.kind
+                        {
                             code_editor.request_focus();
                         }
                     }
@@ -368,20 +526,23 @@ impl App {
                 self.file_tree = Some(FileTree::new(path.clone()));
                 self.all_workspace_files = crate::features::search::collect_all_files(&path);
                 self.fuzzy_finder.set_folder(path.clone());
-                self.lsp.set_workspace_root(path);
+                self.lsp.set_workspace_root(path.clone());
+                self.lsp_enabled = true;
                 iced::Task::none()
             }
             Message::SaveFile => {
                 if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get(idx) {
-                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref code_editor, ..
+                        } = tab.kind
+                        {
                             let entity = tab.path.to_string_lossy().to_string();
                             let _ = wakatime::client::send_heartbeat(&entity, true, &self.wakatime);
                             self.last_wakatime_entity = Some(entity);
                             self.last_wakatime_sent_at = Some(Instant::now());
 
                             let path = tab.path.clone();
-                            self.lsp.save_document(path.clone());
                             let content = code_editor.content();
                             return iced::Task::perform(
                                 async move { std::fs::write(&path, content).map_err(|e| e.to_string()) },
@@ -390,6 +551,7 @@ impl App {
                         }
                     }
                 }
+                self.lsp_overlay = iced_code_editor::LspOverlayState::new();
                 iced::Task::none()
             }
             Message::FileSaved(result) => {
@@ -398,10 +560,12 @@ impl App {
                 } else if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get_mut(idx) {
                         if let TabKind::Editor {
-                            ref mut code_editor, ..
+                            ref mut code_editor,
+                            ..
                         } = tab.kind
                         {
                             code_editor.mark_saved();
+                            code_editor.lsp_did_save();
                         }
                     }
                 }
@@ -440,7 +604,10 @@ impl App {
             Message::PreviewMarkdown => {
                 if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get(idx) {
-                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref code_editor, ..
+                        } = tab.kind
+                        {
                             let text = code_editor.content();
                             let md_items: Vec<markdown::Item> = markdown::parse(&text).collect();
                             let preview_name = format!("Preview: {}", tab.name);
@@ -632,9 +799,6 @@ impl App {
                     self.theme_dropdown_open = false;
                 } else if self.settings_open {
                     self.settings_open = false;
-                } else {
-                    self.vim_pending.clear();
-                    self.vim_count.clear();
                 }
                 self.vim_refresh_cursor_style();
                 iced::Task::none()
@@ -648,7 +812,6 @@ impl App {
                 }
                 iced::Task::none()
             }
-            Message::VimKeyPressed(_) => iced::Task::none(),
             Message::ToggleCommandPalette => {
                 self.command_palette.toggle();
                 self.command_palette_selected = 0;
@@ -709,7 +872,10 @@ impl App {
                 self.find_replace.find_text = query;
                 if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get(idx) {
-                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref code_editor, ..
+                        } = tab.kind
+                        {
                             let text = code_editor.content();
                             self.find_replace.find_matches(&text);
                         }
@@ -771,7 +937,10 @@ impl App {
                 self.find_replace.case_sensitive = !self.find_replace.case_sensitive;
                 if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get(idx) {
-                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref code_editor, ..
+                        } = tab.kind
+                        {
                             let text = code_editor.content();
                             self.find_replace.find_matches(&text);
                         }
@@ -921,10 +1090,50 @@ impl App {
                 iced::Task::none()
             }
             Message::LspTick => {
-                for update in self.lsp.drain_updates() {
-                    self.lsp_diagnostics.insert(update.path, update.diagnostics);
+                // Drain LSP events from the shared channel
+                for event in self.lsp.drain_events() {
+                    match event {
+                        iced_code_editor::LspEvent::Hover { text } => {
+                            if !text.trim().is_empty() {
+                                self.lsp_overlay.show_hover(text);
+                                // Use the editor's cursor screen position for hover placement
+                                if let Some(idx) = self.active_tab {
+                                    if let Some(tab) = self.tabs.get(idx) {
+                                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                                            if let Some(pos) = code_editor.cursor_screen_position() {
+                                                self.lsp_overlay.set_hover_position(pos);
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                self.lsp_overlay.clear_hover();
+                            }
+                        }
+                        iced_code_editor::LspEvent::Completion { items } => {
+                            if !items.is_empty() {
+                                let position = self.active_tab
+                                    .and_then(|idx| self.tabs.get(idx))
+                                    .and_then(|tab| {
+                                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                                            code_editor.cursor_screen_position()
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .unwrap_or(iced::Point::new(4.0, 4.0));
+                                self.lsp_overlay.set_completions(items, position);
+                            }
+                        }
+                        iced_code_editor::LspEvent::Definition { uri, range } => {
+                            eprintln!("Definition: {} at {:?}", uri, range);
+                        }
+                        iced_code_editor::LspEvent::Progress { .. } => {}
+                        iced_code_editor::LspEvent::Log { server_key, message } => {
+                            eprintln!("LSP [{}]: {}", server_key, message);
+                        }
+                    }
                 }
-                self.vim_refresh_cursor_style();
                 iced::Task::none()
             }
             Message::CheckForUpdate => {
@@ -952,11 +1161,6 @@ impl App {
         content: &str,
         path: &std::path::Path,
     ) {
-        if self.vim_mode != VimMode::Insert {
-            self.autocomplete.cancel();
-            return;
-        }
-
         let should_trigger = matches!(
             event,
             EditorMessage::CharacterInput(_)
@@ -981,13 +1185,13 @@ impl App {
         }
 
         if should_trigger {
-            let cursor_idx =
-                Self::position_to_index(content, self.cursor_line, self.cursor_col);
+            let cursor_idx = Self::position_to_index(content, self.cursor_line, self.cursor_col);
             let lang = path
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .and_then(Autocomplete::detect_language);
-            self.autocomplete.trigger(content, cursor_idx, lang.as_deref());
+            self.autocomplete
+                .trigger(content, cursor_idx, lang.as_deref());
             if self.autocomplete.prefix.len() < 2 {
                 self.autocomplete.cancel();
             }
@@ -1010,12 +1214,7 @@ impl App {
         indent
     }
 
-    fn sync_cursor_from_editor_event(
-        &mut self,
-        event: &EditorMessage,
-        _before: &str,
-        after: &str,
-    ) {
+    fn sync_cursor_from_editor_event(&mut self, event: &EditorMessage, _before: &str, after: &str) {
         let line_count = after.lines().count().max(1);
         self.cursor_line = self.cursor_line.clamp(1, line_count);
         let current_len = after
@@ -1204,11 +1403,14 @@ fn should_increase_indent(line: &str) -> bool {
 }
 
 fn indent_visual_width(indent: &str, tab_size: usize) -> usize {
-    indent.chars().fold(0usize, |acc, ch| {
-        if ch == '\t' {
-            acc + tab_size
-        } else {
-            acc + 1
-        }
-    })
+    indent.chars().fold(
+        0usize,
+        |acc, ch| {
+            if ch == '\t' {
+                acc + tab_size
+            } else {
+                acc + 1
+            }
+        },
+    )
 }

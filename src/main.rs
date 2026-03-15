@@ -10,7 +10,7 @@ mod theme;
 mod ui;
 mod wakatime;
 
-const FIRA_CODE: &[u8] = include_bytes!("assets/fonts/FiraCode-Regular.ttf");
+const FIRA_CODE: &[u8] = include_bytes!("assets/fonts/FiraCode-Bold.ttf");
 
 fn main() -> iced::Result {
     let icon_data = include_bytes!("assets/icon.png");

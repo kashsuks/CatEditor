@@ -126,43 +126,46 @@ impl App {
                 0.42,
             );
 
-            let top_highlight = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
-                .style(move |_theme| container::Style {
-                    background: Some(Background::Color(top_line)),
-                    ..Default::default()
-                });
+            let top_highlight = container(
+                Space::new().width(Length::Fill).height(Length::Fixed(1.0)),
+            )
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(top_line)),
+                ..Default::default()
+            });
 
-            let blur_streak = container(Space::new().width(Length::Fill).height(Length::Fixed(4.0)))
-                .style(move |_theme| container::Style {
-                    background: Some(Background::Color(glow)),
-                    border: iced::Border {
-                        color: Color::TRANSPARENT,
-                        width: 0.0,
-                        radius: 999.0.into(),
-                    },
-                    shadow: iced::Shadow {
-                        color: Color::from_rgba(
-                            ACCENT_SOFT_BLUE.r,
-                            ACCENT_SOFT_BLUE.g,
-                            ACCENT_SOFT_BLUE.b,
-                            0.55,
-                        ),
-                        offset: iced::Vector::new(0.0, 0.0),
-                        blur_radius: 16.0,
-                    },
-                    ..Default::default()
-                });
+            let blur_streak = container(
+                Space::new().width(Length::Fill).height(Length::Fixed(4.0)),
+            )
+            .style(move |_theme| container::Style {
+                background: Some(Background::Color(glow)),
+                border: iced::Border {
+                    color: Color::TRANSPARENT,
+                    width: 0.0,
+                    radius: 999.0.into(),
+                },
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(
+                        ACCENT_SOFT_BLUE.r,
+                        ACCENT_SOFT_BLUE.g,
+                        ACCENT_SOFT_BLUE.b,
+                        0.55,
+                    ),
+                    offset: iced::Vector::new(0.0, 0.0),
+                    blur_radius: 16.0,
+                },
+                ..Default::default()
+            });
 
             container(
                 column![
                     top_highlight,
-                    container(blur_streak)
-                        .padding(iced::Padding {
-                            top: 0.0,
-                            right: 16.0,
-                            bottom: 0.0,
-                            left: 16.0,
-                        })
+                    container(blur_streak).padding(iced::Padding {
+                        top: 0.0,
+                        right: 16.0,
+                        bottom: 0.0,
+                        left: 16.0,
+                    })
                 ]
                 .spacing(8),
             )

@@ -6,7 +6,11 @@ impl App {
         if self.terminal_open {
             if let Some(idx) = self.active_tab {
                 if let Some(tab) = self.tabs.get_mut(idx) {
-                    if let TabKind::Editor { ref mut code_editor, .. } = tab.kind {
+                    if let TabKind::Editor {
+                        ref mut code_editor,
+                        ..
+                    } = tab.kind
+                    {
                         code_editor.lose_focus();
                     }
                 }
@@ -20,7 +24,11 @@ impl App {
             VimMode::Normal => {
                 if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get_mut(idx) {
-                        if let TabKind::Editor { ref mut code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref mut code_editor,
+                            ..
+                        } = tab.kind
+                        {
                             code_editor.lose_focus();
                         }
                     }
@@ -29,7 +37,10 @@ impl App {
             VimMode::Insert => {
                 if let Some(idx) = self.active_tab {
                     if let Some(tab) = self.tabs.get_mut(idx) {
-                        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+                        if let TabKind::Editor {
+                            ref code_editor, ..
+                        } = tab.kind
+                        {
                             code_editor.request_focus();
                         }
                     }
@@ -77,9 +88,8 @@ impl App {
             }
             'a' => {
                 // 'a' in vim: move right one char, then insert
-                let task = self.vim_send_editor_msg(
-                    EditorMessage::ArrowKey(ArrowDirection::Right, false),
-                );
+                let task =
+                    self.vim_send_editor_msg(EditorMessage::ArrowKey(ArrowDirection::Right, false));
                 self.vim_mode = VimMode::Insert;
                 self.vim_refresh_cursor_style();
                 task
@@ -108,9 +118,8 @@ impl App {
                 // Open new line above
                 let t1 = self.vim_send_editor_msg(EditorMessage::Home(false));
                 let t2 = self.vim_send_editor_msg(EditorMessage::Enter);
-                let t3 = self.vim_send_editor_msg(
-                    EditorMessage::ArrowKey(ArrowDirection::Up, false),
-                );
+                let t3 =
+                    self.vim_send_editor_msg(EditorMessage::ArrowKey(ArrowDirection::Up, false));
                 self.vim_mode = VimMode::Insert;
                 self.vim_refresh_cursor_style();
                 iced::Task::batch([t1, t2, t3])
@@ -226,9 +235,7 @@ impl App {
         let count = self.vim_take_count();
         let mut tasks = Vec::with_capacity(count);
         for _ in 0..count {
-            tasks.push(self.vim_send_editor_msg(
-                EditorMessage::ArrowKey(dir, false),
-            ));
+            tasks.push(self.vim_send_editor_msg(EditorMessage::ArrowKey(dir, false)));
         }
         iced::Task::batch(tasks)
     }
@@ -242,9 +249,9 @@ impl App {
             // Ngg = go to line N (approximate via CtrlHome + N-1 ArrowDown)
             let mut tasks = vec![self.vim_send_editor_msg(EditorMessage::CtrlHome)];
             for _ in 0..count.saturating_sub(1) {
-                tasks.push(self.vim_send_editor_msg(
-                    EditorMessage::ArrowKey(ArrowDirection::Down, false),
-                ));
+                tasks.push(
+                    self.vim_send_editor_msg(EditorMessage::ArrowKey(ArrowDirection::Down, false)),
+                );
             }
             iced::Task::batch(tasks)
         }
@@ -265,9 +272,12 @@ impl App {
                 let half = 30;
                 let mut tasks = Vec::with_capacity(half);
                 for _ in 0..half {
-                    tasks.push(self.vim_send_editor_msg(
-                        EditorMessage::ArrowKey(ArrowDirection::Down, false),
-                    ));
+                    tasks.push(
+                        self.vim_send_editor_msg(EditorMessage::ArrowKey(
+                            ArrowDirection::Down,
+                            false,
+                        )),
+                    );
                 }
                 iced::Task::batch(tasks)
             }
@@ -276,9 +286,12 @@ impl App {
                 let half = 30;
                 let mut tasks = Vec::with_capacity(half);
                 for _ in 0..half {
-                    tasks.push(self.vim_send_editor_msg(
-                        EditorMessage::ArrowKey(ArrowDirection::Up, false),
-                    ));
+                    tasks.push(
+                        self.vim_send_editor_msg(EditorMessage::ArrowKey(
+                            ArrowDirection::Up,
+                            false,
+                        )),
+                    );
                 }
                 iced::Task::batch(tasks)
             }
@@ -291,7 +304,10 @@ impl App {
     fn vim_content_text(&self) -> Option<String> {
         let idx = self.active_tab?;
         let tab = self.tabs.get(idx)?;
-        if let TabKind::Editor { ref code_editor, .. } = tab.kind {
+        if let TabKind::Editor {
+            ref code_editor, ..
+        } = tab.kind
+        {
             Some(code_editor.content())
         } else {
             None
@@ -361,7 +377,10 @@ impl App {
             return iced::Task::none();
         };
         let lines: Vec<&str> = text.split('\n').collect();
-        let line_idx = self.cursor_line.saturating_sub(1).min(lines.len().saturating_sub(1));
+        let line_idx = self
+            .cursor_line
+            .saturating_sub(1)
+            .min(lines.len().saturating_sub(1));
         if let Some(line) = lines.get(line_idx) {
             let col = line
                 .chars()
@@ -411,17 +430,17 @@ impl App {
         let mut tasks = vec![self.vim_send_editor_msg(EditorMessage::CtrlHome)];
         let line_moves = target_line.saturating_sub(1);
         for _ in 0..line_moves {
-            tasks.push(self.vim_send_editor_msg(
-                EditorMessage::ArrowKey(ArrowDirection::Down, false),
-            ));
+            tasks.push(
+                self.vim_send_editor_msg(EditorMessage::ArrowKey(ArrowDirection::Down, false)),
+            );
         }
         // Use Home to ensure we're at column 1, then move to the target column
         tasks.push(self.vim_send_editor_msg(EditorMessage::Home(false)));
         let col_moves = target_col.saturating_sub(1);
         for _ in 0..col_moves {
-            tasks.push(self.vim_send_editor_msg(
-                EditorMessage::ArrowKey(ArrowDirection::Right, false),
-            ));
+            tasks.push(
+                self.vim_send_editor_msg(EditorMessage::ArrowKey(ArrowDirection::Right, false)),
+            );
         }
         self.cursor_line = target_line;
         self.cursor_col = target_col;
@@ -430,12 +449,7 @@ impl App {
 
     // --- Find char motions --- //
 
-    fn vim_find_char(
-        &mut self,
-        ch: char,
-        backward: bool,
-        till: bool,
-    ) -> iced::Task<Message> {
+    fn vim_find_char(&mut self, ch: char, backward: bool, till: bool) -> iced::Task<Message> {
         self.vim_last_find = Some(VimFindState {
             kind: match (backward, till) {
                 (false, false) => VimFindKind::ForwardTo,
@@ -450,7 +464,10 @@ impl App {
             return iced::Task::none();
         };
         let lines: Vec<&str> = text.split('\n').collect();
-        let line_idx = self.cursor_line.saturating_sub(1).min(lines.len().saturating_sub(1));
+        let line_idx = self
+            .cursor_line
+            .saturating_sub(1)
+            .min(lines.len().saturating_sub(1));
         let Some(line) = lines.get(line_idx) else {
             return iced::Task::none();
         };
@@ -475,9 +492,7 @@ impl App {
                 if chars[i] == ch {
                     found_count += 1;
                     if found_count == count {
-                        result_col = Some(
-                            if till { (i + 1).min(chars.len()) } else { i },
-                        );
+                        result_col = Some(if till { (i + 1).min(chars.len()) } else { i });
                         break;
                     }
                 }
@@ -542,9 +557,9 @@ impl App {
 
         let mut tasks = Vec::with_capacity(chars_to_select + 1);
         for _ in 0..chars_to_select {
-            tasks.push(self.vim_send_editor_msg(
-                EditorMessage::ArrowKey(ArrowDirection::Right, true),
-            ));
+            tasks.push(
+                self.vim_send_editor_msg(EditorMessage::ArrowKey(ArrowDirection::Right, true)),
+            );
         }
         tasks.push(self.vim_send_editor_msg(EditorMessage::Backspace));
         iced::Task::batch(tasks)
@@ -583,17 +598,19 @@ fn index_to_position(lines: &[&str], mut idx: usize) -> (usize, usize) {
 fn next_word_start(text: &str, idx: usize, big: bool) -> usize {
     let chars: Vec<char> = text.chars().collect();
     let mut i = idx.min(chars.len());
-    while i < chars.len() && if big { !chars[i].is_whitespace() } else { is_word_char(chars[i]) } {
+    while i < chars.len()
+        && if big {
+            !chars[i].is_whitespace()
+        } else {
+            is_word_char(chars[i])
+        }
+    {
         i += 1;
     }
     while i < chars.len() && chars[i].is_whitespace() {
         i += 1;
     }
-    while i < chars.len()
-        && !chars[i].is_whitespace()
-        && !big
-        && !is_word_char(chars[i])
-    {
+    while i < chars.len() && !chars[i].is_whitespace() && !big && !is_word_char(chars[i]) {
         i += 1;
     }
     i

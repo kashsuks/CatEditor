@@ -2424,14 +2424,15 @@ dependencies = [
 
 [[package]]
 name = "iced-code-editor"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d7ff1fe3acc3ab8bfdddcd64fc980556cdc4df2c8d7ce11b1addd920520b6a7"
+checksum = "0bebb50aeffec5dd9a78323b297c8d8ff05893843b7cb1c7165657f82e4721fc"
 dependencies = [
  "iced",
  "iced_aw",
  "iced_font_awesome",
  "rust-i18n",
+ "serde_json",
  "syntect",
  "unicode-width 0.2.2",
  "web-time",

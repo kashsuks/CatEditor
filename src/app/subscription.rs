@@ -11,10 +11,10 @@ impl App {
             iced::time::every(Duration::from_millis(150)).map(|_| Message::LspTick),
         ];
 
-       if let Some(term) = &self.terminal_pane {
-           subs.push(term.subscription().map(Message::TerminalEvent));
-       }
+        if let Some(term) = &self.terminal_pane {
+            subs.push(term.subscription().map(Message::TerminalEvent));
+        }
 
-       Subscription::batch(subs)
+        Subscription::batch(subs)
     }
 }
