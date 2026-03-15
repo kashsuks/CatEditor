@@ -7,47 +7,54 @@ description: Learn how to install, configure, and use Pinel.
 
 ## 1.1 What is Pinel?
 
-Explain at a high level what Pinel is, what problems it solves, and who it is for.
-
-You can cover things like:
-
-- The core idea or philosophy behind Pinel.
-- The main features that make it different from other editors.
-- Typical workflows or use cases.
+Pinel is a code-editor written using the Rust programming language as well as the popular [Iced Library](https://iced.rs/) for GUI rendering.
+Pinel aims to bridge some gaps between Visual Studio Code as well as editors like Neovim and Helix by being really fast and extremely customizable.
 
 ## 1.2 Why use it / key concepts
 
-Outline the core concepts a new user should know before diving in.
+If you've ever found:
+- VSCode (Visual Studio Code) too slow or too much of a gimmick
+- Neovim/Vim a bit too complicated (too high of a learning curve)
 
-Examples:
+And if you wanted an editor that just gets things done without throwing everything at you, Pinel might be a good choice. It is in no means a fully fledged editor that I recommend you switch over to, but it is in a decently okay state that you could use for testing and such.
 
-- How projects are organized.
-- How configuration works.
-- Any important terminology you’ll use throughout the docs.
+Here are some of the features that are currently working in Pinel:
+- Integrated terminal support
+    - If you use MacOS, your `zsh` terminal works perfectly fine in Pinel using the `iced-term` package for Rust
+    - Not tested for Windows but will be tested and fixed in the next `@stable` release for Pinel. (keep an eye out on Crates and Github Releases)
+- LSP (Language Server Protocol) support
+    - Out-of-the-box LSP support for Rust (rust-analzyer), Python (), Go, C/C++, and more!
+    - Supports Autocomplete, and Hover Documentation
+    - De-loads LSP for inactive files (especially useful for rust-analyzer due to memory intensity)
+- Custom theming
+    - By using Lua you are able to theme your code-editor to your liking
+    - Soon to have internal API that can be called using Lua for scripting
+- Wakatime support
+    - Enjoy tracking time? Or part of Hack Club?
+    - Set your own Wakatime URL and API key to send heartbeats to any server of your choice
+    - Uses wakatime-cli
 
-## 1.3 Architecture (optional)
+## 1.3 Architecture
 
-If useful, briefly describe the high‑level architecture: important components, how they interact, and any constraints or design goals.
+Pinel uses [Iced](https://iced.rs) for the GUI rendering due to its support for ligatures (allows uses to use nerd fonts), [iced-code-editor](https://github.com/LuDog71FR/iced-code-editor) for core features such as LSP support and line numbers, [iced-term](https://github.com/Harzu/iced_term) for integrated terminal support as well as many other packages and their functions mentioned under the [CREDITS.md](https://github.com/kashsuks/Pinel/blob/master/CREDITS.md) file for Pinel. Go check them out!
 
 # 2. Getting Started
 
-Give a short overview of what’s required to install and run Pinel (supported OS versions, dependencies, etc.).
+Pinel currently has active support for the following:
+- Mac Silicon (M1, M2, M3, etc)
+- Windows (Windows 10 and Windows 11)
+- Arch Linux
+- [Rust Package Manager Crates.io](https://crates.io)
+- [Arch Linux User Repository](https://aur.archlinux.org/)
+
+There is planned support in the future for the following:
+- Other Linux distros
+- Homebrew (MacOS)
+- Winget/Chocolatey
 
 ## 2.1 macOS
 
-Describe how to install and run Pinel on macOS.
 
-You might include:
-
-- System requirements.
-- Install via direct download, Homebrew, or source (if applicable).
-- First‑run steps and where config files live.
-
-```bash
-# Example (replace with real commands)
-brew install pinel
-pinel
-```
 
 ## 2.2 Windows
 
