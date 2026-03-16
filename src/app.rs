@@ -12,7 +12,7 @@ use iced_code_editor::CodeEditor;
 use iced_term::Terminal as IcedTerminal;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::autocomplete::engine::Autocomplete;
 use crate::config::preferences::{self as prefs, EditorPreferences};
@@ -74,6 +74,17 @@ pub struct Notification {
     pub message: String,
     pub shown_at: Instant,
 }
+
+#[derive(Debug, Clone)]
+struct PendingHoverRequest {
+    path: PathBuf,
+    position: iced_code_editor::LspPosition,
+    anchor_point: iced::Point,
+    started_at: Instant,
+    requested: bool,
+}
+
+const HOVER_TRIGGER_DELAY: Duration = Duration::from_secs(2);
 
 pub struct App {
     tabs: Vec<Tab>,
@@ -142,6 +153,7 @@ pub struct App {
     lsp_overlay: iced_code_editor::LspOverlayState,
     lsp_enabled: bool,
     lsp_server_keys: HashMap<PathBuf, &'static str>,
+    pending_hover_request: Option<PendingHoverRequest>,
 
     pending_sensitive_open: Option<PathBuf>,
 
@@ -261,6 +273,7 @@ impl Default for App {
             lsp_overlay: iced_code_editor::LspOverlayState::new(),
             lsp_enabled: true,
             lsp_server_keys: HashMap::new(),
+            pending_hover_request: None,
             pending_sensitive_open: None,
             autocomplete: Autocomplete::new(),
             developer_logs: VecDeque::new(),

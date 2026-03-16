@@ -101,7 +101,8 @@ impl App {
                     let mut cursor_sync: Option<(EditorMessage, String, String)> = None;
                     let mut autocomplete_refresh: Option<(EditorMessage, String, PathBuf)> = None;
                     let mut manual_cursor_update: Option<(usize, usize)> = None;
-                    let mut hover_request_point: Option<iced::Point> = None;
+                    let mut hover_candidate:
+                        Option<(PathBuf, iced_code_editor::LspPosition, iced::Point)> = None;
                     let cursor_line_before = self.cursor_line;
                     let tab_size = self.editor_preferences.tab_size.max(1);
                     let indent_unit = self.editor_preferences.indent_unit();
@@ -248,7 +249,14 @@ impl App {
                                         Some((event.clone(), after.clone(), tab.path.clone()));
                                 }
                                 if let EditorMessage::MouseHover(point) = event {
-                                    hover_request_point = Some(point);
+                                    if self.lsp_enabled {
+                                        if let Some((position, anchor_point)) =
+                                            code_editor.lsp_hover_anchor_at_point(point)
+                                        {
+                                            hover_candidate =
+                                                Some((tab.path.clone(), position, anchor_point));
+                                        }
+                                    }
                                 }
 
                                 mapped_task =
@@ -259,6 +267,12 @@ impl App {
 
                     if let Some((ref event, ref before, ref after)) = cursor_sync {
                         self.sync_cursor_from_editor_event(event, before, after);
+                    }
+                    if !matches!(event, EditorMessage::MouseHover(_)) {
+                        self.pending_hover_request = None;
+                        if !self.lsp_overlay.hover_interactive {
+                            self.lsp_overlay.clear_hover();
+                        }
                     }
                     // For mouse events, read cursor position directly from editor
                     if matches!(
@@ -279,6 +293,33 @@ impl App {
                         }
                         // Dismiss overlays on click
                         self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                        self.pending_hover_request = None;
+                    }
+                    if let Some((path, position, anchor_point)) = hover_candidate {
+                        match self.pending_hover_request.as_mut() {
+                            Some(pending)
+                                if pending.path == path && pending.position == position =>
+                            {
+                                pending.anchor_point = anchor_point;
+                            }
+                            _ => {
+                                if !self.lsp_overlay.hover_interactive {
+                                    self.lsp_overlay.clear_hover();
+                                }
+                                self.pending_hover_request = Some(super::PendingHoverRequest {
+                                    path,
+                                    position,
+                                    anchor_point,
+                                    started_at: Instant::now(),
+                                    requested: false,
+                                });
+                            }
+                        }
+                    } else if matches!(event, EditorMessage::MouseHover(_)) {
+                        self.pending_hover_request = None;
+                        if !self.lsp_overlay.hover_interactive {
+                            self.lsp_overlay.clear_hover();
+                        }
                     }
                     if let Some((event, after, path)) = autocomplete_refresh {
                         self.refresh_autocomplete_for_event(&event, &after, &path);
@@ -314,34 +355,6 @@ impl App {
                                 wakatime::client::send_heartbeat(&entity, false, &self.wakatime);
                             self.last_wakatime_entity = Some(entity);
                             self.last_wakatime_sent_at = Some(Instant::now());
-                        }
-
-                        if let Some(point) = hover_request_point {
-                            if self.lsp_enabled {
-                                if let Some(idx2) = self.active_tab {
-                                    if let Some(tab) = self.tabs.get_mut(idx2) {
-                                        if let TabKind::Editor {
-                                            ref mut code_editor,
-                                            ..
-                                        } = tab.kind
-                                        {
-                                            if let Some((_, anchor_point)) =
-                                                code_editor.lsp_hover_anchor_at_point(point)
-                                            {
-                                                self.lsp_overlay.set_hover_position(anchor_point);
-                                            } else {
-                                                self.lsp_overlay.clear_hover();
-                                            }
-
-                                            if !code_editor.lsp_request_hover_at(point) {
-                                                self.lsp_overlay.clear_hover();
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                self.lsp_overlay.clear_hover();
-                            }
                         }
 
                         // LSP: only request completion on actual text-change events
@@ -511,6 +524,7 @@ impl App {
                     }
                 }
                 self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                self.pending_hover_request = None;
                 self.vim_refresh_cursor_style();
                 iced::Task::none()
             }
@@ -534,6 +548,7 @@ impl App {
                     }
                 }
                 self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                self.pending_hover_request = None;
                 self.vim_refresh_cursor_style();
                 iced::Task::none()
             }
@@ -591,6 +606,7 @@ impl App {
                 self.cursor_line = 1;
                 self.cursor_col = 1;
                 self.autocomplete.cancel();
+                self.pending_hover_request = None;
                 self.vim_refresh_cursor_style();
 
                 // Attach LSP client to the editor
@@ -725,6 +741,7 @@ impl App {
                         }
                     }
                     self.vim_refresh_cursor_style();
+                    self.pending_hover_request = None;
                 }
                 iced::Task::none()
             }
@@ -1005,6 +1022,7 @@ impl App {
                     self.autocomplete.cancel();
                 } else if self.lsp_overlay.completion_visible || self.lsp_overlay.hover_visible {
                     self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                    self.pending_hover_request = None;
                 } else if self.command_palette.open {
                     self.command_palette.close();
                 } else if self.pending_sensitive_open.is_some() {
@@ -1261,6 +1279,7 @@ impl App {
                 ));
                 if !self.lsp_enabled {
                     self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                    self.pending_hover_request = None;
                 }
                 iced::Task::none()
             }
@@ -1362,6 +1381,47 @@ impl App {
                 iced::Task::none()
             }
             Message::LspTick => {
+                if self.lsp_enabled {
+                    if let Some(pending) = self.pending_hover_request.as_mut() {
+                        if !pending.requested
+                            && pending.started_at.elapsed() >= super::HOVER_TRIGGER_DELAY
+                        {
+                            let should_clear = if let Some(idx) = self.active_tab {
+                                if let Some(tab) = self.tabs.get_mut(idx) {
+                                    if tab.path == pending.path {
+                                        if let TabKind::Editor {
+                                            ref mut code_editor,
+                                            ..
+                                        } = tab.kind
+                                        {
+                                            self.lsp_overlay
+                                                .set_hover_position(pending.anchor_point);
+                                            pending.requested = code_editor
+                                                .lsp_request_hover_at_position(pending.position);
+                                            !pending.requested
+                                        } else {
+                                            true
+                                        }
+                                    } else {
+                                        true
+                                    }
+                                } else {
+                                    true
+                                }
+                            } else {
+                                true
+                            };
+
+                            if should_clear {
+                                self.pending_hover_request = None;
+                                if !self.lsp_overlay.hover_interactive {
+                                    self.lsp_overlay.clear_hover();
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Drain LSP events from the shared channel
                 for event in self.lsp.drain_events() {
                     match event {
@@ -1369,19 +1429,8 @@ impl App {
                             self.dev_log(format!("LSP: Hover received ({} chars)", text.len()));
                             if !text.trim().is_empty() {
                                 self.lsp_overlay.show_hover(text);
-                                // Use the editor's cursor screen position for hover placement
-                                if let Some(idx) = self.active_tab {
-                                    if let Some(tab) = self.tabs.get(idx) {
-                                        if let TabKind::Editor {
-                                            ref code_editor, ..
-                                        } = tab.kind
-                                        {
-                                            if let Some(pos) = code_editor.cursor_screen_position()
-                                            {
-                                                self.lsp_overlay.set_hover_position(pos);
-                                            }
-                                        }
-                                    }
+                                if let Some(pending) = self.pending_hover_request.as_ref() {
+                                    self.lsp_overlay.set_hover_position(pending.anchor_point);
                                 }
                             } else {
                                 self.lsp_overlay.clear_hover();
@@ -1394,7 +1443,7 @@ impl App {
                             ));
                             if !items.is_empty() {
                                 // Only show LSP completion if prefix is at least 2 chars
-                                let prefix_len = self
+                                let prefix = self
                                     .active_tab
                                     .and_then(|idx| self.tabs.get(idx))
                                     .map(|tab| {
@@ -1415,13 +1464,16 @@ impl App {
                                                 .chars()
                                                 .rev()
                                                 .take_while(|c| c.is_alphanumeric() || *c == '_')
-                                                .count()
+                                                .collect::<String>()
+                                                .chars()
+                                                .rev()
+                                                .collect::<String>()
                                         } else {
-                                            0
+                                            String::new()
                                         }
                                     })
-                                    .unwrap_or(0);
-                                if prefix_len > 1 {
+                                    .unwrap_or_default();
+                                if prefix.chars().count() > 1 {
                                     let position = self
                                         .active_tab
                                         .and_then(|idx| self.tabs.get(idx))
@@ -1437,10 +1489,12 @@ impl App {
                                         })
                                         .unwrap_or(iced::Point::new(4.0, 4.0));
                                     self.lsp_overlay.set_completions(items, position);
+                                    self.lsp_overlay.completion_filter = prefix;
+                                    self.lsp_overlay.filter_completions();
                                 } else {
                                     self.dev_log(format!(
                                         "LSP: Completion ignored (prefix_len={} <= 1)",
-                                        prefix_len
+                                        prefix.chars().count()
                                     ));
                                 }
                             }
