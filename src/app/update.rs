@@ -78,7 +78,7 @@ impl App {
         match message {
             Message::CodeEditorEvent(event) => {
                 // Autocomplete keyboard navigation — intercept before editor processing
-                if self.autocomplete.active {
+                if self.autocomplete.active && !self.lsp_enabled {
                     if let EditorMessage::ArrowKey(dir, false) = &event {
                         match dir {
                             iced_code_editor::ArrowDirection::Up => {
@@ -101,6 +101,7 @@ impl App {
                     let mut cursor_sync: Option<(EditorMessage, String, String)> = None;
                     let mut autocomplete_refresh: Option<(EditorMessage, String, PathBuf)> = None;
                     let mut manual_cursor_update: Option<(usize, usize)> = None;
+                    let mut hover_request_point: Option<iced::Point> = None;
                     let cursor_line_before = self.cursor_line;
                     let tab_size = self.editor_preferences.tab_size.max(1);
                     let indent_unit = self.editor_preferences.indent_unit();
@@ -112,7 +113,8 @@ impl App {
                         } = tab.kind
                         {
                             // Accept local autocomplete on Enter
-                            if self.autocomplete.active
+                            if !self.lsp_enabled
+                                && self.autocomplete.active
                                 && !self.autocomplete.suggestions.is_empty()
                                 && matches!(event, EditorMessage::Enter)
                             {
@@ -212,14 +214,12 @@ impl App {
                                 let indent = self.editor_preferences.indent_unit();
                                 let mut tasks = Vec::new();
 
-                                let mut before = code_editor.content();
                                 for ch in indent.chars() {
                                     let task =
                                         code_editor.update(&EditorMessage::CharacterInput(ch));
                                     tasks.push(task);
                                     let after = code_editor.content();
                                     buffer.set_text(&after);
-                                    before = after;
                                 }
 
                                 let indent_cols = indent_visual_width(&indent, tab_size);
@@ -238,13 +238,18 @@ impl App {
                                 let mut tasks = Vec::new();
                                 let task = code_editor.update(&event);
                                 tasks.push(task);
-                                let mut after = code_editor.content();
+                                let after = code_editor.content();
                                 buffer.set_text(&after);
                                 lsp_path = Some(tab.path.clone());
                                 lsp_content = Some(after.clone());
                                 cursor_sync = Some((event.clone(), before.clone(), after.clone()));
-                                autocomplete_refresh =
-                                    Some((event.clone(), after.clone(), tab.path.clone()));
+                                if !self.lsp_enabled {
+                                    autocomplete_refresh =
+                                        Some((event.clone(), after.clone(), tab.path.clone()));
+                                }
+                                if let EditorMessage::MouseHover(point) = event {
+                                    hover_request_point = Some(point);
+                                }
 
                                 mapped_task =
                                     Some(iced::Task::batch(tasks).map(Message::CodeEditorEvent));
@@ -311,6 +316,34 @@ impl App {
                             self.last_wakatime_sent_at = Some(Instant::now());
                         }
 
+                        if let Some(point) = hover_request_point {
+                            if self.lsp_enabled {
+                                if let Some(idx2) = self.active_tab {
+                                    if let Some(tab) = self.tabs.get_mut(idx2) {
+                                        if let TabKind::Editor {
+                                            ref mut code_editor,
+                                            ..
+                                        } = tab.kind
+                                        {
+                                            if let Some((_, anchor_point)) =
+                                                code_editor.lsp_hover_anchor_at_point(point)
+                                            {
+                                                self.lsp_overlay.set_hover_position(anchor_point);
+                                            } else {
+                                                self.lsp_overlay.clear_hover();
+                                            }
+
+                                            if !code_editor.lsp_request_hover_at(point) {
+                                                self.lsp_overlay.clear_hover();
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                self.lsp_overlay.clear_hover();
+                            }
+                        }
+
                         // LSP: only request completion on actual text-change events
                         if self.lsp_enabled {
                             let is_text_change = cursor_sync
@@ -360,6 +393,7 @@ impl App {
                                 if let Some(tab) = self.tabs.get_mut(idx) {
                                     if let TabKind::Editor {
                                         ref mut code_editor,
+                                        ref mut buffer,
                                         ..
                                     } = tab.kind
                                     {
@@ -391,6 +425,7 @@ impl App {
                                             let _ = code_editor
                                                 .update(&EditorMessage::CharacterInput(ch));
                                         }
+                                        buffer.set_text(&code_editor.content());
 
                                         self.cursor_col =
                                             self.cursor_col.saturating_sub(prefix_len)
@@ -408,7 +443,7 @@ impl App {
                         self.lsp_overlay.navigate(1);
                     }
                     iced_code_editor::LspOverlayMessage::CompletionConfirm => {
-                        if let Some(selected_text) = self.lsp_overlay.selected_item() {
+                        if self.lsp_overlay.selected_item().is_some() {
                             return self.update(Message::LspOverlay(
                                 iced_code_editor::LspOverlayMessage::CompletionSelected(
                                     self.lsp_overlay.completion_selected,
@@ -419,8 +454,12 @@ impl App {
                     iced_code_editor::LspOverlayMessage::CompletionClosed => {
                         self.lsp_overlay = iced_code_editor::LspOverlayState::new();
                     }
-                    iced_code_editor::LspOverlayMessage::HoverEntered => {}
-                    iced_code_editor::LspOverlayMessage::HoverExited => {}
+                    iced_code_editor::LspOverlayMessage::HoverEntered => {
+                        self.lsp_overlay.hover_interactive = true;
+                    }
+                    iced_code_editor::LspOverlayMessage::HoverExited => {
+                        self.lsp_overlay.hover_interactive = false;
+                    }
                 }
                 iced::Task::none()
             }
@@ -1447,6 +1486,11 @@ impl App {
         content: &str,
         path: &std::path::Path,
     ) {
+        if self.lsp_enabled {
+            self.autocomplete.cancel();
+            return;
+        }
+
         let should_trigger = matches!(
             event,
             EditorMessage::CharacterInput(_)

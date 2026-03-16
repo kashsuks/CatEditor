@@ -185,8 +185,7 @@ impl App {
                                 ..Default::default()
                             });
 
-                        // LSP hover only (no completion overlay — we use custom purple panel)
-                        let lsp_hover = if self.lsp_enabled && self.lsp_overlay.hover_visible {
+                        let lsp_overlay = if self.lsp_enabled {
                             iced_code_editor::view_lsp_overlay(
                                 &self.lsp_overlay,
                                 code_editor,
@@ -199,8 +198,9 @@ impl App {
                             container(iced::widget::Space::new()).into()
                         };
 
-                        let show_panel =
-                            self.autocomplete.active && !self.autocomplete.suggestions.is_empty();
+                        let show_panel = !self.lsp_enabled
+                            && self.autocomplete.active
+                            && !self.autocomplete.suggestions.is_empty();
                         if show_panel {
                             // ── Purple autocomplete modal with navigation ───────────────────
                             let kind_color = |kind: &crate::autocomplete::types::SuggestionKind| {
@@ -370,13 +370,13 @@ impl App {
                                 .width(Length::Fill)
                                 .height(Length::Fill);
 
-                            return stack![editor, positioned_panel, lsp_hover]
+                            return stack![editor, positioned_panel, lsp_overlay]
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .into();
                         }
 
-                        return stack![editor, lsp_hover]
+                        return stack![editor, lsp_overlay]
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .into();
