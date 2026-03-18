@@ -152,7 +152,7 @@ jobs:
         shell: bash
         run: |
           cargo login "${{ secrets.CRATES_IO }}"
-          cargo publish --locked --allow-dirty
+          cargo publish --allow-dirty
           rm -f ~/.cargo/credentials
 
   update-aur:
@@ -191,7 +191,7 @@ jobs:
 
           build() {
               cd "$srcdir"/Pinel-*
-              cargo build --release --locked
+              cargo build --release
           }
 
           package() {
