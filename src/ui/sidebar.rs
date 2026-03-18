@@ -4,20 +4,20 @@ use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Element, Length};
 
 use crate::features::file_tree::{FileEntry, FileTree};
-use crate::features::icons::{get_file_icon, get_folder_icon};
+use crate::features::icons::{get_file_icon, get_folder_icon, IconAsset, IconFormat};
 use crate::message::Message;
 use crate::theme::*;
 use crate::ui::styles::{sidebar_container_style, tree_button_style};
 
-/// Create an icon element from a path, choosing Svg or Image widget based on extension.
-fn icon_widget<'a>(icon_path: &str) -> Element<'a, Message> {
-    if icon_path.ends_with(".png") {
-        image::Image::new(icon_path.to_string())
+/// Create an icon element from embedded bytes.
+fn icon_widget<'a>(icon: IconAsset) -> Element<'a, Message> {
+    if icon.format == IconFormat::Png {
+        image::Image::new(image::Handle::from_bytes(icon.bytes))
             .width(Length::Fixed(ICON_SIZE))
             .height(Length::Fixed(ICON_SIZE))
             .into()
     } else {
-        Svg::new(Handle::from_path(icon_path))
+        Svg::new(Handle::from_memory(icon.bytes))
             .width(Length::Fixed(ICON_SIZE))
             .height(Length::Fixed(ICON_SIZE))
             .into()
@@ -84,9 +84,7 @@ fn render_entries<'a>(
                 children,
             } => {
                 let is_expanded = tree.is_expanded(path);
-                let icon_path = get_folder_icon(name, is_expanded);
-
-                let icon: Element<'_, Message> = icon_widget(&icon_path);
+                let icon: Element<'_, Message> = icon_widget(get_folder_icon(name, is_expanded));
 
                 let btn = button(
                     row![
@@ -114,9 +112,7 @@ fn render_entries<'a>(
                 }
             }
             FileEntry::File { path, name } => {
-                let icon_path = get_file_icon(name);
-
-                let icon: Element<'_, Message> = icon_widget(&icon_path);
+                let icon: Element<'_, Message> = icon_widget(get_file_icon(name));
 
                 let btn = button(
                     row![

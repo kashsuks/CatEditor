@@ -1,32 +1,54 @@
+use include_dir::{include_dir, Dir};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-/// Base directory for file icons (`src/assets/icons/`)
-fn icons_base() -> PathBuf {
-    crate::features::resources::resource_dir()
-        .join("src")
-        .join("assets")
-        .join("icons")
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IconFormat {
+    Svg,
+    Png,
 }
 
-/// Base directory for folder icons (`src/assets/icons/folders/`)
-fn folder_icons_base() -> PathBuf {
-    icons_base().join("folders")
+#[derive(Clone, Copy, Debug)]
+pub struct IconAsset {
+    pub format: IconFormat,
+    pub bytes: &'static [u8],
 }
 
-/// Resolve an icon name to its full path, trying `.svg` first then `.png`.
-fn resolve_icon(base: &Path, name: &str) -> String {
-    let svg = base.join(format!("{}.svg", name));
-    if svg.exists() {
-        return svg.to_string_lossy().into_owned();
+static ICONS_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/src/assets/icons");
+
+fn resolve_icon(base: &str, name: &str) -> IconAsset {
+    let svg_path = if base.is_empty() {
+        format!("{name}.svg")
+    } else {
+        format!("{base}/{name}.svg")
+    };
+    if let Some(svg) = ICONS_DIR.get_file(&svg_path) {
+        return IconAsset {
+            format: IconFormat::Svg,
+            bytes: svg.contents(),
+        };
     }
-    let png = base.join(format!("{}.png", name));
-    if png.exists() {
-        return png.to_string_lossy().into_owned();
+
+    let png_path = if base.is_empty() {
+        format!("{name}.png")
+    } else {
+        format!("{base}/{name}.png")
+    };
+    if let Some(png) = ICONS_DIR.get_file(&png_path) {
+        return IconAsset {
+            format: IconFormat::Png,
+            bytes: png.contents(),
+        };
     }
-    // Return the svg path as fallback even if missing
-    svg.to_string_lossy().into_owned()
+
+    let fallback = ICONS_DIR
+        .get_file("file.png")
+        .expect("embedded fallback icon src/assets/icons/file.png must exist");
+    IconAsset {
+        format: IconFormat::Png,
+        bytes: fallback.contents(),
+    }
 }
 
 // ── File extension → icon name ──────────────────────────────────────────────
@@ -293,13 +315,12 @@ static FOLDER_NAME_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(||
     ])
 });
 
-pub fn get_file_icon(filename: &str) -> String {
+pub fn get_file_icon(filename: &str) -> IconAsset {
     let filename_lower = filename.to_lowercase();
-    let base = icons_base();
 
     // 1. Try exact filename match
     if let Some(&icon_name) = FILE_NAME_MAP.get(filename_lower.as_str()) {
-        return resolve_icon(&base, icon_name);
+        return resolve_icon("", icon_name);
     }
 
     // 2. Try compound extension (e.g. "test.spec.ts" → "spec.ts")
@@ -307,24 +328,23 @@ pub fn get_file_icon(filename: &str) -> String {
     for i in 1..parts.len() {
         let compound_ext = parts[i..].join(".");
         if let Some(&icon_name) = FILE_EXT_MAP.get(compound_ext.as_str()) {
-            return resolve_icon(&base, icon_name);
+            return resolve_icon("", icon_name);
         }
     }
 
     // 3. Try simple extension
     if let Some(ext) = Path::new(filename).extension().and_then(|e| e.to_str()) {
         if let Some(&icon_name) = FILE_EXT_MAP.get(ext.to_lowercase().as_str()) {
-            return resolve_icon(&base, icon_name);
+            return resolve_icon("", icon_name);
         }
     }
 
     // 4. Default file icon
-    resolve_icon(&base, "file")
+    resolve_icon("", "file")
 }
 
-pub fn get_folder_icon(folder_name: &str, is_open: bool) -> String {
+pub fn get_folder_icon(folder_name: &str, is_open: bool) -> IconAsset {
     let folder_lower = folder_name.to_lowercase();
-    let base = folder_icons_base();
 
     let icon_base_name = FOLDER_NAME_MAP
         .get(folder_lower.as_str())
@@ -337,5 +357,5 @@ pub fn get_folder_icon(folder_name: &str, is_open: bool) -> String {
         icon_base_name.to_string()
     };
 
-    resolve_icon(&base, &name)
+    resolve_icon("folders", &name)
 }

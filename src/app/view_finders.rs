@@ -1,5 +1,6 @@
 use super::*;
 use iced::widget::column;
+use crate::features::icons::IconFormat;
 
 impl App {
     pub(super) fn view_fuzzy_finder_overlay(&self) -> Element<'_, Message> {
@@ -55,20 +56,24 @@ impl App {
                 let is_selected = idx == self.fuzzy_finder.selected_index;
                 let path = file.path.clone();
 
-                let icon_str = crate::features::icons::get_file_icon(
+                let icon_asset = crate::features::icons::get_file_icon(
                     file.path
                         .file_name()
                         .unwrap_or_default()
                         .to_str()
                         .unwrap_or(""),
                 );
-                let icon: Element<'_, Message> = if icon_str.ends_with(".png") {
-                    iced::widget::image::Image::new(icon_str)
+                let icon: Element<'_, Message> = if icon_asset.format == IconFormat::Png {
+                    iced::widget::image::Image::new(iced::widget::image::Handle::from_bytes(
+                        icon_asset.bytes,
+                    ))
                         .width(Length::Fixed(14.0))
                         .height(Length::Fixed(14.0))
                         .into()
                 } else {
-                    iced::widget::svg::Svg::new(iced::widget::svg::Handle::from_path(&icon_str))
+                    iced::widget::svg::Svg::new(iced::widget::svg::Handle::from_memory(
+                        icon_asset.bytes,
+                    ))
                         .width(Length::Fixed(14.0))
                         .height(Length::Fixed(14.0))
                         .into()
