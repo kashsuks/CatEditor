@@ -1,27 +1,19 @@
 use iced::widget::image;
-use iced::widget::svg::{Handle, Svg};
 use iced::widget::{button, column, container, row, scrollable, text};
 use iced::{Element, Length};
 
 use crate::features::file_tree::{FileEntry, FileTree};
-use crate::features::icons::{get_file_icon, get_folder_icon, IconAsset, IconFormat};
+use crate::features::icons::{get_file_icon, get_folder_icon, icon_handle, IconAsset};
 use crate::message::Message;
 use crate::theme::*;
 use crate::ui::styles::{sidebar_container_style, tree_button_style};
 
 /// Create an icon element from embedded bytes.
 fn icon_widget<'a>(icon: IconAsset) -> Element<'a, Message> {
-    if icon.format == IconFormat::Png {
-        image::Image::new(image::Handle::from_bytes(icon.bytes))
-            .width(Length::Fixed(ICON_SIZE))
-            .height(Length::Fixed(ICON_SIZE))
-            .into()
-    } else {
-        Svg::new(Handle::from_memory(icon.bytes))
-            .width(Length::Fixed(ICON_SIZE))
-            .height(Length::Fixed(ICON_SIZE))
-            .into()
-    }
+    image::Image::new(icon_handle(icon, ICON_SIZE as u32))
+        .width(Length::Fixed(ICON_SIZE))
+        .height(Length::Fixed(ICON_SIZE))
+        .into()
 }
 
 pub fn view_sidebar<'a>(file_tree: Option<&'a FileTree>, width: f32) -> Element<'a, Message> {

@@ -2,6 +2,9 @@ use include_dir::{include_dir, Dir};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Mutex;
+
+use iced::widget::image;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IconFormat {
@@ -16,6 +19,85 @@ pub struct IconAsset {
 }
 
 static ICONS_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/src/assets/icons");
+static ICON_HANDLE_CACHE: Lazy<Mutex<HashMap<IconCacheKey, image::Handle>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+const SVG_ICON_RASTER_SIZE: u32 = 64;
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct IconCacheKey {
+    ptr: usize,
+    len: usize,
+    size: u32,
+}
+
+impl IconCacheKey {
+    fn new(bytes: &'static [u8], size: u32) -> Self {
+        Self {
+            ptr: bytes.as_ptr() as usize,
+            len: bytes.len(),
+            size,
+        }
+    }
+}
+
+fn rasterize_svg_icon(bytes: &'static [u8], size: u32) -> Option<image::Handle> {
+    let options = resvg::usvg::Options::default();
+    let tree = resvg::usvg::Tree::from_data(bytes, &options).ok()?;
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(size, size)?;
+
+    resvg::render(
+        &tree,
+        resvg::usvg::FitTo::Size(size, size),
+        resvg::tiny_skia::Transform::default(),
+        pixmap.as_mut(),
+    )?;
+
+    Some(image::Handle::from_rgba(
+        pixmap.width(),
+        pixmap.height(),
+        pixmap.take(),
+    ))
+}
+
+fn rasterize_png_icon(bytes: &'static [u8], size: u32) -> Option<image::Handle> {
+    let image = ::image::load_from_memory(bytes).ok()?.into_rgba8();
+    let resized = if image.width() == size && image.height() == size {
+        image
+    } else {
+        ::image::imageops::resize(&image, size, size, ::image::imageops::FilterType::Triangle)
+    };
+
+    Some(image::Handle::from_rgba(
+        resized.width(),
+        resized.height(),
+        resized.into_raw(),
+    ))
+}
+
+pub fn icon_handle(icon: IconAsset, size: u32) -> image::Handle {
+    let key = IconCacheKey::new(icon.bytes, size);
+    let mut cache = ICON_HANDLE_CACHE.lock().expect("icon cache poisoned");
+
+    if let Some(handle) = cache.get(&key) {
+        return handle.clone();
+    }
+
+    match icon.format {
+        IconFormat::Png => {
+            let handle = rasterize_png_icon(icon.bytes, size)
+                .unwrap_or_else(|| image::Handle::from_bytes(icon.bytes));
+            cache.insert(key, handle.clone());
+            handle
+        }
+        IconFormat::Svg => {
+            let handle = rasterize_svg_icon(icon.bytes, size.max(SVG_ICON_RASTER_SIZE))
+                .unwrap_or_else(|| image::Handle::from_bytes(icon.bytes));
+            cache.insert(key, handle.clone());
+            handle
+        }
+    }
+}
 
 fn resolve_icon(base: &str, name: &str) -> IconAsset {
     let svg_path = if base.is_empty() {
