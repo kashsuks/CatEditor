@@ -24,6 +24,7 @@ pub enum Message {
     SaveCurrentFileAs(PathBuf),
     CurrentFileSavedAs(PathBuf),
     FileSaved(Result<(), String>),
+    InputLog(String),
 
     TabSelected(usize),
     TabClosed(usize),

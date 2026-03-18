@@ -6,6 +6,7 @@ impl App {
     pub fn subscription(&self) -> Subscription<Message> {
         let mut subs = vec![
             crate::subscriptions::keyboard::shortcuts(),
+            crate::subscriptions::keyboard::input_debug(),
             crate::subscriptions::mouse::sidebar_resize(),
             crate::subscriptions::window::resizes(),
             iced::time::every(Duration::from_millis(150)).map(|_| Message::LspTick),
