@@ -163,3 +163,30 @@ pinel.theme.set_color("editor.current_line_highlight", "#7aa2f733")
 ```
 
 All of the options for `name` are listed [here](link to a lua file with all the functions and sample implementation)
+
+### pinel.ui.show_sidebar(visible)
+
+Boolean that enables or disables the sidebar on startup
+
+Example:
+```lua
+pinel.ui.show_sidebar(false)
+```
+It can also be set to `true`
+
+### pinel.ui.set_sidebar_width(width)
+
+Sets the sidebar width in pixels on startup. Width is clamped to the editors allowed range.
+
+**Allowed range is 20px - 120px**
+
+Example
+```lua
+pinel.ui.set_sidebar_width(100.0)
+```
+
+*TODO*: Not allow the user to exceed these bounds/have a reminder that they cannot
+
+### Extra Resources
+
+A full example file is located [here]() that you may refer to.
