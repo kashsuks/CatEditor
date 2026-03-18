@@ -571,6 +571,19 @@ impl App {
                 }
                 Self::open_path_task(path)
             }
+            Message::OpenFileDialog => iced::Task::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .set_title("Open File")
+                        .pick_file()
+                        .await
+                        .map(|handle| handle.path().to_path_buf())
+                },
+                |result| match result {
+                    Some(path) => Message::FileClicked(path),
+                    None => Message::FileTreeRefresh,
+                },
+            ),
             Message::TabClosed(idx) => {
                 if idx < self.tabs.len() {
                     let path = self.tabs[idx].path.clone();
@@ -639,6 +652,18 @@ impl App {
                 iced::Task::none()
             }
             Message::FileOpened(path, content) => {
+                if let Some(idx) = self.tabs.iter().position(|t| t.path == path) {
+                    self.active_tab = Some(idx);
+                    self.vim_refresh_cursor_style();
+                    return iced::Task::none();
+                }
+
+                let effective_content = if content.is_empty() && path.exists() {
+                    std::fs::read_to_string(&path).unwrap_or_default()
+                } else {
+                    content
+                };
+
                 self.recent_files.retain(|p| p != &path);
                 self.recent_files.insert(0, path.clone());
                 if self.recent_files.len() > 20 {
@@ -665,8 +690,10 @@ impl App {
                     path,
                     name,
                     kind: TabKind::Editor {
-                        code_editor: { self.configured_code_editor(&content, &ext) },
-                        buffer: crate::features::editor_buffer::EditorBuffer::from_text(&content),
+                        code_editor: { self.configured_code_editor(&effective_content, &ext) },
+                        buffer: crate::features::editor_buffer::EditorBuffer::from_text(
+                            &effective_content,
+                        ),
                     },
                 });
 
@@ -865,6 +892,9 @@ impl App {
 
                             let path = tab.path.clone();
                             let content = code_editor.content();
+                            if path == PathBuf::from("untitled") {
+                                return iced::Task::perform(async {}, |_| Message::SaveAs);
+                            }
                             return iced::Task::perform(
                                 async move { std::fs::write(&path, content).map_err(|e| e.to_string()) },
                                 Message::FileSaved,
@@ -873,6 +903,64 @@ impl App {
                     }
                 }
                 self.lsp_overlay = iced_code_editor::LspOverlayState::new();
+                iced::Task::none()
+            }
+            Message::SaveCurrentFileAs(path) => {
+                if let Some(idx) = self.active_tab {
+                    if let Some(tab) = self.tabs.get(idx) {
+                        if let TabKind::Editor {
+                            ref code_editor, ..
+                        } = tab.kind
+                        {
+                            let content = code_editor.content();
+                            return iced::Task::perform(
+                                async move {
+                                    std::fs::write(&path, content)
+                                        .map(|_| path)
+                                        .map_err(|e| e.to_string())
+                                },
+                                |result| match result {
+                                    Ok(path) => Message::CurrentFileSavedAs(path),
+                                    Err(err) => Message::FileSaved(Err(err)),
+                                },
+                            );
+                        }
+                    }
+                }
+                iced::Task::none()
+            }
+            Message::CurrentFileSavedAs(path) => {
+                if let Some(idx) = self.active_tab {
+                    if let Some(tab) = self.tabs.get_mut(idx) {
+                        tab.name = path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string();
+                        tab.path = path.clone();
+
+                        if let TabKind::Editor {
+                            ref mut code_editor,
+                            ..
+                        } = tab.kind
+                        {
+                            code_editor.mark_saved();
+                            code_editor.lsp_did_save();
+                        }
+                    }
+                }
+
+                self.recent_files.retain(|p| p != &path);
+                self.recent_files.insert(0, path.clone());
+                if self.recent_files.len() > 20 {
+                    self.recent_files.truncate(20);
+                }
+
+                let entity = path.to_string_lossy().to_string();
+                let _ = wakatime::client::send_heartbeat(&entity, true, &self.wakatime);
+                self.last_wakatime_entity = Some(entity);
+                self.last_wakatime_sent_at = Some(Instant::now());
+
                 iced::Task::none()
             }
             Message::FileSaved(result) => {
@@ -1469,7 +1557,7 @@ impl App {
                         .map(|handle| handle.path().to_path_buf())
                 },
                 |result| match result {
-                    Some(path) => Message::FileOpened(path, String::new()),
+                    Some(path) => Message::SaveCurrentFileAs(path),
                     None => Message::FileTreeRefresh,
                 },
             ),

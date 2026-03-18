@@ -9,6 +9,7 @@ use iced::{Event, Subscription};
 pub fn shortcuts() -> Subscription<Message> {
     iced::event::listen_with(|event, _status, _id| match event {
         Event::Keyboard(iced::keyboard::Event::KeyPressed { key, modifiers, .. }) => {
+            let primary = modifiers.command() || modifiers.control();
             let navigation_msg = match &key {
                 Key::Named(iced::keyboard::key::Named::ArrowUp) => {
                     Some(Message::FuzzyFinderNavigate(-1))
@@ -29,24 +30,25 @@ pub fn shortcuts() -> Subscription<Message> {
                     if c.as_str() == "f" {
                         return Some(Message::ToggleFullscreen(window::Mode::Fullscreen));
                     }
-                } else if modifiers.command() && modifiers.shift() {
+                } else if primary && modifiers.shift() {
                     match c.as_str() {
                         "v" | "V" => return Some(Message::PreviewMarkdown),
                         "f" | "F" => return Some(Message::ToggleFuzzyFinder),
                         "p" | "P" => return Some(Message::ToggleCommandPalette),
                         "s" | "S" => return Some(Message::ToggleSettings),
+                        "o" | "O" => return Some(Message::OpenFolderDialog),
                         _ => {}
                     }
-                } else if modifiers.command() {
+                } else if primary {
                     match c.as_str() {
                         "b" | "r" => return Some(Message::ToggleSidebar),
-                        "o" => return Some(Message::OpenFolderDialog),
-                        "w" => return Some(Message::CloseActiveTab),
-                        "s" => return Some(Message::SaveFile),
-                        "t" => return Some(Message::ToggleFileFinder),
-                        "j" => return Some(Message::ToggleTerminal),
-                        "f" => return Some(Message::ToggleFindReplace),
-                        "n" => return Some(Message::NewFile),
+                        "o" | "O" => return Some(Message::OpenFileDialog),
+                        "w" | "W" => return Some(Message::CloseActiveTab),
+                        "s" | "S" => return Some(Message::SaveFile),
+                        "t" | "T" => return Some(Message::ToggleFileFinder),
+                        "j" | "J" => return Some(Message::ToggleTerminal),
+                        "f" | "F" => return Some(Message::ToggleFindReplace),
+                        "n" | "N" => return Some(Message::NewFile),
                         _ => {}
                     }
                 }

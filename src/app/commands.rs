@@ -23,6 +23,9 @@ impl App {
             "Toggle Sidebar" => {
                 self.sidebar_visible = !self.sidebar_visible;
             }
+            "Open File" => {
+                return iced::Task::perform(async {}, |_| Message::OpenFileDialog);
+            }
             "Open Folder" => {
                 return iced::Task::perform(async {}, |_| Message::OpenFolderDialog);
             }
@@ -57,6 +60,14 @@ impl App {
             }
             "Settings" => {
                 self.settings_open = !self.settings_open;
+            }
+            "Theme" => {
+                self.settings_open = true;
+                self.settings_section = "theme".to_string();
+                self.theme_dropdown_open = false;
+            }
+            "Save As" => {
+                return iced::Task::perform(async {}, |_| Message::SaveAs);
             }
             "Toggle Fullscreen" => {
                 return iced::Task::perform(async {}, |_| {

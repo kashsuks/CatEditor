@@ -17,9 +17,12 @@ pub enum Message {
     FolderToggled(PathBuf),
     FileTreeRefresh,
     ToggleSidebar,
+    OpenFileDialog,
     OpenFolderDialog,
     FolderOpened(PathBuf),
     SaveFile,
+    SaveCurrentFileAs(PathBuf),
+    CurrentFileSavedAs(PathBuf),
     FileSaved(Result<(), String>),
 
     TabSelected(usize),
