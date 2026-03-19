@@ -105,7 +105,7 @@ download_from_release() {
 
 install_with_cargo() {
   need_cmd cargo
-  cargo install "${BIN_NAME}" --locked
+  cargo install pinel --version "0.4.3-dev.83" --locked
   log "installed ${BIN_NAME} with cargo"
 }
 
