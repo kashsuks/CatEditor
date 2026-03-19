@@ -42,10 +42,9 @@ Pinel uses [Iced](https://iced.rs) for the GUI rendering due to its support for 
 
 Pinel currently has active support for the following:
 - Mac Silicon (M1, M2, M3, etc)
-- Windows (Windows 10 and Windows 11)
 - Arch Linux
 - [Rust Package Manager Crates.io](https://crates.io)
-- [Arch Linux User Repository](https://aur.archlinux.org/)
+<!-- - [Arch Linux User Repository](https://aur.archlinux.org/) -->
 
 There is planned support in the future for the following:
 - Other Linux distros
@@ -77,33 +76,18 @@ Due to the extra security that MacOS has for unverified apps, you will need to g
 
 ## 2.2 Windows
 
-Due to the simplicity that Windows (10/11) provides with installing external apps, you're in luck! All you need to do is:
-
-Go to the Github Releases page found [here](https://github.com/kashsuks/Pinel/releases)
-
-Download the `rode-editor-windows-x86_64.exe` file as this is for Windows systems.
-
-From here you can just double-click the install file to open up the app!
-
-*Optional*: You can also add this new binary to your `$PATH` if you would like to just refer to the app as `Pinel`
+There is no windows installation currently due to cross-platform dependency issues. A solution will be found soon
 
 **There is no active option for Winget or Chocolatey however they are in the works.**
 
 ## 2.3 Linux
 
-Describe how to install and run Pinel on Linux distributions.
+For Arch Linux users installation is simple.
 
-You might include:
+On the most recent release, look for `pinel-linux-x86_64` and install it.
 
-- Generic tarball/ AppImage instructions.
-- Distro‑specific notes (Debian/Ubuntu, Fedora, Arch, etc.).
-
-```bash
-# Example (replace with real commands)
-curl -L https://example.com/pinel.tar.gz -o pinel.tar.gz
-tar xzf pinel.tar.gz
-./pinel
-```
+Once that is done, run `chmod +x <path of the install>` and then run `./<path of the install>`.
+This will make the binary executable and then run it.
 
 ## 2.4 Package managers
 
@@ -112,19 +96,6 @@ Pinel currently has support through the following package managers:
 - [Crates.io](https://crates.io/crates/pinel)
 ```bash
 cargo install pinel
-```
-
-- [AUR (Arch User Repository)](https://aur.archlinux.org/)
-Using an AUR helper like `yay`:
-
-```bash
-yay -S pinel
-```
-
-or with `paru`:
-
-```bash
-paru -S pinel
 ```
 
 ## 3. Internal API
@@ -190,3 +161,18 @@ pinel.ui.set_sidebar_width(100.0)
 ### Extra Resources
 
 A full example file is located [here](https://github.com/kashsuks/Pinel/blob/master/examples/init.lua) that you may refer to.
+
+## 4 Basic Commands
+
+In there future, the scripting API written for Lua will support custom keybinds and macros as well as a UI system for bindings.
+
+### 4.1 Opening
+
+You can either open a file or a whole folder. These are the commands.
+
+- `Command/Control + O`: Opening a specific file
+- `Command/Control + Shift + O`: Opening a folder
+
+The command palette is useful since it allows you to control almost everything by just typing it in. Here is how to access it.
+
+- `Command/Control + Shift + P`: Opens the command palette

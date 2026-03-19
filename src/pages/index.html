@@ -32,7 +32,13 @@
     btn.href = '#download-macos';
   } else if (/Win/i.test(ua)) {
     btn.textContent = 'Download for Windows';
-    btn.href = '#download-windows';
+    btn.href = '#';
+    btn.classList.add('btn-disabled');
+    btn.title = 'Not supported for Windows';
+    btn.setAttribute('aria-disabled', 'true');
+    btn.addEventListener('click', function(evt) {
+      evt.preventDefault();
+    });
   } else if (/Linux/i.test(ua)) {
     btn.textContent = 'Download for Linux';
     btn.href = '#download-linux';

@@ -288,6 +288,19 @@ img {
   transform: translateY(-1px);
 }
 
+.btn-disabled {
+  background: #2b2b3f;
+  border-color: rgba(147, 153, 178, 0.4);
+  color: #6c7086;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-disabled:hover {
+  background: #2b2b3f;
+  color: #6c7086;
+  transform: none;
+}
+
 /* ── Features ──────────────────────────────────────────────────────────── */
 
 .features {
