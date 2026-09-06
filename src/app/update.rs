@@ -883,7 +883,7 @@ impl App {
                         code_editor.detach_lsp();
                     }
                     if let TabKind::Audio { ref sink, .. } = self.tabs[idx].kind {
-                        if let Some(s) = sink.lock().unwrap().as_ref() {
+                        if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
                             s.stop();
                         }
                     }
@@ -923,7 +923,7 @@ impl App {
                         code_editor.detach_lsp();
                     }
                     if let TabKind::Audio { ref sink, .. } = self.tabs[idx].kind {
-                        if let Some(s) = sink.lock().unwrap().as_ref() {
+                        if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
                             s.stop();
                         }
                     }
@@ -2529,7 +2529,7 @@ impl App {
                             ..
                         } = tab.kind
                         {
-                            let mut guard = sink.lock().unwrap();
+                            let mut guard = sink.lock().unwrap_or_else(|e| e.into_inner());
                             if guard.is_none() {
                                 // rebuild the sink from file for play-after-stop
                                 if let Ok(file) = std::fs::File::open(file_path) {
@@ -2558,7 +2558,7 @@ impl App {
                             ..
                         } = tab.kind
                         {
-                            if let Some(s) = sink.lock().unwrap().as_ref() {
+                            if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
                                 s.pause();
                                 *playing = false;
                             }
@@ -2578,7 +2578,7 @@ impl App {
                             ..
                         } = tab.kind
                         {
-                            if let Some(s) = sink.lock().unwrap().as_ref() {
+                            if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
                                 s.stop();
                                 *playing = false;
                                 *position_secs = 0.0;
@@ -2601,7 +2601,7 @@ impl App {
                             ..
                         } = tab.kind
                         {
-                            let guard = sink.lock().unwrap();
+                            let guard = sink.lock().unwrap_or_else(|e| e.into_inner());
                             if let Some(s) = guard.as_ref() {
                                 if s.empty() {
                                     *playing = false;

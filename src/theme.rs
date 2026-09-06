@@ -398,11 +398,11 @@ impl ThemeColors {
 pub static THEME: Lazy<RwLock<ThemeColors>> = Lazy::new(|| RwLock::new(ThemeColors::default()));
 
 pub fn theme() -> std::sync::RwLockReadGuard<'static, ThemeColors> {
-    THEME.read().unwrap()
+    THEME.read().unwrap_or_else(|e| e.into_inner())
 }
 
 pub fn set_theme(t: ThemeColors) {
-    let mut w = THEME.write().unwrap();
+    let mut w = THEME.write().unwrap_or_else(|e| e.into_inner());
     *w = t;
 }
 
