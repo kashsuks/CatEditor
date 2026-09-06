@@ -90,7 +90,7 @@ jobs:
           fi
 
           pr_numbers=$(git log "$range" --merges --grep="Merge pull request" --format='%s' \
-            | grep -oE '#[0-9]+' | tr -d '#' | tac)
+            | grep -oE '#[0-9]+' | tr -d '#' | tac || true)
 
           {
             echo "# "
