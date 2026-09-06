@@ -11,6 +11,7 @@ pub struct EditorPreferences {
     pub auto_indent_enabled: bool,
     pub vim_mode_enabled: bool,
     pub discord_rpc_enabled: bool,
+    pub restore_session_enabled: bool,
     pub autosave_enabled: bool,
     pub autosave_interval_ms: u64,
     pub theme_name: String,
@@ -33,6 +34,7 @@ impl Default for EditorPreferences {
             auto_indent_enabled: true,
             vim_mode_enabled: false,
             discord_rpc_enabled: false,
+            restore_session_enabled: true,
             autosave_enabled: true,
             autosave_interval_ms: 300,
             theme_name: "Pinel Blueberry Dark".to_string(),
@@ -128,6 +130,9 @@ fn parse_preferences(content: &str) -> EditorPreferences {
                 "discord_rpc_enabled" => {
                     prefs.discord_rpc_enabled = value == "true";
                 },
+                "restore_session_enabled" => {
+                    prefs.restore_session_enabled = value == "true";
+                }
                 "autosave_enabled" => {
                     prefs.autosave_enabled = value == "true";
                 },
@@ -254,6 +259,7 @@ return {{
     auto_indent_enabled = {},
     vim_mode_enabled = {},
     discord_rpc_enabled = {},
+    restore_session_enabled = {},
     autosave_enabled = {},
     -- Autosave interval in milliseconds (30–1000)
     autosave_interval_ms = {},
@@ -272,6 +278,7 @@ return {{
         prefs.auto_indent_enabled,
         prefs.vim_mode_enabled,
         prefs.discord_rpc_enabled,
+        prefs.restore_session_enabled,
         prefs.autosave_enabled,
         prefs.autosave_interval_ms,
         prefs.theme_name,
