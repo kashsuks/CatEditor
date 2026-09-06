@@ -984,10 +984,17 @@ impl App {
                     }
                 } else if Self::is_video_path(&path) {
                     Self::configure_video_runtime();
-                    match iced_video_player::Video::new(&url::Url::from_file_path(&path).unwrap()) {
+                    let video_result = match url::Url::from_file_path(&path) {
+                        Ok(url) => iced_video_player::Video::new(&url)
+                            .map_err(|e| format!("Video load error: {e}")),
+                        Err(()) => Err(format!(
+                            "Video load error: could not convert {path:?} to a file URL"
+                        )),
+                    };
+                    match video_result {
                         Ok(player) => TabKind::Video { player },
-                        Err(e) => {
-                            eprintln!("Video load error: {e}");
+                        Err(message) => {
+                            eprintln!("{message}");
                             TabKind::Editor {
                                 code_editor: self.configured_code_editor("", &ext),
                                 buffer: crate::features::editor_buffer::EditorBuffer::from_text(""),
@@ -2535,7 +2542,13 @@ impl App {
                                 if let Ok(file) = std::fs::File::open(file_path) {
                                     let buf = std::io::BufReader::new(file);
                                     if let Ok(new_sink) = rodio::Sink::try_new(&stream.as_ref().1) {
-                                        new_sink.append(rodio::Decoder::new(buf).unwrap());
+                                        if let Ok(decoder) = rodio::Decoder::new(buf) {
+                                            new_sink.append(decoder);
+                                        } else {
+                                            eprintln!(
+                                                "Audio decode error: could not decode {file_path:?}"
+                                            );
+                                        }
                                         *guard = Some(new_sink);
                                     }
                                 }
