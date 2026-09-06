@@ -104,7 +104,7 @@ download_from_release() {
       ;;
   esac
 
-  binary_path="$(find "$TMP_DIR" -type f \( -name "$BIN_NAME" -o -name "${BIN_NAME}.exe" \) | head -n 1)"
+  binary_path="$(find "$TMP_DIR" -type f \( -name "$BIN_NAME" -o -name "${BIN_NAME}-*" -o -name "${BIN_NAME}.exe" \) | head -n 1)"
   [[ -n "$binary_path" ]] || fail "downloaded asset did not contain a ${BIN_NAME} binary"
 
   mkdir -p "$INSTALL_DIR"
