@@ -9,7 +9,7 @@ env:
 jobs:
   build:
     permissions:
-      contents: write
+      contents: read
     strategy:
       matrix:
         include:
