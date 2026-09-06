@@ -1,0 +1,39 @@
+name: Build Windows Binaries
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build release binary
+        run: cargo build --release --target x86_64-pc-windows-msvc
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+
+      - name: Prepare asset
+        shell: bash
+        run: |
+          binary_name=$(sed -n 's/^name = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)
+          cp \
+            target/x86_64-pc-windows-msvc/release/${binary_name}.exe \
+            ${binary_name}-windows-x86_64.exe
+          echo "BINARY_NAME=${binary_name}" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-windows-x86_64
+          path: ${{ env.BINARY_NAME }}-windows-x86_64.exe
+          retention-days: 7

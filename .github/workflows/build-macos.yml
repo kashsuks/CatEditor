@@ -1,0 +1,46 @@
+name: Build macOS Binaries
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            asset_suffix: macos-x86_64
+          - target: aarch64-apple-darwin
+            asset_suffix: macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+
+      - name: Prepare asset
+        shell: bash
+        run: |
+          binary_name=$(sed -n 's/^name = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)
+          cp \
+            target/${{ matrix.target }}/release/${binary_name} \
+            ${binary_name}-${{ matrix.asset_suffix }}
+          echo "BINARY_NAME=${binary_name}" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ matrix.asset_suffix }}
+          path: ${{ env.BINARY_NAME }}-${{ matrix.asset_suffix }}
+          retention-days: 7
