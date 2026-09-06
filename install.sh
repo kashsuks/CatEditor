@@ -66,7 +66,7 @@ download_from_release() {
 
   base_url="https://github.com/${REPO}/releases/download/v${version}"
   tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "${tmp_dir:-}"' EXIT
+  trap 'rm -rf "$tmp_dir"' EXIT
 
   for candidate in \
     "${BIN_NAME}-${TARGET}.tar.gz" \
@@ -90,7 +90,7 @@ download_from_release() {
           ;;
       esac
 
-      binary_path="$(find "$tmp_dir" -type f \( -name "$BIN_NAME" -o -name "${BIN_NAME}-*" \) -perm -u+x | head -n 1)"
+      binary_path="$(find "$tmp_dir" -type f -name "$BIN_NAME" -perm -u+x | head -n 1)"
       [[ -n "$binary_path" ]] || fail "downloaded asset did not contain a ${BIN_NAME} binary"
 
       mkdir -p "$INSTALL_DIR"
