@@ -105,6 +105,7 @@ pub enum Message {
     SettingsToggleAutoIndent,
     SettingsToggleVimMode,
     SettingsToggleDiscordRpc,
+    SettingsToggleRestoreSession,
     ToggleLineComment,
     SettingsToggleAutosave,
     SettingsAutosaveIntervalChanged(String),

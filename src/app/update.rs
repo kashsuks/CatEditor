@@ -2028,6 +2028,11 @@ impl App {
 
                 iced::Task::none()
             },
+            Message::SettingsToggleRestoreSession => {
+                self.editor_preferences.restore_session_enabled =
+                    !self.editor_preferences.restore_session_enabled;
+                iced::Task::none()
+            },
             Message::SettingsToggleAutosave => {
                 self.editor_preferences.autosave_enabled =
                     !self.editor_preferences.autosave_enabled;
