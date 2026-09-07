@@ -15,7 +15,7 @@ use std::path::PathBuf;
 pub struct SessionState {
     pub folder: Option<PathBuf>,
     pub open_tabs: Vec<PathBuf>,
-    pub active_tab_index: Option<usize>,
+    pub active_tab_index: Option<PathBuf>,
     pub cursor_position: HashMap<PathBuf, (usize, usize)>,
 }
 

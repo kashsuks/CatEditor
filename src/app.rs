@@ -208,6 +208,9 @@ pub struct App {
 
     last_persisted_session: Option<crate::config::session::SessionState>,
 
+    pending_active_tab_path: Option<std::path::PathBuf>,
+    pending_cursor_restores: std::collections::HashMap<std::path::PathBuf, (usize, usize)>,
+
     startup_page_open: bool,
     startup_vim_mode: bool,
     startup_helix_mode: bool,
@@ -364,6 +367,9 @@ impl Default for App {
             discord_rpc_client: None,
             discord_rpc_last_sent: None,
             last_persisted_session: None,
+
+            pending_active_tab_path: None,
+            pending_cursor_restores: std::collections::HashMap::new(),
 
             startup_page_open: editor_preferences.first_launch,
             startup_vim_mode: false,
@@ -567,7 +573,10 @@ impl App {
         crate::config::session::SessionState {
             folder,
             open_tabs,
-            active_tab_index: self.active_tab,
+            active_tab_index: self
+                .active_tab
+                .and_then(|idx| self.tabs.get(idx))
+                .map(|tab| tab.path.clone()),
             cursor_position,
         }
     }

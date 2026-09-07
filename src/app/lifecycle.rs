@@ -29,4 +29,33 @@ impl App {
 
         (app, iced::Task::batch([update_task, startup_task]))
     }
+
+    fn restore_last_session_task(&mut self) -> iced::Task<Message> {
+        if !self.editor_preferences.restore_session_enabled {
+            return iced::Task::none();
+        }
+
+        let Some(session) = crate::config::session::load_session() else {
+            return iced::Task::none();
+        };
+
+        self.pending_active_tab_path = session.active_tab_path;
+        self.pending_cursor_restores = session.cursor_positions;
+
+        let mut tasks = Vec::new();
+
+        if let Some(folder) = session.folder {
+            if folder.is_dir() {
+                tasks.push(iced::Task::done(Message::FolderOpened(folder)));
+            }
+        }
+
+        for path in session.open_tabs {
+            if path.is_file() {
+                tasks.push(self::open_path_task(path));
+            }
+        }
+
+        iced::Task::batch(tasks)
+    }
 }
