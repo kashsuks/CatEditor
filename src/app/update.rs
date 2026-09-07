@@ -1113,6 +1113,20 @@ impl App {
                 self.cursor_line = 1;
                 self.cursor_col = 1;
                 self.autocomplete.cancel();
+
+                if self.pending_active_tab_path.as_deref() == Some(opened_path.as_path()) {
+                    self.pending_active_tab_path = None;
+                    self.active_tab = Some(self.tabs.len() - 1);
+                }
+                if let Some(&(line, col)) = self.pending_cursor_restores.get(&opened_path) {
+                    self.pending_cursor_restores.remove(&opened_path);
+                    if let Some(tab) = self.tabs.last_mut() {
+                        if let TabKind::Editor { code_editor, .. } = &mut tab.kind {
+                            let _ = code_editor.set_cursor(line, col);
+                        }
+                    }
+                }
+
                 self.pending_hover_request = None;
                 self.vim_refresh_cursor_style();
 
