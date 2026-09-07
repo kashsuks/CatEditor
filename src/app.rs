@@ -542,6 +542,33 @@ impl App {
         }
     }
 
+    /// Snapshots the current workspace - open folder, open tabs in order,
+    /// which oen is active, and each editor tab's cursor position
+    pub(super) fn current_session_state(&self) -> crate::config::session::SessionState {
+        let folder = self.file_tree.as_ref().map(|tree| tree.root.clone());
+
+        let open_tabs: Vec<std::path::PathBuf> =
+            self.tabs.iter().map(|tab| tab.path.clone()).collect();
+
+        let cursor_position = self
+            .tabs
+            .iter()
+            .filter_map(|tab| match &tab.kind {
+                TabKind::Editor { code_editor, .. } => {
+                    Some((tab.path.clone(), code_editor.cursor_position()))
+                },
+                _ => None,
+            })
+            .collect();
+
+        crate::config::session::SessionState {
+            folder,
+            open_tabs,
+            active_tab_index: self.active_tab,
+            cursor_position,
+        }
+    }
+
     pub fn apply_editor_command(&mut self, command: EditorCommand) {
         match command {
             EditorCommand::UseBuiltinTheme(name) => {
