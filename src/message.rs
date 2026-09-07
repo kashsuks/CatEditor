@@ -52,6 +52,7 @@ pub enum Message {
 
     TabSelected(usize),
     TabClosed(usize),
+    ReopenClosedTab,
     CloseActiveTab,
 
     SidebarResizeStart,

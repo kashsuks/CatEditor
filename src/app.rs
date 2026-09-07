@@ -6,9 +6,7 @@
 #[cfg(feature = "unstable-comet")]
 use std::collections::VecDeque;
 use std::{
-    collections::HashMap,
-    path::PathBuf,
-    time::{Duration, Instant},
+    collections::{HashMap, VecDeque}, path::PathBuf, time::{Duration, Instant},
 };
 
 use frostmark::MarkState;
@@ -211,6 +209,8 @@ pub struct App {
     pending_active_tab_path: Option<std::path::PathBuf>,
     pending_cursor_restores: std::collections::HashMap<std::path::PathBuf, (usize, usize)>,
 
+    closed_tabs: VecDeque<(std::path::PathBuf, (usize, usize))>,
+
     startup_page_open: bool,
     startup_vim_mode: bool,
     startup_helix_mode: bool,
@@ -370,6 +370,7 @@ impl Default for App {
 
             pending_active_tab_path: None,
             pending_cursor_restores: std::collections::HashMap::new(),
+            closed_tabs: VecDeque::new(),
 
             startup_page_open: editor_preferences.first_launch,
             startup_vim_mode: false,
@@ -590,6 +591,24 @@ impl App {
 
         if crate::config::session::save_session(&current).is_ok() {
             self.last_persisted_session = Some(current);
+        }
+    }
+
+    /// Records a tabs path and cursor position (if its an editor tab)
+    /// into the closed-tabs ring buffer, for Cntrl/Cmd+Shift+T to reopen
+    pub(super) fn record_closed_tab(&mut self, idx: usize) {
+        let Some(tab) = self.tabs.get(idx) else {
+            return;
+        };
+
+        let cursor = match &tab.kind {
+            TabKind::Editor { code_editor, .. } => code_editor.cursor_position(),
+            _ => (0, 0),
+        };
+
+        self.closed_tabs.push_back((tab.path.clone(), cursor));
+        if self.closed_tabs.len() > 20 {
+            self.closed_tabs.pop_front();
         }
     }
 

@@ -34,6 +34,7 @@ pub fn shortcuts() -> Subscription<Message> {
                         "p" | "P" => return Some(Message::ToggleCommandPalette),
                         "s" | "S" => return Some(Message::ToggleSettings),
                         "o" | "O" => return Some(Message::OpenFolderDialog),
+                        "t" | "T" => return Some(Message::ReopenClosedTab),
                         _ => {},
                     }
                 } else if primary {

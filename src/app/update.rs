@@ -875,6 +875,7 @@ impl App {
             Message::TabClosed(idx) => {
                 if idx < self.tabs.len() {
                     let path = self.tabs[idx].path.clone();
+                    self.record_closed_tab(idx);
                     if let TabKind::Editor {
                         ref mut code_editor,
                         ..
@@ -915,6 +916,7 @@ impl App {
             Message::CloseActiveTab => {
                 if let Some(idx) = self.active_tab {
                     let path = self.tabs[idx].path.clone();
+                    self.record_closed_tab(idx);
                     if let TabKind::Editor {
                         ref mut code_editor,
                         ..
@@ -948,6 +950,25 @@ impl App {
                 self.pending_hover_request = None;
                 self.vim_refresh_cursor_style();
                 iced::Task::none()
+            },
+            Message::ReopenClosedTab => {
+                // skip back past any entries whose file no longer exists,
+                // rather than reopening a blank/missing tab.
+                while let Some((path, _)) = self.closed_tabs.back() {
+                    if path.is_file() {
+                        break;
+                    }
+                    self.closed_tabs.pop_back();
+                }
+
+                let Some((path, cursor)) = self.closed_tabs.pop_back() else {
+                    return iced::Task::none();
+                };
+
+                self.pending_active_tab_path = Some(path.clone());
+                self.pending_cursor_restores.insert(path.clone(), cursor);
+
+                Self::open_path_task(path)
             },
             Message::FileOpened(path, content) => {
                 if let Some(idx) = self.tabs.iter().position(|t| t.path == path) {
