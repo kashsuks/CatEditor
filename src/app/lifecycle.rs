@@ -39,8 +39,8 @@ impl App {
             return iced::Task::none();
         };
 
-        self.pending_active_tab_path = session.active_tab_path;
-        self.pending_cursor_restores = session.cursor_positions;
+        self.pending_active_tab_path = session.active_tab_index;
+        self.pending_cursor_restores = session.cursor_position;
 
         let mut tasks = Vec::new();
 
@@ -52,7 +52,7 @@ impl App {
 
         for path in session.open_tabs {
             if path.is_file() {
-                tasks.push(self::open_path_task(path));
+                tasks.push(Self::open_path_task(path));
             }
         }
 
