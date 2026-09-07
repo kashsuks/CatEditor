@@ -142,6 +142,7 @@ pub enum Message {
     LspTick,
     AutosaveTick,
     DiscordRpcTick,
+    SessionSyncTick,
     AutosaveFinished(PathBuf, String, Result<(), String>),
 
     #[cfg(feature = "unstable-comet")]

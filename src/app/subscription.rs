@@ -32,6 +32,11 @@ impl App {
             subs.push(iced::time::every(Duration::from_secs(15)).map(|_| Message::DiscordRpcTick));
         }
 
+        if self.editor_preferences.restore_session_enabled {
+            // No external rate limit driving this one
+            subs.push(iced::time::every(Duration::from_secs(10)).map(|_| Message::SessionSyncTick));
+        }
+
         if let Some(term) = &self.terminal_pane {
             subs.push(term.subscription().map(Message::TerminalEvent));
         }

@@ -206,6 +206,8 @@ pub struct App {
     discord_rpc_client: Option<crate::discord_rpc::DiscordRpcClient>,
     discord_rpc_last_sent: Option<(Option<std::path::PathBuf>, Option<String>)>,
 
+    last_persisted_session: Option<crate::config::session::SessionState>,
+
     startup_page_open: bool,
     startup_vim_mode: bool,
     startup_helix_mode: bool,
@@ -361,6 +363,7 @@ impl Default for App {
             activity_state: crate::features::activity_state::ActiveFileState::empty(),
             discord_rpc_client: None,
             discord_rpc_last_sent: None,
+            last_persisted_session: None,
 
             startup_page_open: editor_preferences.first_launch,
             startup_vim_mode: false,
@@ -566,6 +569,18 @@ impl App {
             open_tabs,
             active_tab_index: self.active_tab,
             cursor_position,
+        }
+    }
+
+    pub(super) fn sync_session_state(&mut self) {
+        let current = self.current_session_state();
+
+        if self.last_persisted_session.as_ref() == Some(&current) {
+            return;
+        }
+
+        if crate::config::session::save_session(&current).is_ok() {
+            self.last_persisted_session = Some(current);
         }
     }
 

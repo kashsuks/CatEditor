@@ -2475,6 +2475,14 @@ impl App {
                 self.sync_discord_presence();
                 iced::Task::none()
             },
+            Message::SessionSyncTick => {
+                if !self.editor_preferences.restore_session_enabled {
+                    return iced::Task::none();
+                }
+
+                self.sync_session_state();
+                iced::Task::none()
+            },
             Message::AutosaveFinished(path, saved_content, result) => {
                 let Some(tab) = self.tabs.iter_mut().find(|tab| tab.path == path) else {
                     return iced::Task::none();
