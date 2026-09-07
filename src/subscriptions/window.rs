@@ -23,3 +23,13 @@ pub fn focus_refresh() -> Subscription<Message> {
         _ => None,
     })
 }
+
+/// Lets the app persist state (e.g. the session snapshot) before the
+/// window actually closes - requires `exit_on_close_request: false` on the
+/// window settings, otherwise iced closes immediately and this never fires.
+pub fn close_requests() -> Subscription<Message> {
+    iced::event::listen_with(|event, _status, id| match event {
+        Event::Window(window::Event::CloseRequested) => Some(Message::WindowCloseRequested(id)),
+        _ => None,
+    })
+}

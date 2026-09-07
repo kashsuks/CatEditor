@@ -12,6 +12,7 @@ impl App {
             crate::subscriptions::mouse::cursor_tracker(),
             crate::subscriptions::window::resizes(),
             crate::subscriptions::window::focus_refresh(),
+            crate::subscriptions::window::close_requests(),
             iced::time::every(Duration::from_millis(150)).map(|_| Message::LspTick),
         ];
 
@@ -30,6 +31,11 @@ impl App {
         if self.editor_preferences.discord_rpc_enabled {
             // 15s matches discords own recommended rich presence update rate
             subs.push(iced::time::every(Duration::from_secs(15)).map(|_| Message::DiscordRpcTick));
+        }
+
+        if self.editor_preferences.restore_session_enabled {
+            // No external rate limit driving this one
+            subs.push(iced::time::every(Duration::from_secs(10)).map(|_| Message::SessionSyncTick));
         }
 
         if let Some(term) = &self.terminal_pane {

@@ -206,6 +206,11 @@ pub struct App {
     discord_rpc_client: Option<crate::discord_rpc::DiscordRpcClient>,
     discord_rpc_last_sent: Option<(Option<std::path::PathBuf>, Option<String>)>,
 
+    last_persisted_session: Option<crate::config::session::SessionState>,
+
+    pending_active_tab_path: Option<std::path::PathBuf>,
+    pending_cursor_restores: std::collections::HashMap<std::path::PathBuf, (usize, usize)>,
+
     startup_page_open: bool,
     startup_vim_mode: bool,
     startup_helix_mode: bool,
@@ -361,6 +366,10 @@ impl Default for App {
             activity_state: crate::features::activity_state::ActiveFileState::empty(),
             discord_rpc_client: None,
             discord_rpc_last_sent: None,
+            last_persisted_session: None,
+
+            pending_active_tab_path: None,
+            pending_cursor_restores: std::collections::HashMap::new(),
 
             startup_page_open: editor_preferences.first_launch,
             startup_vim_mode: false,
@@ -539,6 +548,48 @@ impl App {
             if let TabKind::Editor { code_editor, .. } = &mut tab.kind {
                 code_editor.set_vim_enabled(enabled);
             }
+        }
+    }
+
+    /// Snapshots the current workspace - open folder, open tabs in order,
+    /// which oen is active, and each editor tab's cursor position
+    pub(super) fn current_session_state(&self) -> crate::config::session::SessionState {
+        let folder = self.file_tree.as_ref().map(|tree| tree.root.clone());
+
+        let open_tabs: Vec<std::path::PathBuf> =
+            self.tabs.iter().map(|tab| tab.path.clone()).collect();
+
+        let cursor_position = self
+            .tabs
+            .iter()
+            .filter_map(|tab| match &tab.kind {
+                TabKind::Editor { code_editor, .. } => {
+                    Some((tab.path.clone(), code_editor.cursor_position()))
+                },
+                _ => None,
+            })
+            .collect();
+
+        crate::config::session::SessionState {
+            folder,
+            open_tabs,
+            active_tab_index: self
+                .active_tab
+                .and_then(|idx| self.tabs.get(idx))
+                .map(|tab| tab.path.clone()),
+            cursor_position,
+        }
+    }
+
+    pub(super) fn sync_session_state(&mut self) {
+        let current = self.current_session_state();
+
+        if self.last_persisted_session.as_ref() == Some(&current) {
+            return;
+        }
+
+        if crate::config::session::save_session(&current).is_ok() {
+            self.last_persisted_session = Some(current);
         }
     }
 

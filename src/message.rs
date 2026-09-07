@@ -105,6 +105,7 @@ pub enum Message {
     SettingsToggleAutoIndent,
     SettingsToggleVimMode,
     SettingsToggleDiscordRpc,
+    SettingsToggleRestoreSession,
     ToggleLineComment,
     SettingsToggleAutosave,
     SettingsAutosaveIntervalChanged(String),
@@ -118,6 +119,7 @@ pub enum Message {
     CommandInputChanged(String),
     CommandInputSubmit,
     WindowResized(u32, u32),
+    WindowCloseRequested(iced::window::Id),
 
     NewFile,
     SaveAs,
@@ -141,6 +143,7 @@ pub enum Message {
     LspTick,
     AutosaveTick,
     DiscordRpcTick,
+    SessionSyncTick,
     AutosaveFinished(PathBuf, String, Result<(), String>),
 
     #[cfg(feature = "unstable-comet")]

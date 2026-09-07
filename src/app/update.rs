@@ -1113,6 +1113,20 @@ impl App {
                 self.cursor_line = 1;
                 self.cursor_col = 1;
                 self.autocomplete.cancel();
+
+                if self.pending_active_tab_path.as_deref() == Some(opened_path.as_path()) {
+                    self.pending_active_tab_path = None;
+                    self.active_tab = Some(self.tabs.len() - 1);
+                }
+                if let Some(&(line, col)) = self.pending_cursor_restores.get(&opened_path) {
+                    self.pending_cursor_restores.remove(&opened_path);
+                    if let Some(tab) = self.tabs.last_mut() {
+                        if let TabKind::Editor { code_editor, .. } = &mut tab.kind {
+                            let _ = code_editor.set_cursor(line, col);
+                        }
+                    }
+                }
+
                 self.pending_hover_request = None;
                 self.vim_refresh_cursor_style();
 
@@ -2028,6 +2042,11 @@ impl App {
 
                 iced::Task::none()
             },
+            Message::SettingsToggleRestoreSession => {
+                self.editor_preferences.restore_session_enabled =
+                    !self.editor_preferences.restore_session_enabled;
+                iced::Task::none()
+            },
             Message::SettingsToggleAutosave => {
                 self.editor_preferences.autosave_enabled =
                     !self.editor_preferences.autosave_enabled;
@@ -2152,6 +2171,12 @@ impl App {
                 self.editor_preferences.window_height = (height as f32).max(480.0);
                 let _ = prefs::save_preferences(&self.editor_preferences);
                 iced::Task::none()
+            },
+            Message::WindowCloseRequested(id) => {
+                if self.editor_preferences.restore_session_enabled {
+                    self.sync_session_state();
+                }
+                iced::window::close(id)
             },
             Message::NewFile => {
                 let new_path = PathBuf::from("untitled");
@@ -2468,6 +2493,14 @@ impl App {
                 }
 
                 self.sync_discord_presence();
+                iced::Task::none()
+            },
+            Message::SessionSyncTick => {
+                if !self.editor_preferences.restore_session_enabled {
+                    return iced::Task::none();
+                }
+
+                self.sync_session_state();
                 iced::Task::none()
             },
             Message::AutosaveFinished(path, saved_content, result) => {
