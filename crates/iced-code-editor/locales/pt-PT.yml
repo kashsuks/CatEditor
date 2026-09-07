@@ -1,0 +1,44 @@
+# Traduções em português europeu
+search:
+  placeholder: "Pesquisar..."
+  close_tooltip: "Fechar diálogo de pesquisa (Esc)"
+  previous_match_tooltip: "Correspondência anterior (Shift+F3)"
+  next_match_tooltip: "Próxima correspondência (F3 / Enter)"
+
+replace:
+  placeholder: "Substituir..."
+  current_tooltip: "Substituir correspondência actual"
+  all_tooltip: "Substituir tudo"
+
+settings:
+  case_sensitive_label: "Diferenciar maiúsculas"
+
+context_menu:
+  undo: "Anular"
+  redo: "Refazer"
+  cut: "Cortar"
+  copy: "Copiar"
+  paste: "Colar"
+  select_all: "Selecionar tudo"
+  reveal_in_finder: "Mostrar no Finder"
+  reveal_in_file_explorer: "Mostrar no Explorador de Ficheiros"
+  open_containing_folder: "Abrir pasta contentora"
+command_palette:
+  placeholder: "Escreva um comando..."
+  no_results: "Nenhum comando correspondente"
+  save: "Guardar"
+  toggle_comment: "Alternar comentário de linha"
+  move_line_up: "Mover linha para cima"
+  move_line_down: "Mover linha para baixo"
+  duplicate_line_up: "Duplicar linha acima"
+  duplicate_line_down: "Duplicar linha abaixo"
+  goto_line: "Ir para a linha"
+  add_cursor_above: "Adicionar cursor acima"
+  add_cursor_below: "Adicionar cursor abaixo"
+  select_next_occurrence: "Selecionar ocorrência seguinte"
+  toggle_vim_mode: "Alternar modo Vim"
+  find: "Localizar"
+  replace: "Substituir"
+  fold_at_cursor: "Alternar dobra no cursor"
+  fold_all: "Dobrar tudo"
+  unfold_all: "Desdobrar tudo"

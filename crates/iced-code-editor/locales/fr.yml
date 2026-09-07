@@ -1,0 +1,44 @@
+# Traductions françaises
+search:
+  placeholder: "Rechercher..."
+  close_tooltip: "Fermer la recherche (Échap)"
+  previous_match_tooltip: "Résultat précédent (Maj+F3)"
+  next_match_tooltip: "Résultat suivant (F3 / Entrée)"
+
+replace:
+  placeholder: "Remplacer..."
+  current_tooltip: "Remplacer l'occurrence actuelle"
+  all_tooltip: "Tout remplacer"
+
+settings:
+  case_sensitive_label: "Sensible à la casse"
+
+context_menu:
+  undo: "Annuler"
+  redo: "Rétablir"
+  cut: "Couper"
+  copy: "Copier"
+  paste: "Coller"
+  select_all: "Tout sélectionner"
+  reveal_in_finder: "Révéler dans le Finder"
+  reveal_in_file_explorer: "Afficher dans l'Explorateur de fichiers"
+  open_containing_folder: "Ouvrir le dossier contenant"
+command_palette:
+  placeholder: "Tapez une commande..."
+  no_results: "Aucune commande correspondante"
+  save: "Enregistrer"
+  toggle_comment: "Commenter/Décommenter la ligne"
+  move_line_up: "Déplacer la ligne vers le haut"
+  move_line_down: "Déplacer la ligne vers le bas"
+  duplicate_line_up: "Dupliquer la ligne au-dessus"
+  duplicate_line_down: "Dupliquer la ligne en dessous"
+  goto_line: "Aller à la ligne"
+  add_cursor_above: "Ajouter un curseur au-dessus"
+  add_cursor_below: "Ajouter un curseur en dessous"
+  select_next_occurrence: "Sélectionner l'occurrence suivante"
+  toggle_vim_mode: "Activer/Désactiver le mode Vim"
+  find: "Rechercher"
+  replace: "Remplacer"
+  fold_at_cursor: "Replier/Déplier au curseur"
+  fold_all: "Tout replier"
+  unfold_all: "Tout déplier"

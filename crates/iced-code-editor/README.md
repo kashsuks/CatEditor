@@ -1,0 +1,951 @@
+<div align="center">
+
+![Logo](logo.svg)
+
+# Iced Code Editor
+
+A high-performance, canvas-based code editor widget for [Iced](https://github.com/iced-rs/iced).
+
+[![Crates.io](https://img.shields.io/crates/v/iced-code-editor.svg)](https://crates.io/crates/iced-code-editor)
+[![Documentation](https://docs.rs/iced-code-editor/badge.svg)](https://docs.rs/iced-code-editor)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/LuDog71FR/iced-code-editor/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/crates/d/iced-code-editor.svg)](https://crates.io/crates/iced-code-editor)
+[![Build Status](https://github.com/LuDog71FR/iced-code-editor/workflows/Rust/badge.svg)](https://github.com/LuDog71FR/iced-code-editor/actions)
+
+</div>
+
+## Overview
+
+This crate provides a fully-featured code editor widget with syntax highlighting, line numbers, text selection, and comprehensive keyboard navigation for the Iced GUI framework.
+
+Screenshot of the demo application:
+
+![Demo App](screenshot_demo_app.png)
+
+## Features
+
+- **Syntax highlighting** for multiple programming languages via [syntect](https://github.com/trishume/syntect)
+- **Line numbers** with styled gutter
+- **Text selection** via mouse drag and keyboard shortcuts
+- **Clipboard operations** (copy, paste)
+- **Undo/Redo** with smart command grouping and configurable history
+- **Custom scrollbars** with themed styling
+- **Focus management** for multiple editors
+- **Native Iced theme support** - Automatically adapts to all 23+ built-in Iced themes
+- **Line wrapping** to split long lines
+- **Code folding** to collapse/expand indentation-based blocks
+- **High performance** canvas-based rendering
+- **Search and replace** text
+- **Command palette** (`Ctrl+Shift+P`) listing every editor action, extensible with the host application's own commands
+- **Language Server Protocol** (LSP) support
+- **Auto indentation** with custom indent style
+- **Auto-closing brackets/quotes** with surround selection
+- **Matching bracket/quote highlight** — highlights the paired bracket or quote next to the cursor
+- **Bracket-pair colorization** — colors each bracket by nesting depth (rainbow brackets)
+- **Multiple cursors** for simultaneous editing at multiple positions
+- **Move and duplicate lines** with keyboard shortcuts
+- **Toggle comment** on the current line or selection (`Ctrl+/`)
+- **Visible whitespace rendering** — spaces shown as `·`, tabs as `→`
+- **Indentation guides** — vertical lines marking each indentation level
+- **Inline color previews** — a swatch next to every `#rrggbb`, `0xrrggbb` or `rgb(…)` literal
+- **Optional Vim mode** with Normal, Insert, Visual, and Visual Line modes
+
+## Quick Start
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+iced = "0.14"
+iced-code-editor = "0.4"
+```
+
+### Basic Example
+
+Here's a minimal example to integrate the code editor into your Iced application:
+
+> **Note:** `CodeEditor` does not automatically lose focus when another widget is clicked.
+> You must call `editor.lose_focus()` whenever another interactive widget is activated.
+> The pattern below uses `mouse_area` to detect clicks on sibling widgets.
+
+```rust
+use iced::widget::{column, container, mouse_area, text_input};
+use iced::{Element, Task};
+use iced_code_editor::{CodeEditor, Message as EditorMessage};
+
+struct MyApp {
+    editor: CodeEditor,
+    input_value: String,
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    EditorEvent(EditorMessage),
+    InputChanged(String),
+    InputClicked,
+}
+
+impl Default for MyApp {
+    fn default() -> Self {
+        let code = r#"fn main() {
+    println!("Hello, world!");
+}
+"#;
+
+        Self {
+            editor: CodeEditor::new(code, "rust"),
+            input_value: String::new(),
+        }
+    }
+}
+
+impl MyApp {
+    fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            Message::EditorEvent(event) => {
+                self.editor.update(&event).map(Message::EditorEvent)
+            }
+            Message::InputChanged(value) => {
+                self.input_value = value;
+                self.editor.lose_focus(); // required: transfer focus away from editor
+                Task::none()
+            }
+            Message::InputClicked => {
+                self.editor.lose_focus(); // required: transfer focus away from editor
+                Task::none()
+            }
+        }
+    }
+
+    fn view(&self) -> Element<'_, Message> {
+        let input = mouse_area(
+            text_input("Type something...", &self.input_value)
+                .on_input(Message::InputChanged)
+                .padding(8),
+        )
+        .on_press(Message::InputClicked); // detect click to trigger lose_focus
+
+        container(
+            column![input, self.editor.view().map(Message::EditorEvent)]
+                .spacing(10)
+                .height(iced::Fill),
+        )
+        .padding(20)
+        .into()
+    }
+}
+
+fn main() -> iced::Result {
+    iced::run(MyApp::update, MyApp::view)
+}
+```
+
+## Vim Mode
+
+Vim behavior is disabled by default and configured independently for each
+`CodeEditor` instance. Enabling it enters Normal mode and collapses any
+multi-cursor state to the primary cursor:
+
+```rust
+use iced_code_editor::{CodeEditor, VimMode};
+
+let mut editor =
+    CodeEditor::new("fn main() {}", "rs").with_vim_enabled(true);
+assert!(editor.vim_enabled());
+assert_eq!(editor.vim_mode(), Some(VimMode::Normal));
+
+editor.set_vim_enabled(false);
+assert_eq!(editor.vim_mode(), None);
+```
+
+With the editor focused, press `Ctrl+Alt+V` (or `Command+Alt+V` on macOS)
+to switch between Vim and standard editing. Enabling Vim always starts in
+Normal mode. The regular `Ctrl`/`Command+V` system-paste shortcut is unchanged.
+
+The MVP supports these keys:
+
+| Context | Keys | Behavior |
+| ------- | ---- | -------- |
+| Normal/Visual motion | `h`, `j`, `k`, `l` | Move left, down, up, or right |
+| Normal/Visual motion | `w`, `b`, `e` | Move to the next word, previous word, or word end |
+| Normal/Visual motion | `0`, `^`, `$` | Move to line start, first non-blank, or line end |
+| Normal/Visual motion | `gg`, `G` | Move to document start or end when no count is given |
+| Normal/Visual motion | `[count]gg`, `[count]G` | Jump to the 1-based logical line, e.g. `5G` or `5gg` jumps to line 5 |
+| Enter Insert | `i`, `a`, `I`, `A` | Insert before/after the cursor, at first non-blank, or at line end |
+| Enter Insert | `o`, `O` | Open line(s) below or above |
+| Select | `v`, `V` | Enter character-wise Visual or Visual Line mode |
+| Operators | `d{motion}`, `c{motion}`, `y{motion}` | Delete, change, or yank through any supported motion |
+| Line operators | `[count]dd`, `[count]cc`, `[count]yy` | Delete, change, or yank consecutive lines, e.g. `5yy` yanks five lines |
+| Visual operators | `d`, `c`, `y` | Apply the operator to the Visual selection |
+| Direct edits | `x`, `p`, `P` | Delete characters; paste after or before from the unnamed register |
+| History | `u`, `Ctrl+R` | Undo or redo |
+| Search | `/pattern`, then `Enter` | Search forward from the cursor and wrap at the end |
+| Search repeat | `n`, `N` | Repeat the last search forward or backward |
+| Go to line | `:N`, then `Enter` | Jump to 1-based logical line `N`, clamped to the document |
+| Save | `:w`, then `Enter` | Request that the host save the current document |
+| Exit Vim mode | `:q`, then `Enter` | Disable Vim behavior for the current editor |
+| Save and exit Vim mode | `:wq`, then `Enter` | Request a save and disable Vim behavior |
+| Command line | `Backspace`, `Escape` | Edit or cancel the active `/` or `:` input |
+| Mode exit | `Escape` | Return to Normal mode and clear pending prefixes/selections |
+| Count prefix | `1`–`9`, then `0` | Repeat motions, line operators, `x`, paste, undo, or opened lines; operator and motion counts multiply |
+
+When Vim mode is enabled, a fixed status line below the editor shows the
+current mode. While entering `/pattern` or `:N`, it shows the command and
+current input; otherwise it shows pending Normal-mode keys such as `5d` or
+`3g`. The status line remains visible while the document scrolls.
+
+`j` and `k` move by visible display lines, so they follow wrapped lines and
+skip folded content. Vim mode is intentionally single-cursor; attempts to add
+extra cursors are ignored while it is enabled.
+
+Vim `d`, `c`, `y`, `x`, `p`, and `P` use an unnamed register stored inside
+that editor instance. It distinguishes character-wise and line-wise content
+and does not access the system clipboard. Platform `Ctrl`/`Command` clipboard
+shortcuts (`C`, `X`, and `V`) keep their existing system-clipboard behavior
+and take priority over Vim parsing.
+
+Because the editor does not own a file path or perform disk I/O, `:w`, `:wq`,
+and `Ctrl`/`Command+S` emit `Message::WriteRequested`. Hosts should intercept
+that message and save the corresponding document. The demo app binds all
+three inputs to its existing Save/Save As flow.
+
+This is a focused MVP, not full Vim compatibility. Apart from the supported
+`:N` line jump and `:q`/`:w`/`:wq` commands, it does not implement Ex
+commands. It also does not implement regex search, search history, text
+objects, macros, named registers, marks, `.` repeat, or configurable key
+mappings.
+
+## Keyboard Shortcuts
+
+The editor supports a comprehensive set of keyboard shortcuts:
+
+### Navigation
+
+| Shortcut                               | Action                        |
+| -------------------------------------- | ----------------------------- |
+| **Arrow Keys** (Up, Down, Left, Right) | Move cursor                   |
+| **Shift + Arrows**                     | Move cursor with selection    |
+| **Home** / **End**                     | Jump to start/end of line     |
+| **Shift + Home** / **Shift + End**     | Select to start/end of line   |
+| **Ctrl + Home** / **Ctrl + End**       | Jump to start/end of document |
+| **Page Up** / **Page Down**            | Scroll one page up/down       |
+
+### Editing
+
+| Shortcut           | Action                                                                   |
+| ------------------ | ------------------------------------------------------------------------ |
+| **Backspace**      | Delete character before cursor (or delete selection if text is selected) |
+| **Delete**         | Delete character after cursor (or delete selection if text is selected)  |
+| **Shift + Delete** | Delete selected text (same as Delete when selection exists)              |
+| **Enter**          | Insert new line                                                          |
+| **Tab**            | Insert indent                                                            |
+| **Alt + Up/Down**  | Move current line (or selected lines) up/down                            |
+| **Shift + Alt + Up/Down** | Duplicate current line (or selected lines) above/below            |
+| **Ctrl + /**       | Toggle line comment on current line (or selected lines)                  |
+
+### Clipboard
+
+| Shortcut                           | Action               |
+| ---------------------------------- | -------------------- |
+| **Ctrl + C** or **Ctrl + Insert**  | Copy selected text   |
+| **Ctrl + V** or **Shift + Insert** | Paste from clipboard |
+
+### Undo/Redo
+
+| Shortcut     | Action                     |
+| ------------ | -------------------------- |
+| **Ctrl + Z** | Undo last operation        |
+| **Ctrl + Y** | Redo last undone operation |
+
+The editor features smart command grouping - consecutive typing is grouped into single undo operations, while navigation or deletion actions create separate undo points.
+
+### Multiple Cursors
+
+| Shortcut              | Action                                          |
+| --------------------- | ----------------------------------------------- |
+| **Alt + Click**       | Add a cursor at the clicked position             |
+| **Ctrl + Alt + Up**   | Add a cursor on the line above                   |
+| **Ctrl + Alt + Down** | Add a cursor on the line below                   |
+| **Ctrl + D**          | Select the next occurrence of the current word/selection |
+| **Escape**            | Collapse all cursors back to one (when search dialog is closed) |
+
+All editing operations (typing, backspace, delete, enter, tab, paste) apply simultaneously to every cursor. Copy with multiple selections joins all selected texts with newlines. Paste with the same number of clipboard lines as cursors pastes one line per cursor.
+
+### Search and Replace
+
+| Shortcut          | Action                         |
+| ----------------- | ------------------------------ |
+| **Ctrl + F**      | Open search dialog             |
+| **Ctrl + H**      | Open search and replace dialog |
+| **F3**            | Find next match                |
+| **Shift + F3**    | Find previous match            |
+| **Escape**        | Close search dialog            |
+
+### Command Palette
+
+| Shortcut                 | Action                                     |
+| ------------------------ | ------------------------------------------ |
+| **Ctrl + Shift + P**     | Open the command palette                   |
+| **Up / Down**            | Move through the filtered commands         |
+| **Enter**                | Run the highlighted command                |
+| **Escape**               | Close the palette                          |
+
+Typing filters the list by subsequence, so `tc` finds "Toggle Line Comment" and `fldall` finds "Fold All". Only commands that are usable right now are listed — undo does not appear with an empty history, and the folding commands stay out while folding is disabled. Each row shows the command's own keyboard shortcut, so the palette doubles as a way to learn them.
+
+See [Extend the command palette](#extend-the-command-palette) to register the host application's own commands, hide the built-in ones, or turn the palette off entirely.
+
+### Code Folding
+
+These shortcuts are active only when code folding is enabled:
+
+| Shortcut     | Action                                          |
+| ------------ | ----------------------------------------------- |
+| **Ctrl + .** | Toggle fold of the block at the cursor          |
+| **Ctrl + K** | Fold all blocks                                 |
+| **Ctrl + J** | Unfold all blocks                               |
+
+You can also click the fold chevrons (▼ / ▶) in the gutter to collapse or expand a block.
+
+### LSP Completion
+
+These shortcuts are active only when the LSP completion menu is visible:
+
+| Shortcut                          | Action                              |
+| --------------------------------- | ----------------------------------- |
+| **Arrow Up**                      | Navigate to previous completion item |
+| **Arrow Down**                    | Navigate to next completion item    |
+| **Enter**                         | Confirm and apply selected completion |
+| **Escape**                        | Close completion menu               |
+| **Arrow Left** / **Arrow Right**  | Clear completion menu               |
+
+## Usage Examples
+
+### Custom context menu
+
+Custom context-menu actions are identified by stable strings chosen by your
+application. Custom entries appear before the built-in editing actions:
+
+```rust
+use iced_code_editor::{CodeEditor, ContextMenuEntry};
+
+let editor = CodeEditor::new("fn main() {}", "rust")
+    .with_custom_context_menu_entries(vec![
+        ContextMenuEntry::item(
+            "app.format_document",
+            "Format document",
+        )
+        .with_shortcut("Ctrl+Shift+F"),
+        ContextMenuEntry::separator(),
+        ContextMenuEntry::item("app.rename_symbol", "Rename symbol")
+            .with_enabled(false),
+    ])
+    .with_default_context_menu_enabled(true);
+```
+
+The editor automatically adds a separator between the custom and built-in
+groups. Pass `false` to `with_default_context_menu_enabled` to replace the
+built-in menu completely. At runtime, use
+`set_custom_context_menu_entries` and
+`set_default_context_menu_enabled` to update the same configuration.
+
+Handle custom actions in the outer application before forwarding other editor
+messages to `CodeEditor::update`:
+
+```rust
+match event {
+    EditorMessage::CustomContextMenuAction(id) => {
+        match id.as_str() {
+            "app.format_document" => format_document(),
+            "app.rename_symbol" => rename_symbol(),
+            unknown => {
+                eprintln!(
+                    "Ignoring unknown context-menu action: {unknown}"
+                );
+            }
+        }
+        Task::none()
+    }
+    other => editor.update(&other).map(Message::EditorEvent),
+}
+```
+
+Unknown IDs should be ignored or logged explicitly. The editor emits custom
+action IDs unchanged and does not interpret or execute them internally.
+
+The built-in labels follow the language configured with `set_language`.
+Custom-entry labels are supplied by the host application, so localize those
+strings before passing them to the editor.
+
+Applications with a real filesystem path can opt into the built-in reveal
+request:
+
+```rust
+editor.set_reveal_in_file_manager_enabled(file_path.is_some());
+
+match event {
+    EditorMessage::RevealInFileManager => {
+        reveal_file(file_path.as_deref());
+        Task::none()
+    }
+    other => editor.update(&other).map(Message::EditorEvent),
+}
+```
+
+The menu label is platform-specific: **Reveal in Finder** on macOS,
+**Reveal in File Explorer** on Windows, and **Open Containing Folder** on
+other desktop platforms. The editor only emits the request; the host is
+responsible for invoking the operating system and reporting failures. The demo
+enables this item for tabs backed by a desktop path and keeps it hidden for
+untitled tabs and WebAssembly.
+
+### Extend the command palette
+
+The palette lists the built-in editor commands out of the box. Register your
+application's own commands to have them listed first:
+
+```rust
+use iced_code_editor::{CodeEditor, ContextMenuItem};
+
+let editor = CodeEditor::new("fn main() {}", "rust")
+    .with_custom_command_palette_entries(vec![
+        ContextMenuItem::new("app.open_file", "Open File")
+            .with_shortcut("Ctrl+O"),
+        ContextMenuItem::new("app.new_tab", "New Tab"),
+    ]);
+```
+
+Entries reuse `ContextMenuItem`, so an action offered in both surfaces is
+described once and keeps a single identifier. An entry built with
+`with_enabled(false)` is left out of the palette entirely rather than dimmed:
+the palette is a search result list, so every row it offers is runnable.
+
+Running a custom entry emits `CommandPaletteAction` carrying its ID. Handle it
+in the outer application, exactly like a custom context-menu action:
+
+```rust
+match event {
+    EditorMessage::CustomContextMenuAction(id)
+    | EditorMessage::CommandPaletteAction(id) => {
+        match id.as_str() {
+            "app.open_file" => open_file(),
+            "app.new_tab" => new_tab(),
+            unknown => eprintln!("Ignoring unknown action: {unknown}"),
+        }
+        Task::none()
+    }
+    other => editor.update(&other).map(Message::EditorEvent),
+}
+```
+
+Built-in commands the editor cannot perform on its own — saving, revealing the
+file in the file manager — are emitted the same way they would be if the user
+had pressed the shortcut, so the host intercepts them where it already does.
+
+Pass `false` to `with_default_command_palette_enabled` to list only your own
+commands, and use `set_command_palette_enabled(false)` to disable the palette
+altogether, freeing `Ctrl+Shift+P` for an application-provided one:
+
+```rust
+let editor = CodeEditor::new("fn main() {}", "rust")
+    .with_default_command_palette_enabled(false)
+    .with_command_palette_enabled(true);
+
+// Or open it from your own menu item:
+let task = editor.open_command_palette();
+```
+
+The built-in labels follow the language configured with `set_language`;
+localize your own entry labels before passing them in.
+
+### Changing Themes
+
+The editor uses **TokyoNightStorm** as the default theme. It automatically adapts to any Iced theme. All 23+ built-in Iced themes are supported:
+
+```rust
+use iced_code_editor::theme;
+
+// Apply any built-in Iced theme
+editor.set_theme(theme::from_iced_theme(&iced::Theme::TokyoNightStorm));
+editor.set_theme(theme::from_iced_theme(&iced::Theme::Dracula));
+editor.set_theme(theme::from_iced_theme(&iced::Theme::Nord));
+editor.set_theme(theme::from_iced_theme(&iced::Theme::CatppuccinMocha));
+editor.set_theme(theme::from_iced_theme(&iced::Theme::GruvboxDark));
+
+// Or use any theme from Theme::ALL
+for theme in iced::Theme::ALL {
+    editor.set_theme(theme::from_iced_theme(theme));
+}
+```
+
+### Getting and Setting Content
+
+```rust
+// Get current content
+let content = editor.content();
+
+// Check if content has been modified
+if editor.is_modified() {
+    println!("Editor has unsaved changes");
+}
+
+// Mark content as saved (e.g., after saving to file)
+editor.mark_saved();
+```
+
+### Enable/disable search/replace
+
+The search/replace functionality is **enabled by default**. It can be toggled on or off. When disabled, search shortcuts (Ctrl+F, Ctrl+H, F3) are ignored and the search dialog is hidden:
+
+```rust
+// Disable search/replace functionality
+editor.set_search_replace_enabled(false);
+
+// Or use builder pattern during initialization
+let editor = CodeEditor::new("code", "rs")
+    .with_search_replace_enabled(false);
+
+// Check current state
+if editor.search_replace_enabled() {
+    println!("Search and replace is available");
+}
+```
+
+This is useful for read-only editors or when you want to provide your own search interface.
+
+### Open search/replace from your own buttons
+
+Besides keyboard shortcuts, you can open or close the dialogs via API:
+
+```rust
+// Open search dialog (same as Ctrl+F)
+let task = editor.open_search_dialog();
+
+// Open search+replace dialog (same as Ctrl+H)
+let task = editor.open_search_replace_dialog();
+
+// Close dialog (same as Esc)
+let task = editor.close_search_dialog();
+```
+
+Return these tasks from your app `update` function after mapping to your message type.
+
+### Enable/disable line wrapping
+
+Line wrapping is **enabled by default** at viewport width. Long lines can be wrapped automatically at the viewport width or at a fixed column:
+
+```rust
+// Enable line wrapping at viewport width
+editor.set_wrap_enabled(true);
+
+// Wrap at a fixed column (e.g., 80 characters)
+let editor = CodeEditor::new("code", "rs")
+    .with_wrap_enabled(true)
+    .with_wrap_column(Some(80));
+
+// Disable wrapping
+editor.set_wrap_enabled(false);
+
+// Check current state
+if editor.wrap_enabled() {
+    println!("Line wrapping is active");
+}
+```
+
+When enabled, wrapped lines show a continuation indicator (↪) in the line number gutter.
+
+### Enable/disable code folding
+
+Code folding is **enabled by default**. Foldable regions are detected from indentation: a line is a fold header when the following non-blank line is more deeply indented (language-agnostic, works for Rust, Python, YAML, etc.). When enabled, a fold margin with clickable chevrons (▼ expanded, ▶ collapsed) is shown in the gutter, and a `⋯` marker appears after a collapsed block header.
+
+```rust
+// Disable code folding (chevrons hidden, all lines shown)
+editor.set_folding_enabled(false);
+
+// Or use builder pattern during initialization
+let editor = CodeEditor::new("code", "rs")
+    .with_folding_enabled(false);
+
+// Check current state
+if editor.folding_enabled() {
+    println!("Code folding is active");
+}
+```
+
+Folds can also be driven programmatically (useful for your own buttons or commands):
+
+```rust
+// Toggle the fold of the block whose header is a given logical line
+editor.toggle_fold(0);
+
+// Toggle / fold / unfold the innermost block containing a line
+editor.toggle_fold_at(line);
+editor.fold_at(line);
+editor.unfold_at(line);
+
+// Fold or unfold every block at once
+editor.fold_all();
+editor.unfold_all();
+
+// Query whether a header line is collapsed
+if editor.is_folded(0) {
+    println!("Block at line 0 is collapsed");
+}
+```
+
+When folding is disabled, the collapsed state is preserved (so re-enabling restores the previously collapsed blocks) but no lines are hidden.
+
+### Enable/disable line numbers
+
+Line numbers are **displayed by default**. They can be hidden to maximize space for code:
+
+```rust
+// Hide line numbers
+editor.set_line_numbers_enabled(false);
+
+// Or use builder pattern during initialization
+let editor = CodeEditor::new("code", "rs")
+    .with_line_numbers_enabled(false);
+
+// Show line numbers (default behavior)
+editor.set_line_numbers_enabled(true);
+
+// Check current state
+if editor.line_numbers_enabled() {
+    println!("Line numbers are visible");
+}
+```
+
+When disabled, the gutter is completely removed (0px width), providing more horizontal space for code display.
+
+### Visible whitespace rendering
+
+Whitespace rendering is **enabled by default**. Spaces are displayed as `·` and tab characters as `→` (with `·` fill to preserve alignment), both drawn in a dimmed color that blends with the active theme.
+
+```rust
+// Disable whitespace rendering
+editor.set_show_whitespace(false);
+
+// Re-enable it
+editor.set_show_whitespace(true);
+
+// Check current state
+if editor.show_whitespace() {
+    println!("Whitespace is visible");
+}
+```
+
+The whitespace color is derived automatically from the active theme via `Style::whitespace_color` and can be overridden in a custom `Style`.
+
+### Indentation guides
+
+Indentation guides are **enabled by default**. A thin vertical line is drawn at every indentation level, making the nesting of a block visible without following its braces. Their spacing follows the configured `IndentStyle`, so switching from 4 spaces to 2 spaces (or to tabs) moves the guides accordingly.
+
+```rust
+// Disable indentation guides
+editor.set_show_indent_guides(false);
+
+// Or use builder pattern during initialization
+let editor = CodeEditor::new("code", "rs")
+    .with_show_indent_guides(false);
+
+// Check current state
+if editor.show_indent_guides() {
+    println!("Indentation guides are visible");
+}
+```
+
+Blank lines take the level of the surrounding block, so a blank line *inside* a block keeps its guides while a blank line *between* two blocks does not. Guides are not drawn on wrapped continuation segments, since those restart at the left edge of the code area. The guide color is derived automatically from the active theme via `Style::indent_guide_color` and can be overridden in a custom `Style`.
+
+### Inline color previews
+
+Inline color previews are **enabled by default**. Every color literal in the visible text gets a small square, filled with the color it denotes, drawn just after it — so a palette can be read at a glance instead of decoded by eye.
+
+The recognized notations are:
+
+| Notation | Examples |
+| --- | --- |
+| CSS hexadecimal | `#f0c`, `#f008`, `#1e1e2e`, `#ff000080` |
+| Rust-style hexadecimal | `0x3A7BD5`, `0xFF6B6BCC` |
+| Functional | `rgb(58, 123, 213)`, `rgba(255, 0, 0, 0.5)`, `rgb(100%, 0%, 50%)` |
+
+```rust
+// Disable inline color previews
+editor.set_show_color_previews(false);
+
+// Or use builder pattern during initialization
+let editor = CodeEditor::new("body { color: #f0c; }", "css")
+    .with_show_color_previews(false);
+
+// Check current state
+if editor.show_color_previews() {
+    println!("Color previews are visible");
+}
+```
+
+Detection is purely lexical, so a literal inside a comment or a string gets a swatch too — which is what a reader looking for colors expects. Runs of hexadecimal digits of any other length are rejected (`#12345` is not a color), and a literal that continues an identifier (`raw0xff0000`) is ignored. The swatch is drawn as geometry and Iced renders all text above all geometry, so the character following the literal stays readable even when the square extends under it. Its frame uses `Style::gutter_border`, and translucent colors are composited over `Style::background`.
+
+### Indentation
+
+Auto-indentation is **enabled by default**: pressing Enter copies the leading whitespace of the current line to the new line. The indentation style (spaces or tab) is **4 spaces by default** and controls what is inserted when pressing Tab.
+
+```rust
+// Disable auto-indentation on Enter
+editor.set_auto_indent_enabled(false);
+
+// Check current state
+if editor.auto_indent_enabled() {
+    println!("Auto-indentation is active");
+}
+```
+
+```rust
+use iced_code_editor::IndentStyle;
+
+// Use 2 spaces per indent level
+editor.set_indent_style(IndentStyle::Spaces(2));
+
+// Use tabs instead of spaces
+editor.set_indent_style(IndentStyle::Tab);
+
+// Restore the default (4 spaces)
+editor.set_indent_style(IndentStyle::Spaces(4));
+
+// Check current style
+match editor.indent_style() {
+    IndentStyle::Spaces(n) => println!("Indenting with {n} spaces"),
+    IndentStyle::Tab => println!("Indenting with tabs"),
+}
+```
+
+Available styles via `IndentStyle::ALL`: `Spaces(2)`, `Spaces(4)`, `Spaces(8)`, `Tab`.
+
+### Auto-closing brackets/quotes
+
+Auto-closing is **enabled by default**. Typing an opening bracket or quote (`(`, `[`, `{`, `"`, `'`) auto-inserts its matching closing character with the cursor placed between them; typing the closing character right after an already-inserted match moves the cursor past it instead of duplicating it; and typing an opening bracket/quote while text is selected wraps the selection in the pair instead of replacing it.
+
+```rust
+// Disable auto-closing of brackets/quotes
+editor.set_auto_close_brackets(false);
+
+// Check current state
+if editor.auto_close_brackets() {
+    println!("Auto-closing is active");
+}
+```
+
+### Matching bracket/quote highlight
+
+Matching bracket/quote highlight is **enabled by default**. Placing the cursor next to a bracket (`(`, `)`, `[`, `]`, `{`, `}`) or a quote (`"`, `'`) highlights it and its matching pair.
+
+```rust
+// Disable the matching bracket/quote highlight
+editor.set_bracket_match_highlight_enabled(false);
+
+// Check current state
+if editor.bracket_match_highlight_enabled() {
+    println!("Matching bracket/quote highlight is active");
+}
+```
+
+### Bracket-pair colorization
+
+Bracket-pair colorization is **enabled by default**. Each `(`, `)`, `[`, `]`, `{`, `}` is colored by its nesting depth, so a matching pair always shares the same color, cycling through a fixed palette (gold, orchid, light sky blue) as depth increases.
+
+```rust
+// Disable bracket-pair colorization
+editor.set_bracket_pair_colorization_enabled(false);
+
+// Check current state
+if editor.bracket_pair_colorization_enabled() {
+    println!("Bracket-pair colorization is active");
+}
+```
+
+### Language Server Protocol (LSP)
+
+LSP support provides hover documentation, auto-completion, and go-to-definition. It requires the `lsp-process` feature (not available on WASM):
+
+```toml
+[dependencies]
+iced-code-editor = { version = "0.3", features = ["lsp-process"] }
+```
+
+#### Enable/disable LSP on an editor
+
+```rust
+// Enable LSP (attach a client and open the document)
+editor.set_lsp_enabled(true);
+
+// Disable LSP (detach the client)
+editor.set_lsp_enabled(false);
+```
+
+#### Connecting an LSP server
+
+```rust
+use std::sync::mpsc;
+use iced_code_editor::{LspProcessClient, LspEvent, LspDocument};
+
+// Create a channel to receive LSP events
+let (tx, rx) = mpsc::channel::<LspEvent>();
+
+// Start the server (e.g., lua-language-server)
+let client = LspProcessClient::new_with_server(
+    "file:///path/to/project",
+    tx,
+    "lua-language-server",
+)?;
+
+// Attach the client to an editor with a document URI
+editor.attach_lsp(
+    Box::new(client),
+    LspDocument::new("file:///path/to/file.lua", "lua"),
+);
+```
+
+#### Rendering the overlay (hover + completion)
+
+Use `LspOverlayState` to hold display state and `view_lsp_overlay` to render it:
+
+```rust
+use iced_code_editor::{LspOverlayState, LspOverlayMessage, view_lsp_overlay};
+
+struct App {
+    editor: CodeEditor,
+    overlay: LspOverlayState,
+}
+
+#[derive(Clone)]
+enum Message {
+    LspOverlay(LspOverlayMessage),
+    // ...
+}
+
+fn view(app: &App) -> Element<'_, Message> {
+    // Stack the overlay on top of the editor
+    stack![
+        app.editor.view().map(Message::EditorEvent),
+        view_lsp_overlay(
+            &app.overlay,
+            &app.editor,
+            &app.theme,
+            14.0,    // font size
+            20.0,    // line height
+            Message::LspOverlay,
+        ),
+    ].into()
+}
+```
+
+Poll `LspEvent`s from the channel on each tick and update the overlay state:
+
+```rust
+// On LspEvent::Hover
+overlay.show_hover(text);
+
+// On LspEvent::Completion
+overlay.set_completions(items, cursor_position);
+```
+
+#### Supported servers
+
+Out of the box, the following servers are supported (the binary must be on `$PATH`):
+
+| Server key                   | Language |
+| ---------------------------- | -------- |
+| `rust-analyzer`              | Rust     |
+| `pyright`                    | Python   |
+| `typescript-language-server` | JS / TS  |
+| `lua-language-server`        | Lua      |
+| `gopls`                      | Go       |
+
+### Changing font
+
+The default font of the editor is `iced::Font::MONOSPACE`. It can be changed with one of the default `iced` font or by loading a specific font:
+
+```rust
+let font = iced::font::Family::SansSerif;
+editor.set_font(font);
+```
+
+> The editor support CJK font.
+
+The default font size is **14px**. It can be changed:
+
+```rust
+editor.set_font_size(12.0, true);
+```
+
+## Themes
+
+The editor natively supports all built-in Iced themes with automatic color adaptation.
+
+Each theme automatically provides:
+
+- Optimized background and foreground colors
+- Adaptive gutter (line numbers) styling
+- Appropriate text selection colors
+- Themed cursor appearance
+- Custom scrollbar styling
+- Subtle current line highlighting
+
+The editor intelligently adapts colors from the Iced theme palette for optimal code readability.
+
+![Demo Screenshot Dark Theme](screenshot_dark_theme.png)
+![Demo Screenshot Light Theme](screenshot_light_theme.png)
+
+## Supported Languages
+
+The editor supports syntax highlighting for numerous languages via the `syntect` crate:
+
+- **Rust** (`"rs"` or `"rust"`)
+- **Python** (`"py"` or `"python"`)
+- **JavaScript/TypeScript** (`"js"`, `"javascript"`, `"ts"`, `"typescript"`)
+- **Lua** (`"lua"`)
+- **C/C++** (`"c"`, `"cpp"`, `"c++"`)
+- **Java** (`"java"`)
+- **Go** (`"go"`)
+- **HTML/CSS** (`"html"`, `"css"`)
+- **Markdown** (`"md"`, `"markdown"`)
+- And many more...
+
+For a complete list, refer to the [syntect documentation](https://docs.rs/syntect/).
+
+## Demo Application
+
+A full-featured demo application is included in the `demo-app` directory, showcasing:
+
+- File operations (open, save, save as)
+- Theme switching
+- Modified state tracking
+- Clipboard operations
+- Full keyboard navigation
+
+Run it with:
+
+```bash
+cargo run --package demo-app --release
+```
+
+## Simple Example
+
+A minimal standalone example is available in the `simple-example` directory. It demonstrates the basic integration pattern with a `text_input` sibling widget and focus management:
+
+```bash
+cargo run --package simple-example
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+Check [docs\DEV.md](https://github.com/LuDog71FR/iced-code-editor/blob/main/docs/DEV.md) for more details.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with [Iced](https://github.com/iced-rs/iced) - A cross-platform GUI library for Rust
+- Syntax highlighting powered by [syntect](https://github.com/trishume/syntect)
