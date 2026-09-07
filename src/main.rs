@@ -69,6 +69,7 @@ fn run_gui(startup_path: Option<PathBuf>) -> iced::Result {
     .window(window::Settings {
         size: [window_width, window_height].into(),
         icon: Some(icon),
+        exit_on_close_request: false,
         ..Default::default()
     })
     .run()

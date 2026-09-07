@@ -2172,6 +2172,12 @@ impl App {
                 let _ = prefs::save_preferences(&self.editor_preferences);
                 iced::Task::none()
             },
+            Message::WindowCloseRequested(id) => {
+                if self.editor_preferences.restore_session_enabled {
+                    self.sync_session_state();
+                }
+                iced::window::close(id)
+            },
             Message::NewFile => {
                 let new_path = PathBuf::from("untitled");
                 let editor = self.configured_code_editor("", "txt");

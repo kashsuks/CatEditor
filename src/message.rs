@@ -119,6 +119,7 @@ pub enum Message {
     CommandInputChanged(String),
     CommandInputSubmit,
     WindowResized(u32, u32),
+    WindowCloseRequested(iced::window::Id),
 
     NewFile,
     SaveAs,

@@ -12,6 +12,7 @@ impl App {
             crate::subscriptions::mouse::cursor_tracker(),
             crate::subscriptions::window::resizes(),
             crate::subscriptions::window::focus_refresh(),
+            crate::subscriptions::window::close_requests(),
             iced::time::every(Duration::from_millis(150)).map(|_| Message::LspTick),
         ];
 

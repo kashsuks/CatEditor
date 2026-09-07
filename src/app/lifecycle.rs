@@ -11,7 +11,7 @@ impl App {
     }
 
     pub fn new_with_path(startup_path: Option<std::path::PathBuf>) -> (Self, iced::Task<Message>) {
-        let app = Self::default();
+        let mut app = Self::default();
 
         let update_task = iced::Task::perform(
             crate::features::updater::check_for_update(),
@@ -24,13 +24,14 @@ impl App {
         let startup_task = match startup_path {
             Some(path) if path.is_dir() => iced::Task::done(Message::FolderOpened(path)),
             Some(path) => Self::open_path_task(path),
-            None => iced::Task::none(),
+            // An explicit CLI path always wins over the saved session.
+            None => app.restore_last_session_task(),
         };
 
         (app, iced::Task::batch([update_task, startup_task]))
     }
 
-    fn restore_last_session_task(&mut self) -> iced::Task<Message> {
+    pub(super) fn restore_last_session_task(&mut self) -> iced::Task<Message> {
         if !self.editor_preferences.restore_session_enabled {
             return iced::Task::none();
         }
