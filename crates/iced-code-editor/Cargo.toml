@@ -1,0 +1,57 @@
+[package]
+name = "iced-code-editor"
+version = "0.4.2"
+edition = "2024"
+authors = ["LuDog71 <ludog71.trekker238@passmail.net>"]
+description = "A custom code editor widget for the Iced GUI framework with syntax highlighting, line numbers, and scrolling support."
+homepage = "https://github.com/LuDog71FR/iced-code-editor"
+documentation = "https://docs.rs/iced-code-editor"
+readme = "README.md"
+keywords = ["gui", "interface", "widgets", "iced", "editor"]
+categories = ["gui"]
+license = "MIT"
+repository = "https://github.com/LuDog71FR/iced-code-editor"
+
+# Vendored into pinel-stardance from crates.io v0.4.2 so it can be maintained
+# and modified in-tree. See CREDITS.md for upstream attribution.
+
+[lib]
+name = "iced_code_editor"
+path = "src/lib.rs"
+
+[[test]]
+name = "vim_command_line"
+path = "tests/vim_command_line.rs"
+
+[[test]]
+name = "vim_counted_commands"
+path = "tests/vim_counted_commands.rs"
+
+[[test]]
+name = "vim_toggle_shortcut"
+path = "tests/vim_toggle_shortcut.rs"
+
+[[bench]]
+name = "editor_benchmarks"
+path = "benches/editor_benchmarks.rs"
+harness = false
+required-features = ["bench"]
+
+[features]
+bench = []
+lsp-process = ["dep:serde_json"]
+two-face = ["dep:two-face"]
+
+[dependencies]
+iced = { version = "0.14", features = ["advanced", "highlighter", "canvas", "markdown"] }
+iced_aw = "0.13"
+iced_font_awesome = "0.4"
+rust-i18n = "3"
+serde_json = { version = "1", optional = true }
+syntect = { version = "5.3", default-features = false, features = ["default-fancy"] }
+two-face = { version = "0.5", optional = true }
+unicode-width = "0.2.2"
+web-time = "1"
+
+[dev-dependencies]
+criterion = "0.5"

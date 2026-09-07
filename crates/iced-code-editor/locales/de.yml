@@ -1,0 +1,44 @@
+# Deutsche Übersetzungen
+search:
+  placeholder: "Suchen..."
+  close_tooltip: "Suchdialog schließen (Esc)"
+  previous_match_tooltip: "Vorheriger Treffer (Umschalt+F3)"
+  next_match_tooltip: "Nächster Treffer (F3 / Enter)"
+
+replace:
+  placeholder: "Ersetzen..."
+  current_tooltip: "Aktuellen Treffer ersetzen"
+  all_tooltip: "Alle ersetzen"
+
+settings:
+  case_sensitive_label: "Groß-/Kleinschreibung"
+
+context_menu:
+  undo: "Rückgängig"
+  redo: "Wiederholen"
+  cut: "Ausschneiden"
+  copy: "Kopieren"
+  paste: "Einfügen"
+  select_all: "Alle auswählen"
+  reveal_in_finder: "Im Finder anzeigen"
+  reveal_in_file_explorer: "Im Datei-Explorer anzeigen"
+  open_containing_folder: "Übergeordneten Ordner öffnen"
+command_palette:
+  placeholder: "Befehl eingeben..."
+  no_results: "Kein passender Befehl"
+  save: "Speichern"
+  toggle_comment: "Zeilenkommentar umschalten"
+  move_line_up: "Zeile nach oben verschieben"
+  move_line_down: "Zeile nach unten verschieben"
+  duplicate_line_up: "Zeile nach oben duplizieren"
+  duplicate_line_down: "Zeile nach unten duplizieren"
+  goto_line: "Gehe zu Zeile"
+  add_cursor_above: "Cursor oberhalb hinzufügen"
+  add_cursor_below: "Cursor unterhalb hinzufügen"
+  select_next_occurrence: "Nächstes Vorkommen auswählen"
+  toggle_vim_mode: "Vim-Modus umschalten"
+  find: "Suchen"
+  replace: "Ersetzen"
+  fold_at_cursor: "Faltung an Cursorposition umschalten"
+  fold_all: "Alles falten"
+  unfold_all: "Alles entfalten"
