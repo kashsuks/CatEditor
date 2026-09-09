@@ -169,12 +169,7 @@ const LSP_SERVER_CONFIGS: &[LspServerConfig] = &[
 pub fn lsp_language_for_extension(extension: &str) -> Option<LspLanguage> {
     LSP_LANGUAGE_MAPPINGS
         .iter()
-        .find(|mapping| {
-            mapping
-                .extensions
-                .iter()
-                .any(|ext| ext.eq_ignore_ascii_case(extension))
-        })
+        .find(|mapping| mapping.extensions.iter().any(|ext| ext.eq_ignore_ascii_case(extension)))
         .map(|mapping| LspLanguage {
             language_id: mapping.language_id,
             server_key: mapping.server_key,
@@ -241,9 +236,7 @@ pub fn lsp_server_config(key: &str) -> Option<&'static LspServerConfig> {
 ///     }
 /// }
 /// ```
-pub fn resolve_lsp_command(
-    config: &LspServerConfig,
-) -> Result<LspCommand, String> {
+pub fn resolve_lsp_command(config: &LspServerConfig) -> Result<LspCommand, String> {
     let program = if config.key == "rust-analyzer" {
         resolve_rust_analyzer_command()?
     } else if config.key == "gopls" {
@@ -252,12 +245,7 @@ pub fn resolve_lsp_command(
         resolve_program_from_envs(config.env_vars)
             .unwrap_or_else(|| config.default_command[0].to_string())
     };
-    let args = config
-        .default_command
-        .iter()
-        .skip(1)
-        .map(|arg| arg.to_string())
-        .collect();
+    let args = config.default_command.iter().skip(1).map(|arg| arg.to_string()).collect();
     Ok(LspCommand { program, args })
 }
 
@@ -303,15 +291,11 @@ fn resolve_rust_analyzer_command() -> Result<String, String> {
         |var| std::env::var(var).ok(),
         || Command::new("rust-analyzer").arg("--version").output().is_ok(),
         || {
-            let output = Command::new("rustup")
-                .args(["which", "rust-analyzer"])
-                .output()
-                .ok()?;
+            let output = Command::new("rustup").args(["which", "rust-analyzer"]).output().ok()?;
             if !output.status.success() {
                 return None;
             }
-            let path =
-                String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
             (!path.is_empty()).then_some(path)
         },
     )
@@ -325,10 +309,9 @@ fn resolve_rust_analyzer_command_with(
     is_on_path: impl Fn() -> bool,
     rustup_which: impl Fn() -> Option<String>,
 ) -> Result<String, String> {
-    if let Some(path) = resolve_program_from_envs_with(
-        &["RUST_ANALYZER", "RUST_ANALYZER_PATH"],
-        &lookup,
-    ) {
+    if let Some(path) =
+        resolve_program_from_envs_with(&["RUST_ANALYZER", "RUST_ANALYZER_PATH"], &lookup)
+    {
         return Ok(path);
     }
     if is_on_path() {
@@ -381,9 +364,7 @@ fn resolve_gopls_command_with(
     gopath: impl Fn() -> Option<String>,
     exists: impl Fn(&Path) -> bool,
 ) -> Result<String, String> {
-    if let Some(path) =
-        resolve_program_from_envs_with(&["GOPLS", "GOPLS_PATH"], &lookup)
-    {
+    if let Some(path) = resolve_program_from_envs_with(&["GOPLS", "GOPLS_PATH"], &lookup) {
         return Ok(path);
     }
     if is_on_path() {
@@ -408,10 +389,7 @@ fn resolve_gopls_command_with(
             }
         }
     }
-    Err(
-        "gopls not found. Please set GOPLS/GOPLS_PATH or add GOPATH/bin to PATH"
-            .to_string(),
-    )
+    Err("gopls not found. Please set GOPLS/GOPLS_PATH or add GOPATH/bin to PATH".to_string())
 }
 
 /// Ensures rust-analyzer configuration directory exists on macOS.
@@ -429,7 +407,9 @@ fn resolve_gopls_command_with(
 /// ```
 #[cfg(target_os = "macos")]
 pub fn ensure_rust_analyzer_config() {
-    let Some(home) = std::env::var_os("HOME") else { return };
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
     let mut path = std::path::PathBuf::from(home);
     path.push("Library");
     path.push("Application Support");
@@ -534,25 +514,21 @@ mod tests {
     #[test]
     fn test_resolve_program_from_envs_with_first_set_var_wins() {
         let lookup = lookup_from(&[("SECOND", "/bin/second")]);
-        let result =
-            resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
+        let result = resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
         assert_eq!(result, Some("/bin/second".to_string()));
     }
 
     #[test]
     fn test_resolve_program_from_envs_with_skips_blank_values() {
-        let lookup =
-            lookup_from(&[("FIRST", "   "), ("SECOND", "/bin/second")]);
-        let result =
-            resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
+        let lookup = lookup_from(&[("FIRST", "   "), ("SECOND", "/bin/second")]);
+        let result = resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
         assert_eq!(result, Some("/bin/second".to_string()));
     }
 
     #[test]
     fn test_resolve_program_from_envs_with_none_when_all_unset() {
         let lookup = lookup_from(&[]);
-        let result =
-            resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
+        let result = resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
         assert_eq!(result, None);
     }
 
@@ -563,8 +539,7 @@ mod tests {
         // trailing newline would otherwise reach `Command::new` verbatim and
         // fail with a confusing "No such file or directory".
         let lookup = lookup_from(&[("FIRST", "  /bin/first\n")]);
-        let result =
-            resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
+        let result = resolve_program_from_envs_with(&["FIRST", "SECOND"], lookup);
         assert_eq!(result, Some("/bin/first".to_string()));
     }
 
@@ -573,16 +548,14 @@ mod tests {
     #[test]
     fn test_resolve_rust_analyzer_command_with_env_var_takes_priority() {
         let lookup = lookup_from(&[("RUST_ANALYZER", "/custom/rust-analyzer")]);
-        let result =
-            resolve_rust_analyzer_command_with(lookup, || true, || None);
+        let result = resolve_rust_analyzer_command_with(lookup, || true, || None);
         assert_eq!(result, Ok("/custom/rust-analyzer".to_string()));
     }
 
     #[test]
     fn test_resolve_rust_analyzer_command_with_falls_back_to_path() {
         let lookup = lookup_from(&[]);
-        let result =
-            resolve_rust_analyzer_command_with(lookup, || true, || None);
+        let result = resolve_rust_analyzer_command_with(lookup, || true, || None);
         assert_eq!(result, Ok("rust-analyzer".to_string()));
     }
 
@@ -602,11 +575,9 @@ mod tests {
 
     #[test]
     #[allow(clippy::unwrap_used)]
-    fn test_resolve_rust_analyzer_command_with_returns_err_when_nothing_found()
-    {
+    fn test_resolve_rust_analyzer_command_with_returns_err_when_nothing_found() {
         let lookup = lookup_from(&[]);
-        let result =
-            resolve_rust_analyzer_command_with(lookup, || false, || None);
+        let result = resolve_rust_analyzer_command_with(lookup, || false, || None);
         result.unwrap_err();
     }
 
@@ -615,26 +586,14 @@ mod tests {
     #[test]
     fn test_resolve_gopls_command_with_env_var_takes_priority() {
         let lookup = lookup_from(&[("GOPLS", "/custom/gopls")]);
-        let result = resolve_gopls_command_with(
-            lookup,
-            || true,
-            || None,
-            || None,
-            |_| true,
-        );
+        let result = resolve_gopls_command_with(lookup, || true, || None, || None, |_| true);
         assert_eq!(result, Ok("/custom/gopls".to_string()));
     }
 
     #[test]
     fn test_resolve_gopls_command_with_falls_back_to_path() {
         let lookup = lookup_from(&[]);
-        let result = resolve_gopls_command_with(
-            lookup,
-            || true,
-            || None,
-            || None,
-            |_| true,
-        );
+        let result = resolve_gopls_command_with(lookup, || true, || None, || None, |_| true);
         assert_eq!(result, Ok("gopls".to_string()));
     }
 
@@ -666,8 +625,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::unwrap_used)]
-    fn test_resolve_gopls_command_with_skips_gobin_when_gopls_does_not_exist_there()
-     {
+    fn test_resolve_gopls_command_with_skips_gobin_when_gopls_does_not_exist_there() {
         let lookup = lookup_from(&[]);
         let result = resolve_gopls_command_with(
             lookup,
@@ -683,13 +641,7 @@ mod tests {
     #[allow(clippy::unwrap_used)]
     fn test_resolve_gopls_command_with_returns_err_when_nothing_found() {
         let lookup = lookup_from(&[]);
-        let result = resolve_gopls_command_with(
-            lookup,
-            || false,
-            || None,
-            || None,
-            |_| false,
-        );
+        let result = resolve_gopls_command_with(lookup, || false, || None, || None, |_| false);
         result.unwrap_err();
     }
 }

@@ -18,8 +18,7 @@ impl IncrementalEditBenchmark {
     /// Creates an editor, primes its visual-line cache, and places the
     /// cursor at `line`/`column`.
     pub fn new(content: &str, line: usize, column: usize) -> Self {
-        let mut editor =
-            super::CodeEditor::new(content, "rs").with_wrap_column(Some(80));
+        let mut editor = super::CodeEditor::new(content, "rs").with_wrap_column(Some(80));
         editor.request_focus();
         editor.has_canvas_focus = true;
         editor.focus_locked = false;
@@ -53,8 +52,7 @@ pub struct IncrementalLspEditBenchmark {
 impl IncrementalLspEditBenchmark {
     /// Creates and primes a focused editor with a no-op LSP client.
     pub fn new(content: &str, line: usize, column: usize) -> Self {
-        let mut editor =
-            super::CodeEditor::new(content, "rs").with_wrap_column(Some(80));
+        let mut editor = super::CodeEditor::new(content, "rs").with_wrap_column(Some(80));
         editor.attach_lsp(
             Box::new(NoopLspClient),
             super::lsp::LspDocument::new("file:///benchmark.rs", "rust"),
@@ -120,8 +118,7 @@ pub struct IncrementalSearchEditBenchmark {
 impl IncrementalSearchEditBenchmark {
     /// Creates an editor with populated search results and a warm layout.
     pub fn new(content: &str, query: &str, line: usize, column: usize) -> Self {
-        let mut editor =
-            super::CodeEditor::new(content, "rs").with_wrap_column(Some(80));
+        let mut editor = super::CodeEditor::new(content, "rs").with_wrap_column(Some(80));
         editor.search_state.open_search();
         editor.search_state.set_query(query.to_owned(), &editor.buffer);
         editor.request_focus();

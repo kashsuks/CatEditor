@@ -1,9 +1,7 @@
 //! Layout metrics: font/character/line dimensions, viewport size, and the
 //! gutter-width constants and calculations derived from them.
 
-use iced::advanced::text::{
-    Alignment, Paragraph, Renderer as TextRenderer, Text,
-};
+use iced::advanced::text::{Alignment, Paragraph, Renderer as TextRenderer, Text};
 use std::cmp::Ordering as CmpOrdering;
 use unicode_width::UnicodeWidthChar;
 
@@ -18,8 +16,7 @@ pub(crate) const GUTTER_WIDTH: f32 = 45.0;
 /// Width in pixels of the fold margin (chevron column) added to the gutter when
 /// code folding is enabled.
 pub(crate) const FOLD_MARGIN_WIDTH: f32 = 14.0;
-pub(crate) const CURSOR_BLINK_INTERVAL: std::time::Duration =
-    std::time::Duration::from_millis(530);
+pub(crate) const CURSOR_BLINK_INTERVAL: std::time::Duration = std::time::Duration::from_millis(530);
 
 /// Measures the width of a single character.
 ///
@@ -32,11 +29,7 @@ pub(crate) const CURSOR_BLINK_INTERVAL: std::time::Duration =
 /// # Returns
 ///
 /// The calculated width of the character as a `f32`
-pub(crate) fn measure_char_width(
-    c: char,
-    full_char_width: f32,
-    char_width: f32,
-) -> f32 {
+pub(crate) fn measure_char_width(c: char, full_char_width: f32, char_width: f32) -> f32 {
     if c == '\t' {
         return char_width * TAB_WIDTH as f32;
     }
@@ -94,14 +87,8 @@ pub(crate) fn indent_width(line: &str) -> Option<usize> {
 /// # Returns
 ///
 /// The total calculated width of the text as a `f32`
-pub(crate) fn measure_text_width(
-    text: &str,
-    full_char_width: f32,
-    char_width: f32,
-) -> f32 {
-    text.chars()
-        .map(|c| measure_char_width(c, full_char_width, char_width))
-        .sum()
+pub(crate) fn measure_text_width(text: &str, full_char_width: f32, char_width: f32) -> f32 {
+    text.chars().map(|c| measure_char_width(c, full_char_width, char_width)).sum()
 }
 
 /// Epsilon value for floating-point comparisons in text layout.
@@ -203,10 +190,7 @@ impl CodeEditor {
     }
 
     /// Recalculates character dimensions based on current font and size.
-    pub(crate) fn recalculate_char_dimensions(
-        &mut self,
-        auto_adjust_line_height: bool,
-    ) {
+    pub(crate) fn recalculate_char_dimensions(&mut self, auto_adjust_line_height: bool) {
         self.char_width = self.measure_single_char_width("a");
         // Use '汉' as a standard reference for CJK (Chinese, Japanese, Korean) wide characters
         self.full_char_width = self.measure_single_char_width("汉");
@@ -484,13 +468,21 @@ impl CodeEditor {
 
     /// Returns the width of the line-number area (excluding the fold margin).
     pub(crate) fn line_number_gutter_width(&self) -> f32 {
-        if self.line_numbers_enabled { GUTTER_WIDTH } else { 0.0 }
+        if self.line_numbers_enabled {
+            GUTTER_WIDTH
+        } else {
+            0.0
+        }
     }
 
     /// Returns the width of the fold margin (the chevron column), or `0.0` when
     /// folding is disabled.
     pub(crate) fn fold_margin_width(&self) -> f32 {
-        if self.folding_enabled { FOLD_MARGIN_WIDTH } else { 0.0 }
+        if self.folding_enabled {
+            FOLD_MARGIN_WIDTH
+        } else {
+            0.0
+        }
     }
 }
 
@@ -658,8 +650,7 @@ mod tests {
         // "漢字" (Kanji, 2 chars) -> 2 * FONT_SIZE
 
         let text_hiragana = "こんにちは";
-        let width_hiragana =
-            measure_text_width(text_hiragana, FONT_SIZE, CHAR_WIDTH);
+        let width_hiragana = measure_text_width(text_hiragana, FONT_SIZE, CHAR_WIDTH);
         let expected_hiragana = FONT_SIZE * 5.0;
         assert_eq!(
             compare_floats(width_hiragana, expected_hiragana),
@@ -668,8 +659,7 @@ mod tests {
         );
 
         let text_katakana = "カタカナ";
-        let width_katakana =
-            measure_text_width(text_katakana, FONT_SIZE, CHAR_WIDTH);
+        let width_katakana = measure_text_width(text_katakana, FONT_SIZE, CHAR_WIDTH);
         let expected_katakana = FONT_SIZE * 4.0;
         assert_eq!(
             compare_floats(width_katakana, expected_katakana),

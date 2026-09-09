@@ -16,14 +16,12 @@ mod update;
 use iced::widget::Id;
 
 use super::actions::{
-    ADD_CURSOR_ABOVE_SHORTCUT, ADD_CURSOR_BELOW_SHORTCUT, ActionContext,
-    COPY_SHORTCUT, CUT_SHORTCUT, DUPLICATE_LINE_DOWN_SHORTCUT,
-    DUPLICATE_LINE_UP_SHORTCUT, FIND_SHORTCUT, FOLD_ALL_SHORTCUT,
-    FOLD_AT_CURSOR_SHORTCUT, GOTO_LINE_SHORTCUT, MOVE_LINE_DOWN_SHORTCUT,
-    MOVE_LINE_UP_SHORTCUT, PASTE_SHORTCUT, REDO_SHORTCUT, REPLACE_SHORTCUT,
-    SAVE_SHORTCUT, SELECT_ALL_SHORTCUT, SELECT_NEXT_OCCURRENCE_SHORTCUT,
-    TOGGLE_COMMENT_SHORTCUT, TOGGLE_VIM_MODE_SHORTCUT, UNDO_SHORTCUT,
-    UNFOLD_ALL_SHORTCUT,
+    ADD_CURSOR_ABOVE_SHORTCUT, ADD_CURSOR_BELOW_SHORTCUT, ActionContext, COPY_SHORTCUT,
+    CUT_SHORTCUT, DUPLICATE_LINE_DOWN_SHORTCUT, DUPLICATE_LINE_UP_SHORTCUT, FIND_SHORTCUT,
+    FOLD_ALL_SHORTCUT, FOLD_AT_CURSOR_SHORTCUT, GOTO_LINE_SHORTCUT, MOVE_LINE_DOWN_SHORTCUT,
+    MOVE_LINE_UP_SHORTCUT, PASTE_SHORTCUT, REDO_SHORTCUT, REPLACE_SHORTCUT, SAVE_SHORTCUT,
+    SELECT_ALL_SHORTCUT, SELECT_NEXT_OCCURRENCE_SHORTCUT, TOGGLE_COMMENT_SHORTCUT,
+    TOGGLE_VIM_MODE_SHORTCUT, UNDO_SHORTCUT, UNFOLD_ALL_SHORTCUT,
 };
 use super::context_menu::ContextMenuItem;
 use crate::canvas_editor::{CodeEditor, Message};
@@ -52,11 +50,7 @@ pub(crate) struct PaletteEntry {
 
 impl PaletteEntry {
     /// Builds a row running a built-in editor message.
-    fn builtin(
-        label: String,
-        shortcut: &'static str,
-        message: Message,
-    ) -> Self {
+    fn builtin(label: String, shortcut: &'static str, message: Message) -> Self {
         Self {
             label,
             shortcut: shortcut.to_string(),
@@ -147,8 +141,7 @@ impl CommandPaletteState {
         let current = i32::try_from(self.selected).unwrap_or(0);
         let next = (current + delta).rem_euclid(wrap);
         self.selected = usize::try_from(next).unwrap_or(0);
-        self.first_visible_row =
-            window_origin(self.selected, self.first_visible_row, len);
+        self.first_visible_row = window_origin(self.selected, self.first_visible_row, len);
     }
 }
 
@@ -198,8 +191,8 @@ fn matches_query(label: &str, query: &str) -> bool {
         match remaining.peek() {
             Some(wanted) if *wanted == candidate => {
                 remaining.next();
-            }
-            Some(_) => {}
+            },
+            Some(_) => {},
             None => return true,
         }
     }
@@ -225,10 +218,7 @@ fn custom_entries(entries: &[ContextMenuItem]) -> Vec<PaletteEntry> {
 
 /// Builds the palette rows for the built-in editor commands that are
 /// available in `context`.
-fn default_entries(
-    context: ActionContext,
-    translations: &Translations,
-) -> Vec<PaletteEntry> {
+fn default_entries(context: ActionContext, translations: &Translations) -> Vec<PaletteEntry> {
     let mut entries = vec![
         PaletteEntry::builtin(
             translations.command_palette_save(),
@@ -394,9 +384,7 @@ impl CodeEditor {
             &self.translations,
         )
         .into_iter()
-        .filter(|entry| {
-            matches_query(&entry.label, self.command_palette_state.query.trim())
-        })
+        .filter(|entry| matches_query(&entry.label, self.command_palette_state.query.trim()))
         .collect()
     }
 
@@ -476,8 +464,7 @@ mod tests {
     fn test_custom_entries_drop_disabled_items() {
         let entries = custom_entries(&[
             ContextMenuItem::new("app.format", "Format Document"),
-            ContextMenuItem::new("app.rename", "Rename Symbol")
-                .with_enabled(false),
+            ContextMenuItem::new("app.rename", "Rename Symbol").with_enabled(false),
         ]);
 
         assert_eq!(labels(&entries), vec!["Format Document"]);
@@ -514,8 +501,7 @@ mod tests {
 
     #[test]
     fn test_unavailable_actions_are_omitted() {
-        let entries =
-            default_entries(ActionContext::default(), &Translations::default());
+        let entries = default_entries(ActionContext::default(), &Translations::default());
 
         assert!(!labels(&entries).contains(&"Undo"));
         assert!(!labels(&entries).contains(&"Cut"));
@@ -619,8 +605,7 @@ mod tests {
     }
 
     #[test]
-    fn test_window_origin_scrolls_by_one_row_when_the_highlight_moves_past_the_bottom()
-     {
+    fn test_window_origin_scrolls_by_one_row_when_the_highlight_moves_past_the_bottom() {
         assert_eq!(window_origin(MAX_VISIBLE_ROWS, 0, LONG), 1);
         assert_eq!(window_origin(MAX_VISIBLE_ROWS + 1, 1, LONG), 2);
     }
@@ -665,8 +650,7 @@ mod tests {
                 state.navigate(delta, LONG);
                 let origin = state.first_visible_row;
                 assert!(
-                    (origin..origin + MAX_VISIBLE_ROWS)
-                        .contains(&state.selected),
+                    (origin..origin + MAX_VISIBLE_ROWS).contains(&state.selected),
                     "row {} is outside the window at {origin}",
                     state.selected
                 );

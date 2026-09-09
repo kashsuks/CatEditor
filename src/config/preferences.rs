@@ -132,7 +132,7 @@ fn parse_preferences(content: &str) -> EditorPreferences {
                 },
                 "restore_session_enabled" => {
                     prefs.restore_session_enabled = value == "true";
-                }
+                },
                 "autosave_enabled" => {
                     prefs.autosave_enabled = value == "true";
                 },

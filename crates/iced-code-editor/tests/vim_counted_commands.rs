@@ -11,10 +11,7 @@ fn vim_keys(editor: &mut CodeEditor, keys: &str) {
 
 #[test]
 fn vim_counted_line_jumps_use_one_based_targets() {
-    let content = (1..=10)
-        .map(|line| format!("line {line}"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    let content = (1..=10).map(|line| format!("line {line}")).collect::<Vec<_>>().join("\n");
     let mut editor = CodeEditor::new(&content, "txt").with_vim_enabled(true);
 
     vim_keys(&mut editor, "5G");
@@ -35,10 +32,7 @@ fn vim_counted_line_jumps_use_one_based_targets() {
 
 #[test]
 fn vim_bare_g_and_explicit_1g_target_different_lines() {
-    let content = (1..=10)
-        .map(|line| format!("line {line}"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    let content = (1..=10).map(|line| format!("line {line}")).collect::<Vec<_>>().join("\n");
     let mut editor = CodeEditor::new(&content, "txt").with_vim_enabled(true);
 
     vim_keys(&mut editor, "G");
@@ -56,8 +50,8 @@ fn vim_bare_g_and_explicit_1g_target_different_lines() {
 
 #[test]
 fn vim_five_yy_yanks_five_lines() {
-    let mut editor = CodeEditor::new("one\ntwo\nthree\nfour\nfive\nsix", "txt")
-        .with_vim_enabled(true);
+    let mut editor =
+        CodeEditor::new("one\ntwo\nthree\nfour\nfive\nsix", "txt").with_vim_enabled(true);
 
     vim_keys(&mut editor, "5yyp");
 
@@ -71,15 +65,13 @@ fn vim_five_yy_yanks_five_lines() {
 #[test]
 fn vim_counted_dd_and_cc_apply_to_requested_lines() {
     let mut deleted =
-        CodeEditor::new("one\ntwo\nthree\nfour\nfive\nsix\nseven", "txt")
-            .with_vim_enabled(true);
+        CodeEditor::new("one\ntwo\nthree\nfour\nfive\nsix\nseven", "txt").with_vim_enabled(true);
     vim_keys(&mut deleted, "5dd");
     assert_eq!(deleted.content(), "six\nseven");
     assert_eq!(deleted.vim_mode(), Some(VimMode::Normal));
 
     let mut changed =
-        CodeEditor::new("one\ntwo\nthree\nfour\nfive\nsix\nseven", "txt")
-            .with_vim_enabled(true);
+        CodeEditor::new("one\ntwo\nthree\nfour\nfive\nsix\nseven", "txt").with_vim_enabled(true);
     vim_keys(&mut changed, "5cc");
     assert_eq!(changed.content(), "six\nseven");
     assert_eq!(changed.vim_mode(), Some(VimMode::Insert));

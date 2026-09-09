@@ -5,8 +5,7 @@
 
 use crate::CodeEditor;
 use iced::widget::{
-    Id, Space, button, column, container, markdown, mouse_area, row,
-    scrollable, stack, text,
+    Id, Space, button, column, container, markdown, mouse_area, row, scrollable, stack, text,
 };
 use iced::{Background, Border, Color, Element, Length, Point, Shadow, Theme};
 
@@ -233,8 +232,7 @@ impl LspOverlayState {
         }
         self.completion_visible = !self.completion_items.is_empty();
         if self.completion_selected >= self.completion_items.len() {
-            self.completion_selected =
-                self.completion_items.len().saturating_sub(1);
+            self.completion_selected = self.completion_items.len().saturating_sub(1);
         }
     }
 
@@ -262,8 +260,7 @@ impl LspOverlayState {
         }
         let len = self.completion_items.len();
         let current = self.completion_selected as i32;
-        self.completion_selected =
-            ((current + delta).rem_euclid(len as i32)) as usize;
+        self.completion_selected = ((current + delta).rem_euclid(len as i32)) as usize;
     }
 
     /// Returns the currently selected completion item, if any.
@@ -455,10 +452,7 @@ pub fn view_lsp_overlay<'a, M: Clone + 'a>(
     );
 
     if !has_overlay {
-        return container(
-            Space::new().width(Length::Shrink).height(Length::Shrink),
-        )
-        .into();
+        return container(Space::new().width(Length::Shrink).height(Length::Shrink)).into();
     }
 
     let base = container(Space::new().width(Length::Fill).height(Length::Fill))
@@ -484,18 +478,15 @@ fn build_hover_layer<'a, M: Clone + 'a>(
         return empty_overlay();
     }
 
-    let Some(hover) =
-        state.hover_text.as_ref().filter(|t| !t.trim().is_empty())
-    else {
+    let Some(hover) = state.hover_text.as_ref().filter(|t| !t.trim().is_empty()) else {
         return empty_overlay();
     };
 
     let line_count = hover.lines().count().max(1);
     let visible_lines = line_count.min(10);
     let hover_padding = 8.0;
-    let scroll_height = line_height * visible_lines as f32
-        + (line_height * 0.75).max(10.0)
-        + hover_padding * 2.0;
+    let scroll_height =
+        line_height * visible_lines as f32 + (line_height * 0.75).max(10.0) + hover_padding * 2.0;
 
     let viewport_width = editor.viewport_width();
     let max_line_width = measure_hover_width(editor, hover);
@@ -513,10 +504,8 @@ fn build_hover_layer<'a, M: Clone + 'a>(
     let hover_width = content_width + hover_padding * 2.0;
 
     let palette = theme.palette();
-    let markdown_settings = markdown::Settings::with_text_size(
-        font_size,
-        markdown::Style::from_palette(palette),
-    );
+    let markdown_settings =
+        markdown::Settings::with_text_size(font_size, markdown::Style::from_palette(palette));
 
     let entered_for_map = msg_entered.clone();
     let entered_for_enter = msg_entered.clone();
@@ -551,14 +540,11 @@ fn build_hover_layer<'a, M: Clone + 'a>(
         }
     });
 
-    let hover_box = container(column![hover_content])
-        .width(Length::Shrink)
-        .style(|theme: &Theme| {
+    let hover_box =
+        container(column![hover_content]).width(Length::Shrink).style(|theme: &Theme| {
             let palette = theme.extended_palette();
             container::Style {
-                background: Some(iced::Background::Color(
-                    palette.background.weak.color,
-                )),
+                background: Some(iced::Background::Color(palette.background.weak.color)),
                 border: iced::Border {
                     color: palette.primary.weak.color,
                     width: 1.0,
@@ -576,8 +562,7 @@ fn build_hover_layer<'a, M: Clone + 'a>(
 
     let hover_pos = state.hover_position.unwrap_or(Point::new(4.0, 4.0));
     let viewport_scroll = editor.viewport_scroll();
-    let hover_pos =
-        Point::new(hover_pos.x, (hover_pos.y - viewport_scroll).max(0.0));
+    let hover_pos = Point::new(hover_pos.x, (hover_pos.y - viewport_scroll).max(0.0));
     let viewport_height = editor.viewport_height();
     let gap = 1.0;
     let show_above = hover_pos.y >= scroll_height + gap;
@@ -626,9 +611,7 @@ fn build_completion_layer<'a, M: Clone + 'a>(
     msg_selected: Vec<M>,
     has_overlay: &mut bool,
 ) -> Element<'a, M> {
-    if !state.completion_visible
-        || state.completion_items.is_empty()
-        || state.completion_suppressed
+    if !state.completion_visible || state.completion_items.is_empty() || state.completion_suppressed
     {
         return empty_overlay();
     }
@@ -646,8 +629,7 @@ fn build_completion_layer<'a, M: Clone + 'a>(
     let menu_width = COMPLETION_MENU_WIDTH.min(viewport_width - 8.0);
     let adjusted_y = (cursor_pos.y - viewport_scroll).max(0.0);
     let space_below = viewport_height - adjusted_y - line_height;
-    let show_above =
-        space_below < menu_height + 4.0 && adjusted_y >= menu_height + 4.0;
+    let show_above = space_below < menu_height + 4.0 && adjusted_y >= menu_height + 4.0;
 
     let offset_x = cursor_pos.x.min(viewport_width - menu_width - 4.0).max(4.0);
     let offset_y = if show_above {
@@ -675,17 +657,13 @@ fn build_completion_layer<'a, M: Clone + 'a>(
                 let palette = theme.extended_palette();
                 if is_selected {
                     button::Style {
-                        background: Some(iced::Background::Color(
-                            palette.primary.weak.color,
-                        )),
+                        background: Some(iced::Background::Color(palette.primary.weak.color)),
                         text_color: Color::WHITE,
                         ..Default::default()
                     }
                 } else {
                     button::Style {
-                        background: Some(iced::Background::Color(
-                            palette.background.weak.color,
-                        )),
+                        background: Some(iced::Background::Color(palette.background.weak.color)),
                         text_color: Color::WHITE,
                         ..Default::default()
                     }
@@ -703,9 +681,7 @@ fn build_completion_layer<'a, M: Clone + 'a>(
             let palette = theme.extended_palette();
             scrollable::Style {
                 container: container::Style {
-                    background: Some(iced::Background::Color(
-                        palette.background.weak.color,
-                    )),
+                    background: Some(iced::Background::Color(palette.background.weak.color)),
                     border: iced::Border {
                         color: palette.primary.weak.color,
                         width: 1.0,
@@ -727,15 +703,14 @@ fn build_completion_layer<'a, M: Clone + 'a>(
 
     *has_overlay = true;
 
-    let click_outside =
-        button(Space::new().width(Length::Fill).height(Length::Fill))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .on_press(msg_closed)
-            .style(|_theme: &Theme, _status| button::Style {
-                background: Some(Background::Color(Color::TRANSPARENT)),
-                ..Default::default()
-            });
+    let click_outside = button(Space::new().width(Length::Fill).height(Length::Fill))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .on_press(msg_closed)
+        .style(|_theme: &Theme, _status| button::Style {
+            background: Some(Background::Color(Color::TRANSPARENT)),
+            ..Default::default()
+        });
 
     let completion_content = container(
         column![
@@ -756,9 +731,7 @@ fn build_completion_layer<'a, M: Clone + 'a>(
 ///
 /// Both the hover tooltip and the completion menu share the same rail appearance:
 /// a translucent background track with a primary-coloured scroller and no border.
-fn lsp_scrollable_rail(
-    palette: &iced::theme::palette::Extended,
-) -> scrollable::Rail {
+fn lsp_scrollable_rail(palette: &iced::theme::palette::Extended) -> scrollable::Rail {
     crate::canvas_editor::render::view::scrollable_rail(
         palette.background.weak.color,
         palette.primary.weak.color,
@@ -816,10 +789,7 @@ mod tests {
     #[test]
     fn test_set_completions() {
         let mut state = LspOverlayState::new();
-        state.set_completions(
-            vec!["foo".to_string(), "bar".to_string()],
-            Point::ORIGIN,
-        );
+        state.set_completions(vec!["foo".to_string(), "bar".to_string()], Point::ORIGIN);
         assert_eq!(state.completion_items.len(), 2);
         assert!(state.completion_visible);
         assert_eq!(state.completion_selected, 0);

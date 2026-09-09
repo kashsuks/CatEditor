@@ -13,9 +13,7 @@ impl CodeEditor {
     }
 
     /// Returns the primary cursor's selected text range in normalized order (start before end).
-    pub(crate) fn get_selection_range(
-        &self,
-    ) -> Option<((usize, usize), (usize, usize))> {
+    pub(crate) fn get_selection_range(&self) -> Option<((usize, usize), (usize, usize))> {
         self.cursors.primary().selection_range()
     }
 
@@ -31,18 +29,13 @@ impl CodeEditor {
     }
 
     /// Extracts text between two positions from the buffer.
-    pub(crate) fn extract_text_range(
-        &self,
-        start: (usize, usize),
-        end: (usize, usize),
-    ) -> String {
+    pub(crate) fn extract_text_range(&self, start: (usize, usize), end: (usize, usize)) -> String {
         let mut result = String::new();
 
         if start.0 == end.0 {
             // Single line selection
             let line = self.buffer.line(start.0);
-            let (start_byte, end_byte) =
-                char_range_to_byte_range(line, start.1, end.1);
+            let (start_byte, end_byte) = char_range_to_byte_range(line, start.1, end.1);
             result.push_str(&line[start_byte..end_byte]);
         } else {
             // Multi-line selection

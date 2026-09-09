@@ -6,7 +6,9 @@
 #[cfg(feature = "unstable-comet")]
 use std::collections::VecDeque;
 use std::{
-    collections::{HashMap, VecDeque}, path::PathBuf, time::{Duration, Instant},
+    collections::{HashMap, VecDeque},
+    path::PathBuf,
+    time::{Duration, Instant},
 };
 
 use frostmark::MarkState;

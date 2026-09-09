@@ -1,8 +1,6 @@
 //! Message handling and update logic.
 
-use crate::canvas_editor::{
-    CodeEditor, LspEditSnapshot, Message, VimMode, cursor_set, lsp,
-};
+use crate::canvas_editor::{CodeEditor, LspEditSnapshot, Message, VimMode, cursor_set, lsp};
 
 // =========================================================================
 // Cursor adjustment helpers for multi-cursor editing
@@ -39,17 +37,17 @@ pub(crate) fn adjust_pos(
             if pos.0 == edit_line && pos.1 >= edit_col {
                 pos.1 += 1;
             }
-        }
+        },
         EditType::DeleteCharBack => {
             if edit_col > 0 && pos.0 == edit_line && pos.1 > edit_col - 1 {
                 pos.1 -= 1;
             }
-        }
+        },
         EditType::DeleteCharForward => {
             if pos.0 == edit_line && pos.1 > edit_col {
                 pos.1 -= 1;
             }
-        }
+        },
         EditType::InsertNewline { indent_len } => {
             if pos.0 > edit_line {
                 pos.0 += 1;
@@ -57,7 +55,7 @@ pub(crate) fn adjust_pos(
                 pos.0 += 1;
                 pos.1 = pos.1 - edit_col + indent_len;
             }
-        }
+        },
         EditType::MergePrev { prev_line_len } => {
             if pos.0 == edit_line {
                 pos.0 -= 1;
@@ -65,7 +63,7 @@ pub(crate) fn adjust_pos(
             } else if pos.0 > edit_line {
                 pos.0 -= 1;
             }
-        }
+        },
         EditType::MergeNext { edit_line_len } => {
             if pos.0 == edit_line + 1 {
                 pos.0 = edit_line;
@@ -73,7 +71,7 @@ pub(crate) fn adjust_pos(
             } else if pos.0 > edit_line + 1 {
                 pos.0 -= 1;
             }
-        }
+        },
     }
 }
 
@@ -183,10 +181,7 @@ impl CodeEditor {
                 | Message::DuplicateLineDown
                 | Message::ToggleComment
         );
-        let is_global_edit = matches!(
-            message,
-            Message::Undo | Message::Redo | Message::ReplaceAll
-        );
+        let is_global_edit = matches!(message, Message::Undo | Message::Redo | Message::ReplaceAll);
         let is_replace_next = matches!(message, Message::ReplaceNext);
         if !is_local_edit && !is_global_edit && !is_replace_next {
             self.lsp_edit_snapshot = None;
@@ -199,15 +194,16 @@ impl CodeEditor {
         } else {
             (self.pre_edit_line, self.pre_edit_last_line)
         };
-        if is_replace_next
-            && let Some(search_match) = self.search_state.current_match()
-        {
+        if is_replace_next && let Some(search_match) = self.search_state.current_match() {
             first_line = first_line.min(search_match.line);
             last_line = last_line.max(search_match.line);
         }
 
-        let start_line =
-            if is_global_edit { 0 } else { first_line.saturating_sub(1) };
+        let start_line = if is_global_edit {
+            0
+        } else {
+            first_line.saturating_sub(1)
+        };
         let old_end_exclusive = if is_global_edit {
             line_count
         } else {
@@ -222,8 +218,7 @@ impl CodeEditor {
             let last_line = line_count.saturating_sub(1);
             lsp::LspPosition {
                 line: u32::try_from(last_line).unwrap_or(u32::MAX),
-                character: u32::try_from(self.buffer.line_len(last_line))
-                    .unwrap_or(u32::MAX),
+                character: u32::try_from(self.buffer.line_len(last_line)).unwrap_or(u32::MAX),
             }
         };
 
@@ -288,9 +283,7 @@ impl CodeEditor {
     }
 
     fn keep_vim_insert_group(&self) -> bool {
-        self.vim_enabled
-            && self.vim_state.mode() == VimMode::Insert
-            && self.is_grouping
+        self.vim_enabled && self.vim_state.mode() == VimMode::Insert && self.is_grouping
     }
 
     /// Deletes all active selections across every cursor and performs cleanup.
@@ -307,8 +300,7 @@ impl CodeEditor {
     ///
     /// `true` if at least one selection was deleted, `false` if no cursor had a selection
     fn delete_selection_if_present(&mut self) -> bool {
-        let selection_count =
-            self.cursors.iter().filter(|c| c.has_selection()).count();
+        let selection_count = self.cursors.iter().filter(|c| c.has_selection()).count();
         if selection_count == 0 {
             return false;
         }
@@ -398,8 +390,7 @@ mod tests {
     fn test_incremental_visual_lines_match_full_recalculation_after_newline() {
         use std::collections::HashSet;
 
-        let mut editor = CodeEditor::new("zero\nabcdefgh\nlast", "rs")
-            .with_wrap_column(Some(4));
+        let mut editor = CodeEditor::new("zero\nabcdefgh\nlast", "rs").with_wrap_column(Some(4));
         editor.request_focus();
         editor.has_canvas_focus = true;
         editor.focus_locked = false;
@@ -409,13 +400,12 @@ mod tests {
         let _ = editor.update(&Message::Enter);
         let incremental = editor.visual_lines_cached(800.0);
 
-        let calculator =
-            crate::canvas_editor::render::wrapping::WrappingCalculator::new(
-                editor.wrap_enabled,
-                editor.wrap_column,
-                editor.full_char_width,
-                editor.char_width,
-            );
+        let calculator = crate::canvas_editor::render::wrapping::WrappingCalculator::new(
+            editor.wrap_enabled,
+            editor.wrap_column,
+            editor.full_char_width,
+            editor.char_width,
+        );
         let expected = calculator.calculate_visual_lines(
             &editor.buffer,
             800.0,

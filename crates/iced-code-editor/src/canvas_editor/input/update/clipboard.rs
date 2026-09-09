@@ -54,9 +54,8 @@ impl CodeEditor {
         // If text is empty, we need to read from clipboard
         if text.is_empty() {
             // Return a task that reads clipboard and chains to paste
-            iced::clipboard::read().and_then(|clipboard_text| {
-                Task::done(Message::Paste(clipboard_text))
-            })
+            iced::clipboard::read()
+                .and_then(|clipboard_text| Task::done(Message::Paste(clipboard_text)))
         } else {
             // We have the text, paste it. `paste_text` already pushes a
             // single command on its single-cursor fast path; group the

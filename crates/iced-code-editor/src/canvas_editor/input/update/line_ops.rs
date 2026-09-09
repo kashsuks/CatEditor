@@ -3,8 +3,7 @@
 use iced::Task;
 
 use crate::canvas_editor::editing::command::{
-    Command, DuplicateLinesCommand, MoveLinesCommand, ToggleCommentCommand,
-    line_comment_token,
+    Command, DuplicateLinesCommand, MoveLinesCommand, ToggleCommentCommand, line_comment_token,
 };
 use crate::canvas_editor::{CodeEditor, Message};
 
@@ -25,11 +24,11 @@ impl CodeEditor {
                     sel_end.0
                 };
                 (sel_start.0, end_line)
-            }
+            },
             None => {
                 let line = primary.position.0;
                 (line, line)
-            }
+            },
         }
     }
 
@@ -76,7 +75,11 @@ impl CodeEditor {
         let mut cmd = MoveLinesCommand::new(start, end, down, pos);
         let mut cursor_pos = pos;
         cmd.execute(&mut self.buffer, &mut cursor_pos);
-        self.shift_primary_cursor_lines(if down { 1 } else { -1 });
+        self.shift_primary_cursor_lines(if down {
+            1
+        } else {
+            -1
+        });
         self.history.push(Box::new(cmd));
 
         self.finish_edit_operation();
@@ -138,15 +141,13 @@ impl CodeEditor {
 
         let (start, end) = self.primary_line_range();
         let pos = self.cursors.primary_position();
-        let mut cmd =
-            ToggleCommentCommand::new(&self.buffer, start, end, token, pos);
+        let mut cmd = ToggleCommentCommand::new(&self.buffer, start, end, token, pos);
         if cmd.is_noop() {
             return Task::none();
         }
 
         // Track the selection anchor across the column shift before executing.
-        let new_anchor =
-            self.cursors.primary().anchor.map(|a| cmd.adjust_position(a));
+        let new_anchor = self.cursors.primary().anchor.map(|a| cmd.adjust_position(a));
 
         let mut cursor_pos = pos;
         cmd.execute(&mut self.buffer, &mut cursor_pos);
@@ -219,11 +220,7 @@ mod tests {
     }
 
     /// Selects from `anchor` to `position` with the primary cursor.
-    fn select(
-        editor: &mut CodeEditor,
-        anchor: (usize, usize),
-        position: (usize, usize),
-    ) {
+    fn select(editor: &mut CodeEditor, anchor: (usize, usize), position: (usize, usize)) {
         editor.cursors.primary_mut().anchor = Some(anchor);
         editor.cursors.primary_mut().position = position;
     }

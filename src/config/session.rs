@@ -37,8 +37,7 @@ pub fn save_session(state: &SessionState) -> std::io::Result<()> {
     let dir = get_config_dir();
     fs::create_dir_all(&dir)?;
 
-    let json = serde_json::to_string_pretty(state)
-        .unwrap_or_else(|_| "{}".to_string());
-    
+    let json = serde_json::to_string_pretty(state).unwrap_or_else(|_| "{}".to_string());
+
     fs::write(session_path(), json)
 }

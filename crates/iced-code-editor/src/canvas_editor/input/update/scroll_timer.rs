@@ -18,9 +18,7 @@ impl CodeEditor {
     /// A `Task<Message>` (currently Task::none())
     pub(crate) fn handle_tick_msg(&mut self) -> Task<Message> {
         // Handle cursor blinking only if editor has focus
-        if self.has_focus()
-            && self.last_blink.elapsed() >= CURSOR_BLINK_INTERVAL
-        {
+        if self.has_focus() && self.last_blink.elapsed() >= CURSOR_BLINK_INTERVAL {
             self.cursor_visible = !self.cursor_visible;
             self.last_blink = Instant::now();
             self.overlay_cache.clear();
@@ -63,33 +61,25 @@ impl CodeEditor {
         let new_height = viewport.bounds().height;
         let new_width = viewport.bounds().width;
         let scroll_changed = (self.viewport_scroll - new_scroll).abs() > 0.1;
-        let visible_lines_count =
-            (new_height / self.line_height).ceil() as usize + 2;
-        let first_visible_line =
-            (new_scroll / self.line_height).floor() as usize;
+        let visible_lines_count = (new_height / self.line_height).ceil() as usize + 2;
+        let first_visible_line = (new_scroll / self.line_height).floor() as usize;
         let last_visible_line = first_visible_line + visible_lines_count;
-        let margin = visible_lines_count
-            * crate::canvas_editor::CACHE_WINDOW_MARGIN_MULTIPLIER;
+        let margin = visible_lines_count * crate::canvas_editor::CACHE_WINDOW_MARGIN_MULTIPLIER;
         let window_start = first_visible_line.saturating_sub(margin);
         let window_end = last_visible_line + margin;
         // Decide whether we need to re-window the cache.
         // Special-case top-of-file: when window_start == 0, allow small forward scrolls
         // without forcing a rewindow, to avoid thrashing when the visible range is near 0.
-        let need_rewindow =
-            if self.cache_window_end_line > self.cache_window_start_line {
-                let lower_boundary_trigger = self.cache_window_start_line > 0
-                    && first_visible_line
-                        < self
-                            .cache_window_start_line
-                            .saturating_add(visible_lines_count / 2);
-                let upper_boundary_trigger = last_visible_line
-                    > self
-                        .cache_window_end_line
-                        .saturating_sub(visible_lines_count / 2);
-                lower_boundary_trigger || upper_boundary_trigger
-            } else {
-                true
-            };
+        let need_rewindow = if self.cache_window_end_line > self.cache_window_start_line {
+            let lower_boundary_trigger = self.cache_window_start_line > 0
+                && first_visible_line
+                    < self.cache_window_start_line.saturating_add(visible_lines_count / 2);
+            let upper_boundary_trigger = last_visible_line
+                > self.cache_window_end_line.saturating_sub(visible_lines_count / 2);
+            lower_boundary_trigger || upper_boundary_trigger
+        } else {
+            true
+        };
         // Clear cache when viewport dimensions change significantly
         // to ensure proper redraw (e.g., window resize)
         if (self.viewport_height - new_height).abs() > 1.0
@@ -164,8 +154,7 @@ mod tests {
 
     #[test]
     fn test_scroll_sets_initial_cache_window() {
-        let content =
-            (0..200).map(|i| format!("line{}\n", i)).collect::<String>();
+        let content = (0..200).map(|i| format!("line{}\n", i)).collect::<String>();
         let mut editor = CodeEditor::new(&content, "py");
 
         // Simulate initial viewport
@@ -174,8 +163,7 @@ mod tests {
         let scroll = 0.0;
 
         // Expected derived ranges
-        let visible_lines_count =
-            (height / editor.line_height).ceil() as usize + 2;
+        let visible_lines_count = (height / editor.line_height).ceil() as usize + 2;
         let first_visible_line = (scroll / editor.line_height).floor() as usize;
         let last_visible_line = first_visible_line + visible_lines_count;
         let margin = visible_lines_count * 2;
@@ -206,16 +194,13 @@ mod tests {
 
     #[test]
     fn test_small_scroll_keeps_window() {
-        let content =
-            (0..200).map(|i| format!("line{}\n", i)).collect::<String>();
+        let content = (0..200).map(|i| format!("line{}\n", i)).collect::<String>();
         let mut editor = CodeEditor::new(&content, "py");
         let height = 400.0;
         let width = 800.0;
         let initial_scroll = 0.0;
-        let visible_lines_count =
-            (height / editor.line_height).ceil() as usize + 2;
-        let first_visible_line =
-            (initial_scroll / editor.line_height).floor() as usize;
+        let visible_lines_count = (height / editor.line_height).ceil() as usize + 2;
+        let first_visible_line = (initial_scroll / editor.line_height).floor() as usize;
         let last_visible_line = first_visible_line + visible_lines_count;
         let margin = visible_lines_count * 2;
         let window_start = first_visible_line.saturating_sub(margin);
@@ -227,20 +212,14 @@ mod tests {
         editor.viewport_scroll = initial_scroll;
 
         // Small scroll inside window
-        let small_scroll =
-            editor.line_height * (visible_lines_count as f32 / 4.0);
-        let first_visible_line2 =
-            (small_scroll / editor.line_height).floor() as usize;
+        let small_scroll = editor.line_height * (visible_lines_count as f32 / 4.0);
+        let first_visible_line2 = (small_scroll / editor.line_height).floor() as usize;
         let last_visible_line2 = first_visible_line2 + visible_lines_count;
         let lower_boundary_trigger = editor.cache_window_start_line > 0
             && first_visible_line2
-                < editor
-                    .cache_window_start_line
-                    .saturating_add(visible_lines_count / 2);
+                < editor.cache_window_start_line.saturating_add(visible_lines_count / 2);
         let upper_boundary_trigger = last_visible_line2
-            > editor
-                .cache_window_end_line
-                .saturating_sub(visible_lines_count / 2);
+            > editor.cache_window_end_line.saturating_sub(visible_lines_count / 2);
         let need_rewindow = lower_boundary_trigger || upper_boundary_trigger;
 
         assert!(!need_rewindow, "Small scroll should be inside the window");
@@ -251,41 +230,31 @@ mod tests {
 
     #[test]
     fn test_large_scroll_rewindows() {
-        let content =
-            (0..1000).map(|i| format!("line{}\n", i)).collect::<String>();
+        let content = (0..1000).map(|i| format!("line{}\n", i)).collect::<String>();
         let mut editor = CodeEditor::new(&content, "py");
         let height = 400.0;
         let width = 800.0;
         let initial_scroll = 0.0;
-        let visible_lines_count =
-            (height / editor.line_height).ceil() as usize + 2;
-        let first_visible_line =
-            (initial_scroll / editor.line_height).floor() as usize;
+        let visible_lines_count = (height / editor.line_height).ceil() as usize + 2;
+        let first_visible_line = (initial_scroll / editor.line_height).floor() as usize;
         let last_visible_line = first_visible_line + visible_lines_count;
         let margin = visible_lines_count * 2;
-        editor.cache_window_start_line =
-            first_visible_line.saturating_sub(margin);
+        editor.cache_window_start_line = first_visible_line.saturating_sub(margin);
         editor.cache_window_end_line = last_visible_line + margin;
         editor.viewport_height = height;
         editor.viewport_width = width;
         editor.viewport_scroll = initial_scroll;
 
         // Large scroll beyond window boundary
-        let large_scroll =
-            editor.line_height * ((visible_lines_count * 4) as f32);
-        let first_visible_line2 =
-            (large_scroll / editor.line_height).floor() as usize;
+        let large_scroll = editor.line_height * ((visible_lines_count * 4) as f32);
+        let first_visible_line2 = (large_scroll / editor.line_height).floor() as usize;
         let last_visible_line2 = first_visible_line2 + visible_lines_count;
         let window_start2 = first_visible_line2.saturating_sub(margin);
         let window_end2 = last_visible_line2 + margin;
         let need_rewindow = first_visible_line2
-            < editor
-                .cache_window_start_line
-                .saturating_add(visible_lines_count / 2)
+            < editor.cache_window_start_line.saturating_add(visible_lines_count / 2)
             || last_visible_line2
-                > editor
-                    .cache_window_end_line
-                    .saturating_sub(visible_lines_count / 2);
+                > editor.cache_window_end_line.saturating_sub(visible_lines_count / 2);
         assert!(need_rewindow, "Large scroll should trigger window update");
 
         // Apply rewindow

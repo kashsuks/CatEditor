@@ -74,7 +74,11 @@ impl LspDocument {
     /// assert_eq!(document.version, 0);
     /// ```
     pub fn new(uri: impl Into<String>, language_id: impl Into<String>) -> Self {
-        Self { uri: uri.into(), language_id: language_id.into(), version: 0 }
+        Self {
+            uri: uri.into(),
+            language_id: language_id.into(),
+            version: 0,
+        }
     }
 }
 
@@ -172,41 +176,21 @@ pub trait LspClient {
     /// Notifies the client that a document was opened.
     fn did_open(&mut self, _document: &LspDocument, _text: &str) {}
     /// Notifies the client that the document changed.
-    fn did_change(
-        &mut self,
-        _document: &LspDocument,
-        _changes: &[LspTextChange],
-    ) {
-    }
+    fn did_change(&mut self, _document: &LspDocument, _changes: &[LspTextChange]) {}
     /// Notifies the client that the document was saved.
     fn did_save(&mut self, _document: &LspDocument, _text: &str) {}
     /// Notifies the client that the document was closed.
     fn did_close(&mut self, _document: &LspDocument) {}
     /// Requests hover information at the given position.
-    fn request_hover(
-        &mut self,
-        _document: &LspDocument,
-        _position: LspPosition,
-    ) {
-    }
+    fn request_hover(&mut self, _document: &LspDocument, _position: LspPosition) {}
     /// Requests completion items at the given position.
-    fn request_completion(
-        &mut self,
-        _document: &LspDocument,
-        _position: LspPosition,
-    ) {
-    }
+    fn request_completion(&mut self, _document: &LspDocument, _position: LspPosition) {}
     /// Requests the definition location(s) for the symbol at the given position.
     ///
     /// This method is called when the user triggers a "Go to Definition" action
     /// (e.g., via Ctrl+Click or a context menu). The client implementation should
     /// send a `textDocument/definition` request to the LSP server.
-    fn request_definition(
-        &mut self,
-        _document: &LspDocument,
-        _position: LspPosition,
-    ) {
-    }
+    fn request_definition(&mut self, _document: &LspDocument, _position: LspPosition) {}
 }
 
 /// Computes a minimal text change between two snapshots.
@@ -251,10 +235,7 @@ pub fn compute_text_change(old: &str, new: &str) -> Option<LspTextChange> {
     let new_len = new_chars.len();
 
     let mut prefix = 0;
-    while prefix < old_len
-        && prefix < new_len
-        && old_chars[prefix] == new_chars[prefix]
-    {
+    while prefix < old_len && prefix < new_len && old_chars[prefix] == new_chars[prefix] {
         prefix += 1;
     }
 
@@ -267,13 +248,15 @@ pub fn compute_text_change(old: &str, new: &str) -> Option<LspTextChange> {
     }
 
     let removed_len = old_len.saturating_sub(prefix + suffix);
-    let inserted: String =
-        new_chars[prefix..new_len.saturating_sub(suffix)].iter().collect();
+    let inserted: String = new_chars[prefix..new_len.saturating_sub(suffix)].iter().collect();
 
     let start = position_for_char_index(old, prefix);
     let end = position_for_char_index(old, prefix + removed_len);
 
-    Some(LspTextChange { range: LspRange { start, end }, text: inserted })
+    Some(LspTextChange {
+        range: LspRange { start, end },
+        text: inserted,
+    })
 }
 
 /// Converts a character index into a line/character position.
@@ -313,9 +296,18 @@ mod tests {
             assert_eq!(change.text, "X");
             assert_eq!(
                 change.range.start,
-                LspPosition { line: 0, character: 2 }
+                LspPosition {
+                    line: 0,
+                    character: 2
+                }
             );
-            assert_eq!(change.range.end, LspPosition { line: 0, character: 2 });
+            assert_eq!(
+                change.range.end,
+                LspPosition {
+                    line: 0,
+                    character: 2
+                }
+            );
         }
     }
 
@@ -327,15 +319,30 @@ mod tests {
             assert_eq!(change.text, "");
             assert_eq!(
                 change.range.start,
-                LspPosition { line: 1, character: 0 }
+                LspPosition {
+                    line: 1,
+                    character: 0
+                }
             );
-            assert_eq!(change.range.end, LspPosition { line: 1, character: 1 });
+            assert_eq!(
+                change.range.end,
+                LspPosition {
+                    line: 1,
+                    character: 1
+                }
+            );
         }
     }
 
     #[test]
     fn test_position_for_char_index_end_of_text() {
         let pos = position_for_char_index("a\nb", 3);
-        assert_eq!(pos, LspPosition { line: 1, character: 1 });
+        assert_eq!(
+            pos,
+            LspPosition {
+                line: 1,
+                character: 1
+            }
+        );
     }
 }

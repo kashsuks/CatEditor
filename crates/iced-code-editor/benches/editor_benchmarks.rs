@@ -17,10 +17,9 @@ use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use iced_code_editor::bench_support::{
-    IncrementalEditBenchmark, IncrementalLspEditBenchmark,
-    IncrementalNoWrapEditBenchmark, IncrementalSearchEditBenchmark, TextBuffer,
-    WrappingCalculator, calculate_visual_line_range_len,
-    compute_foldable_regions, find_matches, highlight_line_spans,
+    IncrementalEditBenchmark, IncrementalLspEditBenchmark, IncrementalNoWrapEditBenchmark,
+    IncrementalSearchEditBenchmark, TextBuffer, WrappingCalculator,
+    calculate_visual_line_range_len, compute_foldable_regions, find_matches, highlight_line_spans,
 };
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
@@ -38,15 +37,13 @@ fn sample_source(lines: usize) -> String {
     for i in 0..lines {
         match i % 4 {
             0 => {
-                out.push_str(&format!(
-                    "fn function_{i}(value: usize) -> usize {{\n"
-                ));
-            }
+                out.push_str(&format!("fn function_{i}(value: usize) -> usize {{\n"));
+            },
             1 => {
                 out.push_str(&format!(
                     "    let result = value * {i} + 1; // compute result\n"
                 ));
-            }
+            },
             2 => out.push_str("    println!(\"{}\", result);\n"),
             _ => out.push_str("}\n"),
         }
@@ -69,9 +66,7 @@ fn bench_highlight_line(c: &mut Criterion) {
     let line = "    let result = value * 42 + 1; // compute result here";
 
     c.bench_function("highlight_line_spans", |b| {
-        b.iter(|| {
-            highlight_line_spans(black_box(line), syntax, &theme, &syntax_set)
-        });
+        b.iter(|| highlight_line_spans(black_box(line), syntax, &theme, &syntax_set));
     });
 }
 
@@ -83,14 +78,7 @@ fn bench_wrapping(c: &mut Criterion) {
     let hidden = HashSet::new();
 
     c.bench_function("calculate_visual_lines_10k", |b| {
-        b.iter(|| {
-            calculator.calculate_visual_lines(
-                black_box(&buffer),
-                800.0,
-                45.0,
-                &hidden,
-            )
-        });
+        b.iter(|| calculator.calculate_visual_lines(black_box(&buffer), 800.0, 45.0, &hidden));
     });
 
     c.bench_function("calculate_affected_visual_lines_3_of_10k", |b| {
@@ -106,8 +94,7 @@ fn bench_wrapping(c: &mut Criterion) {
         });
     });
 
-    let mut edit_benchmark =
-        IncrementalEditBenchmark::new(&source, SAMPLE_LINES / 2, 4);
+    let mut edit_benchmark = IncrementalEditBenchmark::new(&source, SAMPLE_LINES / 2, 4);
     c.bench_function("localized_insert_backspace_10k", |b| {
         b.iter(|| black_box(edit_benchmark.insert_and_backspace()));
     });
@@ -158,8 +145,7 @@ fn bench_incremental_no_wrap_edits(c: &mut Criterion) {
 /// Benchmarks typing while a search with many matches is open.
 fn bench_incremental_search_edits(c: &mut Criterion) {
     let source = sample_source(100_000);
-    let mut benchmark =
-        IncrementalSearchEditBenchmark::new(&source, "result", 20_001, 4);
+    let mut benchmark = IncrementalSearchEditBenchmark::new(&source, "result", 20_001, 4);
 
     c.bench_function("localized_search_insert_backspace_100k", |b| {
         b.iter(|| black_box(benchmark.insert_and_backspace()));
@@ -181,20 +167,11 @@ fn bench_search(c: &mut Criterion) {
     let large_buffer = TextBuffer::new(&sample_source(100_000));
 
     c.bench_function("find_matches_10k", |b| {
-        b.iter(|| {
-            find_matches(black_box(&buffer), "result", false, Some(10_000))
-        });
+        b.iter(|| find_matches(black_box(&buffer), "result", false, Some(10_000)));
     });
 
     c.bench_function("find_matches_100k", |b| {
-        b.iter(|| {
-            find_matches(
-                black_box(&large_buffer),
-                "result",
-                false,
-                Some(10_000),
-            )
-        });
+        b.iter(|| find_matches(black_box(&large_buffer), "result", false, Some(10_000)));
     });
 }
 

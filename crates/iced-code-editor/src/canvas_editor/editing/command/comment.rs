@@ -20,11 +20,10 @@ use super::Command;
 /// ```
 pub(crate) fn line_comment_token(syntax: &str) -> Option<&'static str> {
     match syntax {
-        "rs" | "rust" | "js" | "javascript" | "ts" | "typescript" | "jsx"
-        | "tsx" | "go" | "c" | "h" | "cpp" | "cc" | "cxx" | "hpp" | "c++"
-        | "java" | "cs" | "csharp" => Some("//"),
-        "py" | "python" | "sh" | "bash" | "shell" | "zsh" | "rb" | "ruby"
-        | "toml" | "yaml" | "yml" => Some("#"),
+        "rs" | "rust" | "js" | "javascript" | "ts" | "typescript" | "jsx" | "tsx" | "go" | "c"
+        | "h" | "cpp" | "cc" | "cxx" | "hpp" | "c++" | "java" | "cs" | "csharp" => Some("//"),
+        "py" | "python" | "sh" | "bash" | "shell" | "zsh" | "rb" | "ruby" | "toml" | "yaml"
+        | "yml" => Some("#"),
         "lua" => Some("--"),
         _ => None,
     }
@@ -47,8 +46,7 @@ fn adjust_column(
     indents: &[usize],
     deltas: &[isize],
 ) -> (usize, usize) {
-    let Some(idx) = pos.0.checked_sub(start).filter(|&i| i < deltas.len())
-    else {
+    let Some(idx) = pos.0.checked_sub(start).filter(|&i| i < deltas.len()) else {
         return pos;
     };
     let indent = indents[idx];
@@ -95,8 +93,7 @@ impl ToggleCommentCommand {
         token: &str,
         cursor: (usize, usize),
     ) -> Self {
-        let old_lines: Vec<String> =
-            (start..=end).map(|i| buffer.line(i).to_string()).collect();
+        let old_lines: Vec<String> = (start..=end).map(|i| buffer.line(i).to_string()).collect();
 
         // Uncomment only when every non-blank line is already commented.
         let uncomment = old_lines
@@ -124,10 +121,7 @@ impl ToggleCommentCommand {
                 // Drop a single space directly after the token, if present.
                 let rest = rest.strip_prefix(' ').unwrap_or(rest);
                 let new_line = format!("{indent}{rest}");
-                deltas.push(
-                    new_line.chars().count() as isize
-                        - line.chars().count() as isize,
-                );
+                deltas.push(new_line.chars().count() as isize - line.chars().count() as isize);
                 new_lines.push(new_line);
             } else {
                 new_lines.push(format!("{indent}{token} {trimmed}"));
@@ -162,11 +156,7 @@ impl ToggleCommentCommand {
 }
 
 impl Command for ToggleCommentCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         for (offset, content) in self.new_lines.iter().enumerate() {
             let line_idx = self.start + offset;
             let len = buffer.line_len(line_idx);

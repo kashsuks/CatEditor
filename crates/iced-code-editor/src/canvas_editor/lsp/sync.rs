@@ -45,16 +45,11 @@ impl CodeEditor {
     /// // Attaching opens the document with the buffer's current contents.
     /// assert_eq!(opened.borrow().as_deref(), Some("fn main() {}"));
     /// ```
-    pub fn attach_lsp(
-        &mut self,
-        mut client: Box<dyn lsp::LspClient>,
-        document: lsp::LspDocument,
-    ) {
+    pub fn attach_lsp(&mut self, mut client: Box<dyn lsp::LspClient>, document: lsp::LspDocument) {
         if !self.lsp_enabled {
             return;
         }
-        let (document, text) =
-            open_lsp_document(client.as_mut(), &self.buffer, document);
+        let (document, text) = open_lsp_document(client.as_mut(), &self.buffer, document);
         self.lsp_client = Some(client);
         self.lsp_document = Some(document);
         self.reset_lsp_shadow_state(text);
@@ -102,12 +97,13 @@ impl CodeEditor {
     /// assert_eq!(closed.borrow().as_slice(), ["file:///tmp/first.rs"]);
     /// ```
     pub fn lsp_open_document(&mut self, document: lsp::LspDocument) {
-        let Some(client) = self.lsp_client.as_mut() else { return };
+        let Some(client) = self.lsp_client.as_mut() else {
+            return;
+        };
         if let Some(current) = self.lsp_document.as_ref() {
             client.did_close(current);
         }
-        let (document, text) =
-            open_lsp_document(client.as_mut(), &self.buffer, document);
+        let (document, text) = open_lsp_document(client.as_mut(), &self.buffer, document);
         self.lsp_document = Some(document);
         self.reset_lsp_shadow_state(text);
     }
@@ -345,10 +341,7 @@ impl CodeEditor {
     /// // With no client attached there is nothing to send.
     /// assert!(!editor.lsp_request_hover_at_position(position));
     /// ```
-    pub fn lsp_request_hover_at_position(
-        &mut self,
-        position: lsp::LspPosition,
-    ) -> bool {
+    pub fn lsp_request_hover_at_position(&mut self, position: lsp::LspPosition) -> bool {
         self.with_lsp(|client, document| {
             client.request_hover(document, position);
         })
@@ -387,10 +380,7 @@ impl CodeEditor {
     /// assert_eq!(position.line, 0);
     /// assert_eq!(position.character, 12);
     /// ```
-    pub fn lsp_position_at_point(
-        &self,
-        point: iced::Point,
-    ) -> Option<lsp::LspPosition> {
+    pub fn lsp_position_at_point(&self, point: iced::Point) -> Option<lsp::LspPosition> {
         self.lsp_position_from_point(point)
     }
 
@@ -429,8 +419,7 @@ impl CodeEditor {
         let (line, col) = self.calculate_cursor_from_point(point)?;
         let line_content = self.buffer.line(line);
         let anchor_col = Self::word_start_in_line(line_content, col);
-        let anchor_point =
-            self.point_from_position(line, anchor_col).unwrap_or(point);
+        let anchor_point = self.point_from_position(line, anchor_col).unwrap_or(point);
         let line = u32::try_from(line).unwrap_or(u32::MAX);
         let character = u32::try_from(anchor_col).unwrap_or(u32::MAX);
         Some((lsp::LspPosition { line, character }, anchor_point))
@@ -571,10 +560,7 @@ impl CodeEditor {
     }
 
     /// Converts a canvas point into an LSP position, if it hits the buffer.
-    fn lsp_position_from_point(
-        &self,
-        point: iced::Point,
-    ) -> Option<lsp::LspPosition> {
+    fn lsp_position_from_point(&self, point: iced::Point) -> Option<lsp::LspPosition> {
         let (line, col) = self.calculate_cursor_from_point(point)?;
         let line = u32::try_from(line).unwrap_or(u32::MAX);
         let character = u32::try_from(col).unwrap_or(u32::MAX);
@@ -596,11 +582,13 @@ impl CodeEditor {
             let end_line = self.lsp_synced_line_count.saturating_sub(1);
             Some(lsp::LspTextChange {
                 range: lsp::LspRange {
-                    start: lsp::LspPosition { line: 0, character: 0 },
+                    start: lsp::LspPosition {
+                        line: 0,
+                        character: 0,
+                    },
                     end: lsp::LspPosition {
                         line: u32::try_from(end_line).unwrap_or(u32::MAX),
-                        character: u32::try_from(self.lsp_synced_last_line_len)
-                            .unwrap_or(u32::MAX),
+                        character: u32::try_from(self.lsp_synced_last_line_len).unwrap_or(u32::MAX),
                     },
                 },
                 text: new_text.clone(),
@@ -632,8 +620,7 @@ impl CodeEditor {
         };
 
         let new_line_count = self.buffer.line_count();
-        let start_line =
-            snapshot.start_line.min(new_line_count.saturating_sub(1));
+        let start_line = snapshot.start_line.min(new_line_count.saturating_sub(1));
         let new_end_exclusive = if new_line_count >= snapshot.old_line_count {
             snapshot
                 .old_end_exclusive
@@ -646,13 +633,11 @@ impl CodeEditor {
                 .max(start_line.saturating_add(1))
                 .min(new_line_count)
         };
-        let text =
-            self.buffer.line_range_to_string(start_line, new_end_exclusive);
+        let text = self.buffer.line_range_to_string(start_line, new_end_exclusive);
         self.lsp_pending_changes.push(lsp::LspTextChange {
             range: lsp::LspRange {
                 start: lsp::LspPosition {
-                    line: u32::try_from(snapshot.start_line)
-                        .unwrap_or(u32::MAX),
+                    line: u32::try_from(snapshot.start_line).unwrap_or(u32::MAX),
                     character: 0,
                 },
                 end: snapshot.old_end,
@@ -836,11 +821,7 @@ mod tests {
     }
 
     impl lsp::LspClient for TestLspClient {
-        fn did_change(
-            &mut self,
-            _document: &lsp::LspDocument,
-            changes: &[lsp::LspTextChange],
-        ) {
+        fn did_change(&mut self, _document: &lsp::LspDocument, changes: &[lsp::LspTextChange]) {
             self.changes.borrow_mut().push(changes.to_vec());
         }
     }
@@ -861,18 +842,10 @@ mod tests {
         fn did_save(&mut self, _document: &lsp::LspDocument, _text: &str) {
             self.calls.borrow_mut().push("did_save".to_string());
         }
-        fn request_hover(
-            &mut self,
-            _document: &lsp::LspDocument,
-            _position: lsp::LspPosition,
-        ) {
+        fn request_hover(&mut self, _document: &lsp::LspDocument, _position: lsp::LspPosition) {
             self.calls.borrow_mut().push("request_hover".to_string());
         }
-        fn did_change(
-            &mut self,
-            _document: &lsp::LspDocument,
-            _changes: &[lsp::LspTextChange],
-        ) {
+        fn did_change(&mut self, _document: &lsp::LspDocument, _changes: &[lsp::LspTextChange]) {
             self.calls.borrow_mut().push("did_change".to_string());
         }
     }
@@ -880,7 +853,9 @@ mod tests {
     #[test]
     fn test_enqueue_lsp_change_auto_flush() {
         let changes = Rc::new(RefCell::new(Vec::new()));
-        let client = TestLspClient { changes: Rc::clone(&changes) };
+        let client = TestLspClient {
+            changes: Rc::clone(&changes),
+        };
         let mut editor = CodeEditor::new("hello", "rs");
         editor.attach_lsp(
             Box::new(client),
@@ -905,11 +880,10 @@ mod tests {
     #[test]
     fn test_editor_update_sends_bounded_incremental_lsp_change() {
         let changes = Rc::new(RefCell::new(Vec::new()));
-        let client = TestLspClient { changes: Rc::clone(&changes) };
-        let content = (0..10)
-            .map(|line| format!("line{line}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let client = TestLspClient {
+            changes: Rc::clone(&changes),
+        };
+        let content = (0..10).map(|line| format!("line{line}")).collect::<Vec<_>>().join("\n");
         let mut editor = CodeEditor::new(&content, "rs");
         editor.attach_lsp(
             Box::new(client),
@@ -938,12 +912,13 @@ mod tests {
     #[test]
     fn test_open_lsp_document_stamps_version_and_sends_did_open() {
         let calls = Rc::new(RefCell::new(Vec::new()));
-        let mut client = RecordingLspClient { calls: Rc::clone(&calls) };
+        let mut client = RecordingLspClient {
+            calls: Rc::clone(&calls),
+        };
         let buffer = TextBuffer::new("hello");
         let document = lsp::LspDocument::new("file:///test.rs", "rust");
 
-        let (document, text) =
-            open_lsp_document(&mut client, &buffer, document);
+        let (document, text) = open_lsp_document(&mut client, &buffer, document);
 
         assert_eq!(document.version, 1);
         assert_eq!(text, "hello");
@@ -953,7 +928,9 @@ mod tests {
     #[test]
     fn test_with_lsp_runs_closure_when_client_and_document_present() {
         let calls = Rc::new(RefCell::new(Vec::new()));
-        let client = RecordingLspClient { calls: Rc::clone(&calls) };
+        let client = RecordingLspClient {
+            calls: Rc::clone(&calls),
+        };
         let mut editor = CodeEditor::new("hello", "rs");
         editor.attach_lsp(
             Box::new(client),
@@ -979,7 +956,9 @@ mod tests {
     #[test]
     fn test_lsp_did_save_sends_current_buffer_contents() {
         let calls = Rc::new(RefCell::new(Vec::new()));
-        let client = RecordingLspClient { calls: Rc::clone(&calls) };
+        let client = RecordingLspClient {
+            calls: Rc::clone(&calls),
+        };
         let mut editor = CodeEditor::new("hello", "rs");
         editor.attach_lsp(
             Box::new(client),
@@ -1003,7 +982,9 @@ mod tests {
     #[test]
     fn test_with_lsp_returns_none_when_document_absent() {
         let calls = Rc::new(RefCell::new(Vec::new()));
-        let client = RecordingLspClient { calls: Rc::clone(&calls) };
+        let client = RecordingLspClient {
+            calls: Rc::clone(&calls),
+        };
         let mut editor = CodeEditor::new("hello", "rs");
         editor.attach_lsp(
             Box::new(client),
@@ -1019,7 +1000,9 @@ mod tests {
     #[allow(clippy::unwrap_used)]
     fn test_with_lsp_mut_document_allows_version_bump() {
         let calls = Rc::new(RefCell::new(Vec::new()));
-        let client = RecordingLspClient { calls: Rc::clone(&calls) };
+        let client = RecordingLspClient {
+            calls: Rc::clone(&calls),
+        };
         let mut editor = CodeEditor::new("hello", "rs");
         editor.attach_lsp(
             Box::new(client),
@@ -1034,13 +1017,18 @@ mod tests {
     }
 
     #[test]
-    fn test_lsp_flush_pending_changes_preserves_queue_when_no_client_attached()
-    {
+    fn test_lsp_flush_pending_changes_preserves_queue_when_no_client_attached() {
         let mut editor = CodeEditor::new("hello", "rs");
         editor.lsp_pending_changes.push(lsp::LspTextChange {
             range: lsp::LspRange {
-                start: lsp::LspPosition { line: 0, character: 0 },
-                end: lsp::LspPosition { line: 0, character: 0 },
+                start: lsp::LspPosition {
+                    line: 0,
+                    character: 0,
+                },
+                end: lsp::LspPosition {
+                    line: 0,
+                    character: 0,
+                },
             },
             text: "x".to_string(),
         });

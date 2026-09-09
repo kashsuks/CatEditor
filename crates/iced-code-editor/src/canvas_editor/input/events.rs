@@ -6,9 +6,7 @@ use iced::{Point, Rectangle, keyboard, mouse};
 
 use crate::canvas_editor::features::folding;
 use crate::canvas_editor::features::vim::VimMode;
-use crate::canvas_editor::{
-    ArrowDirection, CodeEditor, FOCUSED_EDITOR_ID, Message,
-};
+use crate::canvas_editor::{ArrowDirection, CodeEditor, FOCUSED_EDITOR_ID, Message};
 
 /// Returns `true` when either `key` or `modified_key` is the character `ch`.
 ///
@@ -32,11 +30,7 @@ use crate::canvas_editor::{
 /// // On AZERTY, `.` is Shift+`;`: `key` is `;`, `modified_key` is `.`.
 /// assert!(is_key_char(&semicolon_key, &dot_key, "."));
 /// ```
-fn is_key_char(
-    key: &keyboard::Key,
-    modified_key: &keyboard::Key,
-    ch: &str,
-) -> bool {
+fn is_key_char(key: &keyboard::Key, modified_key: &keyboard::Key, ch: &str) -> bool {
     matches!(key, keyboard::Key::Character(c) if c.as_str() == ch)
         || matches!(modified_key, keyboard::Key::Character(c) if c.as_str() == ch)
 }
@@ -105,10 +99,7 @@ fn clipboard_shortcut(
 
     if (command_pressed && is_key_char(key, modified_key, "c"))
         || (modifiers.control()
-            && matches!(
-                key,
-                keyboard::Key::Named(keyboard::key::Named::Insert)
-            ))
+            && matches!(key, keyboard::Key::Named(keyboard::key::Named::Insert)))
     {
         return Some(Action::publish(Message::Copy).and_capture());
     }
@@ -122,11 +113,7 @@ fn clipboard_shortcut(
     }
 
     if (command_pressed && is_key_char(key, modified_key, "v"))
-        || (modifiers.shift()
-            && matches!(
-                key,
-                keyboard::Key::Named(keyboard::key::Named::Insert)
-            ))
+        || (modifiers.shift() && matches!(key, keyboard::Key::Named(keyboard::key::Named::Insert)))
     {
         return Some(Action::publish(Message::Paste(String::new())));
     }
@@ -144,9 +131,7 @@ fn multi_cursor_shortcut(
     let command_pressed = modifiers.command() || modifiers.control();
 
     if command_pressed && is_key_char(key, modified_key, "d") {
-        return Some(
-            Action::publish(Message::SelectNextOccurrence).and_capture(),
-        );
+        return Some(Action::publish(Message::SelectNextOccurrence).and_capture());
     }
 
     if modifiers.control()
@@ -182,9 +167,7 @@ fn editing_shortcut(
         return Some(Action::publish(Message::ToggleComment).and_capture());
     }
 
-    if modifiers.shift()
-        && matches!(key, keyboard::Key::Named(keyboard::key::Named::Delete))
-    {
+    if modifiers.shift() && matches!(key, keyboard::Key::Named(keyboard::key::Named::Delete)) {
         return Some(Action::publish(Message::DeleteSelection).and_capture());
     }
 
@@ -232,15 +215,11 @@ fn navigation_shortcut(
 ) -> Option<Action<Message>> {
     let command_pressed = modifiers.command() || modifiers.control();
 
-    if command_pressed
-        && matches!(key, keyboard::Key::Named(keyboard::key::Named::Home))
-    {
+    if command_pressed && matches!(key, keyboard::Key::Named(keyboard::key::Named::Home)) {
         return Some(Action::publish(Message::CtrlHome).and_capture());
     }
 
-    if command_pressed
-        && matches!(key, keyboard::Key::Named(keyboard::key::Named::End))
-    {
+    if command_pressed && matches!(key, keyboard::Key::Named(keyboard::key::Named::End)) {
         return Some(Action::publish(Message::CtrlEnd).and_capture());
     }
 
@@ -255,11 +234,8 @@ impl CodeEditor {
     /// `true` if the editor has both Iced focus and internal canvas focus and is not focus-locked; `false` otherwise
     pub(crate) fn has_focus(&self) -> bool {
         // Check if this editor has Iced focus
-        let focused_id =
-            FOCUSED_EDITOR_ID.load(std::sync::atomic::Ordering::Relaxed);
-        focused_id == self.editor_id
-            && self.has_canvas_focus
-            && !self.focus_locked
+        let focused_id = FOCUSED_EDITOR_ID.load(std::sync::atomic::Ordering::Relaxed);
+        focused_id == self.editor_id && self.has_canvas_focus && !self.focus_locked
     }
 
     /// Handles keyboard shortcut combinations (Ctrl+C, Ctrl+Z, etc.).
@@ -319,9 +295,7 @@ impl CodeEditor {
             && modifiers.shift()
             && !self.search_state.is_open
         {
-            return Some(
-                Action::publish(Message::FocusNavigationShiftTab).and_capture(),
-            );
+            return Some(Action::publish(Message::FocusNavigationShiftTab).and_capture());
         }
         None
     }
@@ -338,10 +312,7 @@ impl CodeEditor {
     ) -> Option<Action<Message>> {
         let command_pressed = modifiers.command() || modifiers.control();
 
-        if command_pressed
-            && !modifiers.shift()
-            && is_key_char(key, modified_key, "z")
-        {
+        if command_pressed && !modifiers.shift() && is_key_char(key, modified_key, "z") {
             return Some(Action::publish(Message::Undo).and_capture());
         }
 
@@ -381,25 +352,15 @@ impl CodeEditor {
             && is_key_char(key, modified_key, "p")
             && self.command_palette_enabled
         {
-            return Some(
-                Action::publish(Message::OpenCommandPalette).and_capture(),
-            );
+            return Some(Action::publish(Message::OpenCommandPalette).and_capture());
         }
 
-        if command_pressed
-            && is_key_char(key, modified_key, "f")
-            && self.search_replace_enabled
-        {
+        if command_pressed && is_key_char(key, modified_key, "f") && self.search_replace_enabled {
             return Some(Action::publish(Message::OpenSearch).and_capture());
         }
 
-        if command_pressed
-            && is_key_char(key, modified_key, "h")
-            && self.search_replace_enabled
-        {
-            return Some(
-                Action::publish(Message::OpenSearchReplace).and_capture(),
-            );
+        if command_pressed && is_key_char(key, modified_key, "h") && self.search_replace_enabled {
+            return Some(Action::publish(Message::OpenSearchReplace).and_capture());
         }
 
         if command_pressed && is_key_char(key, modified_key, "g") {
@@ -477,9 +438,7 @@ impl CodeEditor {
         // On French AZERTY `.` is Shift+`;` and only appears in
         // `modified_key`; see `is_key_char`.
         if modifiers.control() && is_key_char(key, modified_key, ".") {
-            return Some(
-                Action::publish(Message::ToggleFoldAtCursor).and_capture(),
-            );
+            return Some(Action::publish(Message::ToggleFoldAtCursor).and_capture());
         }
 
         // Exclude Alt so it doesn't clash with a future Ctrl+Alt+K binding,
@@ -554,8 +513,7 @@ impl CodeEditor {
                 && !first_char.is_control()
             {
                 return Some(
-                    Action::publish(self.printable_input_message(first_char))
-                        .and_capture(),
+                    Action::publish(self.printable_input_message(first_char)).and_capture(),
                 );
             }
         }
@@ -573,13 +531,12 @@ impl CodeEditor {
                 } else {
                     Some(Message::Backspace)
                 }
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::Delete)
-                if !self.vim_enabled
-                    || self.vim_state.mode() == VimMode::Insert =>
+                if !self.vim_enabled || self.vim_state.mode() == VimMode::Insert =>
             {
                 Some(Message::Delete)
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::Enter)
                 if !self.vim_enabled
                     || self.vim_state.mode() == VimMode::Insert
@@ -590,10 +547,9 @@ impl CodeEditor {
                 } else {
                     Some(Message::Enter)
                 }
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::Tab)
-                if !self.vim_enabled
-                    || self.vim_state.mode() == VimMode::Insert =>
+                if !self.vim_enabled || self.vim_state.mode() == VimMode::Insert =>
             {
                 // Handle Tab for focus navigation or text insertion
                 // This implements focus event propagation and focus chain management
@@ -609,31 +565,27 @@ impl CodeEditor {
                         Some(Message::Tab)
                     }
                 }
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
                 Some(Message::ArrowKey(ArrowDirection::Up, modifiers.shift()))
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
                 Some(Message::ArrowKey(ArrowDirection::Down, modifiers.shift()))
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::ArrowLeft) => {
                 Some(Message::ArrowKey(ArrowDirection::Left, modifiers.shift()))
-            }
-            keyboard::Key::Named(keyboard::key::Named::ArrowRight) => Some(
-                Message::ArrowKey(ArrowDirection::Right, modifiers.shift()),
-            ),
-            keyboard::Key::Named(keyboard::key::Named::PageUp) => {
-                Some(Message::PageUp)
-            }
-            keyboard::Key::Named(keyboard::key::Named::PageDown) => {
-                Some(Message::PageDown)
-            }
+            },
+            keyboard::Key::Named(keyboard::key::Named::ArrowRight) => {
+                Some(Message::ArrowKey(ArrowDirection::Right, modifiers.shift()))
+            },
+            keyboard::Key::Named(keyboard::key::Named::PageUp) => Some(Message::PageUp),
+            keyboard::Key::Named(keyboard::key::Named::PageDown) => Some(Message::PageDown),
             keyboard::Key::Named(keyboard::key::Named::Home) => {
                 Some(Message::Home(modifiers.shift()))
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::End) => {
                 Some(Message::End(modifiers.shift()))
-            }
+            },
             // PRIORITY 3: Fallback to extracting from 'key' if text was empty/control char
             // This handles edge cases where text field is not populated
             _ => {
@@ -649,7 +601,7 @@ impl CodeEditor {
                         .map(|msg| Action::publish(msg).and_capture());
                 }
                 None
-            }
+            },
         };
 
         message.map(|msg| Action::publish(msg).and_capture())
@@ -691,16 +643,12 @@ impl CodeEditor {
         }
 
         // Skip if IME is active (unless Ctrl/Command is pressed)
-        if self.ime_preedit.is_some()
-            && !(modifiers.control() || modifiers.command())
-        {
+        if self.ime_preedit.is_some() && !(modifiers.control() || modifiers.command()) {
             return None;
         }
 
         // Try keyboard shortcuts first
-        if let Some(action) =
-            self.handle_keyboard_shortcuts(key, modified_key, modifiers)
-        {
+        if let Some(action) = self.handle_keyboard_shortcuts(key, modified_key, modifiers) {
             return Some(action);
         }
 
@@ -764,8 +712,7 @@ impl CodeEditor {
                     // Clicking a fold chevron toggles the block instead of
                     // moving the caret.
                     if let Some(header) = self.fold_header_at_point(position) {
-                        return Action::publish(Message::ToggleFold(header))
-                            .and_capture();
+                        return Action::publish(Message::ToggleFold(header)).and_capture();
                     }
 
                     // Check for Ctrl (or Command on macOS) + Click
@@ -790,34 +737,30 @@ impl CodeEditor {
 
                     let click_count = self.classify_click(position);
                     match click_count {
-                        2 => Action::publish(Message::DoubleClick(position))
-                            .and_capture(),
-                        3 => Action::publish(Message::TripleClick(position))
-                            .and_capture(),
+                        2 => Action::publish(Message::DoubleClick(position)).and_capture(),
+                        3 => Action::publish(Message::TripleClick(position)).and_capture(),
                         // Don't capture the event so it can bubble up for focus management
                         // This implements focus event propagation through the widget hierarchy
                         _ => Action::publish(Message::MouseClick(position)),
                     }
                 })
-            }
+            },
             mouse::Event::ButtonPressed(mouse::Button::Right) => {
                 cursor.position_in(bounds).map(|position| {
-                    Action::publish(Message::ContextMenuRequested(position))
-                        .and_capture()
+                    Action::publish(Message::ContextMenuRequested(position)).and_capture()
                 })
-            }
+            },
             mouse::Event::CursorMoved { .. } => {
                 cursor.position_in(bounds).map(|position| {
                     if self.is_dragging {
                         // Handle mouse drag for selection only when cursor is within bounds
-                        Action::publish(Message::MouseDrag(position))
-                            .and_capture()
+                        Action::publish(Message::MouseDrag(position)).and_capture()
                     } else {
                         // Forward hover events when not dragging to enable LSP hover.
                         Action::publish(Message::MouseHover(position))
                     }
                 })
-            }
+            },
             mouse::Event::ButtonReleased(mouse::Button::Left) => {
                 // Only handle mouse release when cursor is within bounds
                 // This prevents capturing events meant for other widgets
@@ -826,7 +769,7 @@ impl CodeEditor {
                 } else {
                     None
                 }
-            }
+            },
             _ => None,
         }
     }
@@ -879,10 +822,8 @@ impl CodeEditor {
             input_method::Event::Opened => Message::ImeOpened,
             input_method::Event::Preedit(content, selection) => {
                 Message::ImePreedit(content.clone(), selection.clone())
-            }
-            input_method::Event::Commit(content) => {
-                Message::ImeCommit(content.clone())
-            }
+            },
+            input_method::Event::Commit(content) => Message::ImeCommit(content.clone()),
             input_method::Event::Closed => Message::ImeClosed,
         };
 
@@ -999,11 +940,7 @@ mod tests {
         let key = keyboard::Key::Character("g".into());
 
         let message = editor
-            .handle_keyboard_shortcuts(
-                &key,
-                &key,
-                &keyboard::Modifiers::COMMAND,
-            )
+            .handle_keyboard_shortcuts(&key, &key, &keyboard::Modifiers::COMMAND)
             .map(|action| action.into_inner().0);
 
         assert!(matches!(message, Some(Some(Message::OpenGotoLine))));
@@ -1034,11 +971,7 @@ mod tests {
         let modified_key = keyboard::Key::Character(".".into());
 
         let message = editor
-            .handle_keyboard_shortcuts(
-                &base_key,
-                &modified_key,
-                &keyboard::Modifiers::CTRL,
-            )
+            .handle_keyboard_shortcuts(&base_key, &modified_key, &keyboard::Modifiers::CTRL)
             .map(|action| action.into_inner().0);
 
         assert!(matches!(message, Some(Some(Message::ToggleFoldAtCursor))));
@@ -1054,11 +987,7 @@ mod tests {
         let modified_key = keyboard::Key::Character("/".into());
 
         let message = editor
-            .handle_keyboard_shortcuts(
-                &base_key,
-                &modified_key,
-                &keyboard::Modifiers::CTRL,
-            )
+            .handle_keyboard_shortcuts(&base_key, &modified_key, &keyboard::Modifiers::CTRL)
             .map(|action| action.into_inner().0);
 
         assert!(matches!(message, Some(Some(Message::ToggleComment))));
@@ -1080,8 +1009,7 @@ mod tests {
         // catch the letters drifting back.
         /// One row of the table: the character, the modifiers it needs, and a
         /// predicate matching the message it must publish.
-        type ShortcutCase =
-            (&'static str, keyboard::Modifiers, fn(&Message) -> bool);
+        type ShortcutCase = (&'static str, keyboard::Modifiers, fn(&Message) -> bool);
 
         let cases: [ShortcutCase; 15] = [
             ("v", ctrl_alt, |m| matches!(m, Message::ToggleVimMode)),
@@ -1103,11 +1031,7 @@ mod tests {
 
         for (ch, modifiers, expected) in cases {
             let message = editor
-                .handle_keyboard_shortcuts(
-                    &unmatched,
-                    &character(ch),
-                    &modifiers,
-                )
+                .handle_keyboard_shortcuts(&unmatched, &character(ch), &modifiers)
                 .and_then(|action| action.into_inner().0);
             assert!(
                 message.as_ref().is_some_and(expected),
@@ -1142,11 +1066,7 @@ mod tests {
         assert!(!editor.cursors.is_multi());
 
         let key = keyboard::Key::Named(keyboard::key::Named::Escape);
-        let message = editor.handle_keyboard_shortcuts(
-            &key,
-            &key,
-            &keyboard::Modifiers::NONE,
-        );
+        let message = editor.handle_keyboard_shortcuts(&key, &key, &keyboard::Modifiers::NONE);
 
         // Nothing for the editor to do with Escape here, so the event must
         // be left uncaptured for the host application to handle.
@@ -1254,11 +1174,7 @@ mod tests {
             Some(Message::AddCursorAbove)
         ));
         assert!(matches!(
-            shortcut(
-                &editor,
-                &named(keyboard::key::Named::ArrowDown),
-                ctrl_alt
-            ),
+            shortcut(&editor, &named(keyboard::key::Named::ArrowDown), ctrl_alt),
             Some(Message::AddCursorBelow)
         ));
     }
@@ -1316,11 +1232,7 @@ mod tests {
             Some(Message::MoveLineUp | Message::DuplicateLineUp)
         ));
         assert!(!matches!(
-            shortcut(
-                &editor,
-                &named(keyboard::key::Named::ArrowDown),
-                ctrl_alt
-            ),
+            shortcut(&editor, &named(keyboard::key::Named::ArrowDown), ctrl_alt),
             Some(Message::MoveLineDown | Message::DuplicateLineDown)
         ));
     }
@@ -1517,8 +1429,7 @@ mod tests {
 
     #[test]
     fn test_folding_shortcuts_are_inert_when_folding_is_disabled() {
-        let editor =
-            CodeEditor::new("fn a() {\n}\n", "rs").with_folding_enabled(false);
+        let editor = CodeEditor::new("fn a() {\n}\n", "rs").with_folding_enabled(false);
         let ctrl = keyboard::Modifiers::CTRL;
 
         assert!(!editor.folding_enabled);
@@ -1539,16 +1450,17 @@ mod tests {
 
     /// Canvas bounds shared by the mouse tests, offset from the origin on
     /// purpose — see the note above.
-    const MOUSE_BOUNDS: Rectangle =
-        Rectangle { x: 10.0, y: 20.0, width: 400.0, height: 300.0 };
+    const MOUSE_BOUNDS: Rectangle = Rectangle {
+        x: 10.0,
+        y: 20.0,
+        width: 400.0,
+        height: 300.0,
+    };
 
     /// A cursor sitting at `(x, y)` measured from [`MOUSE_BOUNDS`]'s top-left
     /// corner, i.e. in the same coordinate space as the published messages.
     fn cursor_at(x: f32, y: f32) -> mouse::Cursor {
-        mouse::Cursor::Available(Point::new(
-            MOUSE_BOUNDS.x + x,
-            MOUSE_BOUNDS.y + y,
-        ))
+        mouse::Cursor::Available(Point::new(MOUSE_BOUNDS.x + x, MOUSE_BOUNDS.y + y))
     }
 
     /// Feeds `event` to the editor and returns the message it publishes.
@@ -1609,15 +1521,13 @@ mod tests {
     }
 
     /// A left-button press, the event most of the mouse tests start from.
-    const LEFT_PRESS: mouse::Event =
-        mouse::Event::ButtonPressed(mouse::Button::Left);
+    const LEFT_PRESS: mouse::Event = mouse::Event::ButtonPressed(mouse::Button::Left);
 
     #[test]
     fn test_left_click_publishes_a_bounds_relative_position() {
         let editor = CodeEditor::new("one\ntwo", "txt");
 
-        let message =
-            mouse_message(&editor, &LEFT_PRESS, &cursor_at(30.0, 40.0));
+        let message = mouse_message(&editor, &LEFT_PRESS, &cursor_at(30.0, 40.0));
         assert!(
             matches!(message, Some(Message::MouseClick(_))),
             "expected a MouseClick, got {message:?}"
@@ -1642,22 +1552,18 @@ mod tests {
             MOUSE_BOUNDS.y + MOUSE_BOUNDS.height + 5.0,
         ));
         let release = mouse::Event::ButtonReleased(mouse::Button::Left);
-        let moved = mouse::Event::CursorMoved { position: Point::ORIGIN };
+        let moved = mouse::Event::CursorMoved {
+            position: Point::ORIGIN,
+        };
 
         for event in [&LEFT_PRESS, &release, &moved] {
             assert!(
-                editor
-                    .handle_mouse_event(event, MOUSE_BOUNDS, &outside)
-                    .is_none(),
+                editor.handle_mouse_event(event, MOUSE_BOUNDS, &outside).is_none(),
                 "{event:?} outside the canvas must not be handled"
             );
             assert!(
                 editor
-                    .handle_mouse_event(
-                        event,
-                        MOUSE_BOUNDS,
-                        &mouse::Cursor::Unavailable
-                    )
+                    .handle_mouse_event(event, MOUSE_BOUNDS, &mouse::Cursor::Unavailable)
                     .is_none(),
                 "{event:?} with no cursor must not be handled"
             );
@@ -1761,9 +1667,7 @@ mod tests {
         let editor = CodeEditor::new("one\ntwo", "txt");
         // COMMAND is CTRL on every platform but macOS, where the handler reads
         // `command()` instead; setting both exercises the same branch on each.
-        editor
-            .modifiers
-            .set(keyboard::Modifiers::CTRL | keyboard::Modifiers::COMMAND);
+        editor.modifiers.set(keyboard::Modifiers::CTRL | keyboard::Modifiers::COMMAND);
         let cursor = cursor_at(80.0, 12.0);
 
         let message = mouse_message(&editor, &LEFT_PRESS, &cursor);
@@ -1827,10 +1731,7 @@ mod tests {
 
         // The chevron column sits between the line-number area and the text;
         // aim at its middle, on the first visual line.
-        let x = f32::midpoint(
-            editor.line_number_gutter_width(),
-            editor.gutter_width(),
-        );
+        let x = f32::midpoint(editor.line_number_gutter_width(), editor.gutter_width());
         let y = editor.line_height * 0.5;
         let cursor = cursor_at(x, y);
 
@@ -1853,8 +1754,7 @@ mod tests {
         let editor = CodeEditor::new("fn a() {\n    body\n}\n", "rs");
 
         // Same line, but past the gutter: this is ordinary caret placement.
-        let cursor =
-            cursor_at(editor.gutter_width() + 20.0, editor.line_height * 0.5);
+        let cursor = cursor_at(editor.gutter_width() + 20.0, editor.line_height * 0.5);
         assert!(matches!(
             mouse_message(&editor, &LEFT_PRESS, &cursor),
             Some(Message::MouseClick(_))
@@ -1877,9 +1777,7 @@ mod tests {
 
         for event in &events {
             assert!(
-                editor
-                    .handle_mouse_event(event, MOUSE_BOUNDS, &cursor)
-                    .is_none(),
+                editor.handle_mouse_event(event, MOUSE_BOUNDS, &cursor).is_none(),
                 "{event:?} should not be handled here"
             );
         }

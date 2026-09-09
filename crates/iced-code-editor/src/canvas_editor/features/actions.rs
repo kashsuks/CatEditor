@@ -39,14 +39,9 @@ impl CodeEditor {
         ActionContext {
             can_undo: self.history.can_undo(),
             can_redo: self.history.can_redo(),
-            has_selection: self
-                .cursors
-                .iter()
-                .any(|cursor| cursor.has_selection()),
-            has_content: self.buffer.line_count() > 1
-                || self.buffer.line_len(0) > 0,
-            reveal_in_file_manager_enabled: self
-                .reveal_in_file_manager_enabled(),
+            has_selection: self.cursors.iter().any(|cursor| cursor.has_selection()),
+            has_content: self.buffer.line_count() > 1 || self.buffer.line_len(0) > 0,
+            reveal_in_file_manager_enabled: self.reveal_in_file_manager_enabled(),
             search_replace_enabled: self.search_replace_enabled,
             folding_enabled: self.folding_enabled,
         }
@@ -206,8 +201,7 @@ mod tests {
 
     #[test]
     fn test_action_context_mirrors_feature_toggles() {
-        let mut editor =
-            CodeEditor::new("hello", "rs").with_folding_enabled(false);
+        let mut editor = CodeEditor::new("hello", "rs").with_folding_enabled(false);
         editor.set_search_replace_enabled(false);
 
         let context = editor.action_context();

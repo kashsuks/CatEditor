@@ -3,9 +3,7 @@
 use iced::Task;
 use iced::widget::operation::{focus, select_all};
 
-use crate::canvas_editor::editing::command::{
-    Command, CompositeCommand, ReplaceTextCommand,
-};
+use crate::canvas_editor::editing::command::{Command, CompositeCommand, ReplaceTextCommand};
 use crate::canvas_editor::{CodeEditor, Message};
 
 impl CodeEditor {
@@ -19,10 +17,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// A `Task<Message>` that focuses and selects all in the search input
-    pub(crate) fn handle_open_search(
-        &mut self,
-        replace: bool,
-    ) -> Task<Message> {
+    pub(crate) fn handle_open_search(&mut self, replace: bool) -> Task<Message> {
         self.goto_line_state.close();
         if replace {
             self.search_state.open_replace();
@@ -31,8 +26,7 @@ impl CodeEditor {
         }
         if !self.search_state.query.is_empty() {
             self.search_state.update_matches(&self.buffer);
-            self.search_state
-                .select_match_near_cursor(self.cursors.primary_position());
+            self.search_state.select_match_near_cursor(self.cursors.primary_position());
         }
         self.overlay_cache.clear();
 
@@ -88,10 +82,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// A `Task<Message>` that scrolls to first match if any
-    pub(crate) fn handle_search_query_changed_msg(
-        &mut self,
-        query: &str,
-    ) -> Task<Message> {
+    pub(crate) fn handle_search_query_changed_msg(&mut self, query: &str) -> Task<Message> {
         self.search_state.set_query(query.to_string(), &self.buffer);
         // Unconditional: the old highlights must go even when the new query
         // matches nothing.
@@ -108,10 +99,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// A `Task<Message>` (currently Task::none())
-    pub(crate) fn handle_replace_query_changed_msg(
-        &mut self,
-        replace_text: &str,
-    ) -> Task<Message> {
+    pub(crate) fn handle_replace_query_changed_msg(&mut self, replace_text: &str) -> Task<Message> {
         self.search_state.set_replace_with(replace_text.to_string());
         Task::none()
     }
@@ -184,8 +172,7 @@ impl CodeEditor {
             // The replacement starts at the matched line; invalidate highlight
             // from there regardless of where the cursor moved next.
             self.pre_edit_line = self.pre_edit_line.min(match_pos.line);
-            self.pre_edit_last_line =
-                self.pre_edit_last_line.max(match_pos.line);
+            self.pre_edit_last_line = self.pre_edit_last_line.max(match_pos.line);
 
             self.clear_selection();
             self.finish_edit_operation();
@@ -194,8 +181,7 @@ impl CodeEditor {
             if !self.search_state.matches.is_empty()
                 && let Some(next_match) = self.search_state.current_match()
             {
-                self.cursors.primary_mut().position =
-                    (next_match.line, next_match.col);
+                self.cursors.primary_mut().position = (next_match.line, next_match.col);
             }
 
             return self.scroll_to_cursor();
@@ -266,10 +252,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// A `Task<Message>` that focuses the newly focused field
-    pub(crate) fn handle_search_dialog_tab(
-        &mut self,
-        forward: bool,
-    ) -> Task<Message> {
+    pub(crate) fn handle_search_dialog_tab(&mut self, forward: bool) -> Task<Message> {
         if forward {
             self.search_state.focus_next_field();
         } else {
@@ -278,12 +261,8 @@ impl CodeEditor {
 
         // Focus the appropriate input based on new focused_field
         match self.search_state.focused_field {
-            super::SearchFocusedField::Search => {
-                focus(self.search_state.search_input_id.clone())
-            }
-            super::SearchFocusedField::Replace => {
-                focus(self.search_state.replace_input_id.clone())
-            }
+            super::SearchFocusedField::Search => focus(self.search_state.search_input_id.clone()),
+            super::SearchFocusedField::Replace => focus(self.search_state.replace_input_id.clone()),
         }
     }
 }
@@ -354,11 +333,7 @@ mod tests {
     /// The dialog must be open: `refresh_search_matches_if_needed` is gated on
     /// `search_matches_visible()`, so a replace driven against a closed dialog
     /// would not re-run the search afterwards.
-    fn replace_editor(
-        content: &str,
-        query: &str,
-        replace_with: &str,
-    ) -> CodeEditor {
+    fn replace_editor(content: &str, query: &str, replace_with: &str) -> CodeEditor {
         let mut editor = CodeEditor::new(content, "txt");
         editor.search_state.open_replace();
         editor.search_state.set_query(query.to_owned(), &editor.buffer);
@@ -368,8 +343,7 @@ mod tests {
 
     #[test]
     fn test_replace_all_replaces_every_match_across_lines() {
-        let mut editor =
-            replace_editor("foo one\ntwo foo\nfoo foo", "foo", "bar");
+        let mut editor = replace_editor("foo one\ntwo foo\nfoo foo", "foo", "bar");
         assert_eq!(editor.search_state.match_count(), 4);
 
         let _ = editor.update(&Message::ReplaceAll);
@@ -381,8 +355,7 @@ mod tests {
 
     #[test]
     fn test_replace_all_is_a_single_undo_step() {
-        let mut editor =
-            replace_editor("foo one\ntwo foo\nfoo foo", "foo", "bar");
+        let mut editor = replace_editor("foo one\ntwo foo\nfoo foo", "foo", "bar");
 
         let _ = editor.update(&Message::ReplaceAll);
         assert_eq!(editor.buffer.to_string(), "bar one\ntwo bar\nbar bar");
@@ -427,10 +400,7 @@ mod tests {
         let line_count = super::super::MAX_MATCHES + 10;
         let content = vec!["foo"; line_count].join("\n");
         let mut editor = replace_editor(&content, "foo", "bar");
-        assert_eq!(
-            editor.search_state.match_count(),
-            super::super::MAX_MATCHES
-        );
+        assert_eq!(editor.search_state.match_count(), super::super::MAX_MATCHES);
 
         let _ = editor.update(&Message::ReplaceAll);
 

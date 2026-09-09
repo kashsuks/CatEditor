@@ -4,12 +4,10 @@
 use iced::Task;
 
 use super::{
-    VimAction, VimInsertPosition, VimMode, VimMotion, VimOperator,
-    VimPastePosition, VimRegister, VimRegisterKind,
+    VimAction, VimInsertPosition, VimMode, VimMotion, VimOperator, VimPastePosition, VimRegister,
+    VimRegisterKind,
 };
-use crate::canvas_editor::editing::command::{
-    Command, DeleteRangeCommand, InsertTextCommand,
-};
+use crate::canvas_editor::editing::command::{Command, DeleteRangeCommand, InsertTextCommand};
 use crate::canvas_editor::{CodeEditor, Message};
 
 impl CodeEditor {
@@ -31,73 +29,50 @@ impl CodeEditor {
         let previous_mode = self.vim_state.mode();
         let action = self.vim_state.parse_key(key);
         match action {
-            Some(VimAction::Mode(mode)) => {
-                self.handle_vim_mode(mode, previous_mode)
-            }
-            Some(VimAction::Motion { motion, count, explicit_count }) => {
-                self.handle_vim_motion(motion, count, explicit_count)
-            }
-            Some(VimAction::Insert { position, count }) => {
-                self.handle_vim_insert(position, count)
-            }
+            Some(VimAction::Mode(mode)) => self.handle_vim_mode(mode, previous_mode),
+            Some(VimAction::Motion {
+                motion,
+                count,
+                explicit_count,
+            }) => self.handle_vim_motion(motion, count, explicit_count),
+            Some(VimAction::Insert { position, count }) => self.handle_vim_insert(position, count),
             Some(VimAction::Operator {
                 operator,
                 motion,
                 count,
                 explicit_count,
-            }) => self.handle_vim_motion_operator(
-                operator,
-                motion,
-                count,
-                explicit_count,
-            ),
+            }) => self.handle_vim_motion_operator(operator, motion, count, explicit_count),
             Some(VimAction::LineOperator { operator, count }) => {
                 let start_line = self.cursors.primary_position().0;
                 let end_line = start_line
                     .saturating_add(count.saturating_sub(1))
                     .min(self.buffer.line_count().saturating_sub(1));
-                self.handle_vim_line_operator(
-                    operator, start_line, end_line, false,
-                )
-            }
-            Some(VimAction::VisualOperator(operator)) => {
-                self.handle_vim_visual_operator(operator)
-            }
-            Some(VimAction::DeleteCharacters { count }) => {
-                self.handle_vim_delete_characters(count)
-            }
-            Some(VimAction::Paste { position, count }) => {
-                self.handle_vim_paste(position, count)
-            }
-            Some(VimAction::Undo { count }) => {
-                self.handle_vim_history(false, count)
-            }
-            Some(VimAction::Redo { count }) => {
-                self.handle_vim_history(true, count)
-            }
-            Some(VimAction::RepeatSearch { reverse }) => {
-                self.handle_vim_repeat_search(reverse)
-            }
-            Some(VimAction::SubmitSearch(query)) => {
-                self.handle_vim_search(&query)
-            }
+                self.handle_vim_line_operator(operator, start_line, end_line, false)
+            },
+            Some(VimAction::VisualOperator(operator)) => self.handle_vim_visual_operator(operator),
+            Some(VimAction::DeleteCharacters { count }) => self.handle_vim_delete_characters(count),
+            Some(VimAction::Paste { position, count }) => self.handle_vim_paste(position, count),
+            Some(VimAction::Undo { count }) => self.handle_vim_history(false, count),
+            Some(VimAction::Redo { count }) => self.handle_vim_history(true, count),
+            Some(VimAction::RepeatSearch { reverse }) => self.handle_vim_repeat_search(reverse),
+            Some(VimAction::SubmitSearch(query)) => self.handle_vim_search(&query),
             Some(VimAction::SubmitGotoLine(line)) => {
                 self.handle_goto_position(line.saturating_sub(1), 0)
-            }
+            },
             Some(VimAction::WriteFile { exit_vim }) => {
                 if exit_vim {
                     self.set_vim_enabled(false);
                 }
                 Task::done(Message::WriteRequested)
-            }
+            },
             Some(VimAction::ExitVimMode) => {
                 self.set_vim_enabled(false);
                 Task::none()
-            }
+            },
             Some(VimAction::CommandLineChanged) => {
                 self.overlay_cache.clear();
                 Task::none()
-            }
+            },
             None => Task::none(),
         }
     }
@@ -134,14 +109,12 @@ impl CodeEditor {
     }
 
     fn handle_vim_repeat_search(&mut self, reverse: bool) -> Task<Message> {
-        let Some(last_search) = self.vim_state.last_search().map(str::to_owned)
-        else {
+        let Some(last_search) = self.vim_state.last_search().map(str::to_owned) else {
             return Task::none();
         };
         if self.search_state.query != last_search {
             self.search_state.set_query(last_search, &self.buffer);
-            self.search_state
-                .select_match_near_cursor(self.cursors.primary_position());
+            self.search_state.select_match_near_cursor(self.cursors.primary_position());
         }
         if self.search_state.matches.is_empty() {
             return Task::none();
@@ -163,12 +136,7 @@ impl CodeEditor {
         let start = self.vim_normal_position(self.cursors.primary_position());
         let line_len = self.buffer.line_len(start.0);
         let end = (start.0, start.1.saturating_add(count).min(line_len));
-        self.handle_vim_character_operator(
-            VimOperator::Delete,
-            start,
-            end,
-            false,
-        )
+        self.handle_vim_character_operator(VimOperator::Delete, start, end, false)
     }
 
     fn handle_vim_motion_operator(
@@ -181,13 +149,9 @@ impl CodeEditor {
         let start = self.vim_normal_position(self.cursors.primary_position());
         if matches!(
             motion,
-            VimMotion::Up
-                | VimMotion::Down
-                | VimMotion::DocumentStart
-                | VimMotion::DocumentEnd
+            VimMotion::Up | VimMotion::Down | VimMotion::DocumentStart | VimMotion::DocumentEnd
         ) {
-            let target =
-                self.vim_motion_target(start, motion, count, explicit_count);
+            let target = self.vim_motion_target(start, motion, count, explicit_count);
             return self.handle_vim_line_operator(
                 operator,
                 start.0.min(target.0),
@@ -196,36 +160,27 @@ impl CodeEditor {
             );
         }
 
-        let target =
-            self.vim_motion_target(start, motion, count, explicit_count);
+        let target = self.vim_motion_target(start, motion, count, explicit_count);
         let (range_start, range_end) = match motion {
             VimMotion::Right => (
                 start,
                 (
                     start.0,
-                    start
-                        .1
-                        .saturating_add(count)
-                        .min(self.buffer.line_len(start.0)),
+                    start.1.saturating_add(count).min(self.buffer.line_len(start.0)),
                 ),
             ),
-            VimMotion::Left => {
-                ((start.0, start.1.saturating_sub(count)), start)
-            }
+            VimMotion::Left => ((start.0, start.1.saturating_sub(count)), start),
             VimMotion::WordEnd | VimMotion::LineEnd => {
                 let end = if motion == VimMotion::LineEnd {
                     (start.0, self.buffer.line_len(start.0))
                 } else {
                     (
                         target.0,
-                        target
-                            .1
-                            .saturating_add(1)
-                            .min(self.buffer.line_len(target.0)),
+                        target.1.saturating_add(1).min(self.buffer.line_len(target.0)),
                     )
                 };
                 (start.min(end), start.max(end))
-            }
+            },
             VimMotion::WordForward => {
                 let end = if target > start {
                     target
@@ -233,36 +188,24 @@ impl CodeEditor {
                     (start.0, self.buffer.line_len(start.0))
                 };
                 (start.min(end), start.max(end))
-            }
-            VimMotion::WordBackward
-            | VimMotion::LineStart
-            | VimMotion::FirstNonBlank => {
+            },
+            VimMotion::WordBackward | VimMotion::LineStart | VimMotion::FirstNonBlank => {
                 (start.min(target), start.max(target))
-            }
-            VimMotion::Up
-            | VimMotion::Down
-            | VimMotion::DocumentStart
-            | VimMotion::DocumentEnd => return Task::none(),
+            },
+            VimMotion::Up | VimMotion::Down | VimMotion::DocumentStart | VimMotion::DocumentEnd => {
+                return Task::none();
+            },
         };
 
-        self.handle_vim_character_operator(
-            operator,
-            range_start,
-            range_end,
-            false,
-        )
+        self.handle_vim_character_operator(operator, range_start, range_end, false)
     }
 
-    fn handle_vim_visual_operator(
-        &mut self,
-        operator: VimOperator,
-    ) -> Task<Message> {
+    fn handle_vim_visual_operator(&mut self, operator: VimOperator) -> Task<Message> {
         if self.vim_state.mode() == VimMode::VisualLine {
-            let (anchor, active) =
-                self.vim_state.visual_positions().unwrap_or_else(|| {
-                    let position = self.cursors.primary_position();
-                    (position, position)
-                });
+            let (anchor, active) = self.vim_state.visual_positions().unwrap_or_else(|| {
+                let position = self.cursors.primary_position();
+                (position, position)
+            });
             self.handle_vim_line_operator(
                 operator,
                 anchor.0.min(active.0),
@@ -270,8 +213,7 @@ impl CodeEditor {
                 true,
             )
         } else {
-            let Some((start, end)) = self.cursors.primary().selection_range()
-            else {
+            let Some((start, end)) = self.cursors.primary().selection_range() else {
                 return Task::none();
             };
             self.handle_vim_character_operator(operator, start, end, true)
@@ -325,7 +267,10 @@ impl CodeEditor {
             operator,
             start,
             end,
-            VimRegister { text, kind: VimRegisterKind::Linewise },
+            VimRegister {
+                text,
+                kind: VimRegisterKind::Linewise,
+            },
             from_visual,
         )
     }
@@ -344,8 +289,7 @@ impl CodeEditor {
             if from_visual {
                 self.cursors.set_single(self.vim_normal_position(start));
             } else {
-                let position =
-                    self.vim_normal_position(self.cursors.primary_position());
+                let position = self.vim_normal_position(self.cursors.primary_position());
                 self.cursors.set_single(position);
             }
             self.vim_state.enter_clean_normal_mode();
@@ -363,8 +307,7 @@ impl CodeEditor {
         self.capture_lsp_edit_snapshot(&Message::DeleteSelection);
 
         let cursor_before = self.cursors.primary_position();
-        let mut command =
-            DeleteRangeCommand::new(&self.buffer, start, end, cursor_before);
+        let mut command = DeleteRangeCommand::new(&self.buffer, start, end, cursor_before);
         let mut cursor_after = cursor_before;
         command.execute(&mut self.buffer, &mut cursor_after);
         self.history.push(Box::new(command));
@@ -379,11 +322,7 @@ impl CodeEditor {
         self.scroll_to_cursor()
     }
 
-    fn handle_vim_paste(
-        &mut self,
-        position: VimPastePosition,
-        count: usize,
-    ) -> Task<Message> {
+    fn handle_vim_paste(&mut self, position: VimPastePosition, count: usize) -> Task<Message> {
         let register = self.vim_state.register.clone();
         if register.text.is_empty() {
             return Task::none();
@@ -399,46 +338,37 @@ impl CodeEditor {
                         current.0,
                         current
                             .1
-                            .saturating_add(usize::from(
-                                self.buffer.line_len(current.0) > 0,
-                            ))
+                            .saturating_add(usize::from(self.buffer.line_len(current.0) > 0))
                             .min(self.buffer.line_len(current.0)),
                     ),
                 };
                 (insert_at, register.text.repeat(count.max(1)), insert_at)
-            }
+            },
             VimRegisterKind::Linewise => {
                 let repeated = register.text.repeat(count.max(1));
                 match position {
-                    VimPastePosition::BeforeCursor => {
-                        ((current.0, 0), repeated, (current.0, 0))
-                    }
-                    VimPastePosition::AfterCursor
-                        if current.0 + 1 < self.buffer.line_count() =>
-                    {
+                    VimPastePosition::BeforeCursor => ((current.0, 0), repeated, (current.0, 0)),
+                    VimPastePosition::AfterCursor if current.0 + 1 < self.buffer.line_count() => {
                         ((current.0 + 1, 0), repeated, (current.0 + 1, 0))
-                    }
+                    },
                     VimPastePosition::AfterCursor => {
-                        let text = format!(
-                            "\n{}",
-                            repeated.strip_suffix('\n').unwrap_or(&repeated)
-                        );
+                        let text =
+                            format!("\n{}", repeated.strip_suffix('\n').unwrap_or(&repeated));
                         (
                             (current.0, self.buffer.line_len(current.0)),
                             text,
                             (current.0 + 1, 0),
                         )
-                    }
+                    },
                 }
-            }
+            },
         };
 
         self.pre_edit_line = insert_at.0;
         self.pre_edit_last_line = insert_at.0;
         self.capture_lsp_edit_snapshot(&Message::Paste(text.clone()));
-        let mut command =
-            InsertTextCommand::new(insert_at.0, insert_at.1, text, current)
-                .with_cursor_after(cursor_after);
+        let mut command = InsertTextCommand::new(insert_at.0, insert_at.1, text, current)
+            .with_cursor_after(cursor_after);
         let mut command_cursor = current;
         command.execute(&mut self.buffer, &mut command_cursor);
         self.history.push(Box::new(command));
@@ -448,11 +378,7 @@ impl CodeEditor {
         self.scroll_to_cursor()
     }
 
-    fn handle_vim_history(
-        &mut self,
-        redo: bool,
-        count: usize,
-    ) -> Task<Message> {
+    fn handle_vim_history(&mut self, redo: bool, count: usize) -> Task<Message> {
         self.end_grouping_if_active();
         self.pre_edit_line = 0;
         self.pre_edit_last_line = usize::MAX;
@@ -485,11 +411,7 @@ impl CodeEditor {
         self.scroll_to_cursor()
     }
 
-    fn handle_vim_mode(
-        &mut self,
-        mode: VimMode,
-        previous_mode: VimMode,
-    ) -> Task<Message> {
+    fn handle_vim_mode(&mut self, mode: VimMode, previous_mode: VimMode) -> Task<Message> {
         self.end_grouping_if_active();
         match mode {
             VimMode::Normal => {
@@ -503,18 +425,13 @@ impl CodeEditor {
                 }
                 self.vim_state.clear_visual();
                 self.cursors.set_single(self.vim_normal_position(active));
-            }
+            },
             VimMode::Visual | VimMode::VisualLine => {
-                let position =
-                    self.vim_normal_position(self.cursors.primary_position());
+                let position = self.vim_normal_position(self.cursors.primary_position());
                 self.vim_state.begin_visual(position);
-                self.apply_vim_visual_selection(
-                    position,
-                    position,
-                    mode == VimMode::VisualLine,
-                );
-            }
-            VimMode::Insert => {}
+                self.apply_vim_visual_selection(position, position, mode == VimMode::VisualLine);
+            },
+            VimMode::Insert => {},
         }
         self.finish_navigation_operation();
         self.scroll_to_cursor()
@@ -529,26 +446,18 @@ impl CodeEditor {
         self.end_grouping_if_active();
         match self.vim_state.mode() {
             VimMode::Visual | VimMode::VisualLine => {
-                let (anchor, active) =
-                    self.vim_state.visual_positions().unwrap_or_else(|| {
-                        let position = self.vim_normal_position(
-                            self.cursors.primary_position(),
-                        );
-                        (position, position)
-                    });
-                let target = self.vim_motion_target(
-                    active,
-                    motion,
-                    count,
-                    explicit_count,
-                );
+                let (anchor, active) = self.vim_state.visual_positions().unwrap_or_else(|| {
+                    let position = self.vim_normal_position(self.cursors.primary_position());
+                    (position, position)
+                });
+                let target = self.vim_motion_target(active, motion, count, explicit_count);
                 self.vim_state.set_visual_active(target);
                 self.apply_vim_visual_selection(
                     anchor,
                     target,
                     self.vim_state.mode() == VimMode::VisualLine,
                 );
-            }
+            },
             VimMode::Normal => {
                 let target = self.vim_motion_target(
                     self.cursors.primary_position(),
@@ -558,18 +467,14 @@ impl CodeEditor {
                 );
                 self.cursors.set_single(target);
                 self.overlay_cache.clear();
-            }
+            },
             VimMode::Insert => return Task::none(),
         }
         self.finish_navigation_operation();
         self.scroll_to_cursor()
     }
 
-    fn handle_vim_insert(
-        &mut self,
-        position: VimInsertPosition,
-        count: usize,
-    ) -> Task<Message> {
+    fn handle_vim_insert(&mut self, position: VimInsertPosition, count: usize) -> Task<Message> {
         self.end_grouping_if_active();
         let current = self
             .vim_state
@@ -582,12 +487,11 @@ impl CodeEditor {
         self.ensure_grouping_started();
 
         match position {
-            VimInsertPosition::BeforeCursor => {}
+            VimInsertPosition::BeforeCursor => {},
             VimInsertPosition::AfterCursor => {
                 let line_len = self.buffer.line_len(current.0);
-                self.cursors.primary_mut().position.1 =
-                    current.1.saturating_add(1).min(line_len);
-            }
+                self.cursors.primary_mut().position.1 = current.1.saturating_add(1).min(line_len);
+            },
             VimInsertPosition::FirstNonBlank => {
                 self.cursors.primary_mut().position.1 = self
                     .buffer
@@ -595,18 +499,16 @@ impl CodeEditor {
                     .chars()
                     .position(|ch| !ch.is_whitespace())
                     .unwrap_or(0);
-            }
+            },
             VimInsertPosition::EndOfLine => {
-                self.cursors.primary_mut().position.1 =
-                    self.buffer.line_len(current.0);
-            }
+                self.cursors.primary_mut().position.1 = self.buffer.line_len(current.0);
+            },
             VimInsertPosition::NewLineBelow => {
-                self.cursors.primary_mut().position.1 =
-                    self.buffer.line_len(current.0);
+                self.cursors.primary_mut().position.1 = self.buffer.line_len(current.0);
                 for _ in 0..count.max(1) {
                     let _ = self.update(&Message::Enter);
                 }
-            }
+            },
             VimInsertPosition::NewLineAbove => {
                 self.cursors.primary_mut().position.1 = 0;
                 let line = current.0;
@@ -614,7 +516,7 @@ impl CodeEditor {
                     let _ = self.update(&Message::Enter);
                     self.cursors.set_single((line, 0));
                 }
-            }
+            },
         }
 
         self.overlay_cache.clear();
@@ -663,11 +565,7 @@ mod tests {
     }
 
     impl lsp::LspClient for VimTestLspClient {
-        fn did_change(
-            &mut self,
-            _document: &lsp::LspDocument,
-            changes: &[lsp::LspTextChange],
-        ) {
+        fn did_change(&mut self, _document: &lsp::LspDocument, changes: &[lsp::LspTextChange]) {
             self.changes.borrow_mut().push(changes.to_vec());
         }
     }
@@ -707,8 +605,7 @@ mod tests {
     #[test]
     fn test_vim_navigation_counted_word_and_line_motions() {
         let mut editor =
-            CodeEditor::new("one two\nthree four\nfive six", "txt")
-                .with_vim_enabled(true);
+            CodeEditor::new("one two\nthree four\nfive six", "txt").with_vim_enabled(true);
 
         vim_keys(&mut editor, "2w");
         assert_eq!(editor.cursors.primary_position(), (1, 0));
@@ -739,8 +636,7 @@ mod tests {
 
     #[test]
     fn test_vim_navigation_visual_and_visual_line_ranges() {
-        let mut editor = CodeEditor::new("abcd\nefgh\nijkl\nmnop", "txt")
-            .with_vim_enabled(true);
+        let mut editor = CodeEditor::new("abcd\nefgh\nijkl\nmnop", "txt").with_vim_enabled(true);
         editor.cursors.set_single((0, 1));
 
         vim_keys(&mut editor, "vl");
@@ -765,8 +661,7 @@ mod tests {
 
     #[test]
     fn test_vim_navigation_unicode_and_empty_line_bounds() {
-        let mut editor =
-            CodeEditor::new("你🙂好\n\nz", "txt").with_vim_enabled(true);
+        let mut editor = CodeEditor::new("你🙂好\n\nz", "txt").with_vim_enabled(true);
 
         vim_keys(&mut editor, "lll");
         assert_eq!(editor.cursors.primary_position(), (0, 2));
@@ -819,8 +714,7 @@ mod tests {
 
     #[test]
     fn test_vim_editing_x_and_count() {
-        let mut editor =
-            CodeEditor::new("abcdef", "txt").with_vim_enabled(true);
+        let mut editor = CodeEditor::new("abcdef", "txt").with_vim_enabled(true);
 
         vim_keys(&mut editor, "x");
         assert_eq!(editor.content(), "bcdef");
@@ -838,20 +732,17 @@ mod tests {
 
     #[test]
     fn test_vim_editing_delete_change_yank_motions() {
-        let mut deleted =
-            CodeEditor::new("one two three", "txt").with_vim_enabled(true);
+        let mut deleted = CodeEditor::new("one two three", "txt").with_vim_enabled(true);
         vim_keys(&mut deleted, "dw");
         assert_eq!(deleted.content(), "two three");
         assert_eq!(deleted.vim_state.register.text, "one ");
 
-        let mut yanked =
-            CodeEditor::new("one two", "txt").with_vim_enabled(true);
+        let mut yanked = CodeEditor::new("one two", "txt").with_vim_enabled(true);
         vim_keys(&mut yanked, "yw");
         assert_eq!(yanked.content(), "one two");
         assert_eq!(yanked.vim_state.register.text, "one ");
 
-        let mut changed =
-            CodeEditor::new("one two", "txt").with_vim_enabled(true);
+        let mut changed = CodeEditor::new("one two", "txt").with_vim_enabled(true);
         focus_editor(&mut changed);
         vim_keys(&mut changed, "ce");
         assert_eq!(changed.content(), " two");
@@ -885,23 +776,20 @@ mod tests {
 
     #[test]
     fn test_vim_editing_doubled_line_operators() {
-        let mut deleted =
-            CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
+        let mut deleted = CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
         vim_keys(&mut deleted, "dd");
         assert_eq!(deleted.content(), "two\nthree");
         assert_eq!(deleted.vim_state.register.text, "one\n");
         assert_eq!(deleted.vim_state.register.kind, VimRegisterKind::Linewise);
 
-        let mut yanked =
-            CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
+        let mut yanked = CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
         yanked.cursors.set_single((1, 1));
         vim_keys(&mut yanked, "yy");
         assert_eq!(yanked.content(), "one\ntwo\nthree");
         assert_eq!(yanked.vim_state.register.text, "two\n");
         assert_eq!(yanked.vim_state.register.kind, VimRegisterKind::Linewise);
 
-        let mut changed =
-            CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
+        let mut changed = CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
         changed.cursors.set_single((1, 1));
         vim_keys(&mut changed, "cc");
         assert_eq!(changed.content(), "one\nthree");
@@ -922,19 +810,12 @@ mod tests {
             "one\nfour",
             "two\nthree\n",
         );
-        assert_vim_delete(
-            "one\ntwo\nthree",
-            (0, 0),
-            "2dd",
-            "three",
-            "one\ntwo\n",
-        );
+        assert_vim_delete("one\ntwo\nthree", (0, 0), "2dd", "three", "one\ntwo\n");
     }
 
     #[test]
     fn test_vim_editing_visual_operators() {
-        let mut deleted =
-            CodeEditor::new("abcd\nefgh", "txt").with_vim_enabled(true);
+        let mut deleted = CodeEditor::new("abcd\nefgh", "txt").with_vim_enabled(true);
         deleted.cursors.set_single((0, 1));
         vim_keys(&mut deleted, "vld");
         assert_eq!(deleted.content(), "ad\nefgh");
@@ -945,8 +826,7 @@ mod tests {
         );
         assert_eq!(deleted.vim_mode(), Some(VimMode::Normal));
 
-        let mut yanked =
-            CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
+        let mut yanked = CodeEditor::new("one\ntwo\nthree", "txt").with_vim_enabled(true);
         yanked.cursors.set_single((1, 1));
         vim_keys(&mut yanked, "Vjy");
         assert_eq!(yanked.content(), "one\ntwo\nthree");
@@ -967,26 +847,22 @@ mod tests {
 
     #[test]
     fn test_vim_editing_characterwise_and_linewise_paste() {
-        let mut characterwise =
-            CodeEditor::new("abc", "txt").with_vim_enabled(true);
+        let mut characterwise = CodeEditor::new("abc", "txt").with_vim_enabled(true);
         vim_keys(&mut characterwise, "yl2lp");
         assert_eq!(characterwise.content(), "abca");
         assert_eq!(characterwise.cursors.primary_position(), (0, 3));
 
-        let mut characterwise_before =
-            CodeEditor::new("abc", "txt").with_vim_enabled(true);
+        let mut characterwise_before = CodeEditor::new("abc", "txt").with_vim_enabled(true);
         vim_keys(&mut characterwise_before, "yl2lP");
         assert_eq!(characterwise_before.content(), "abac");
         assert_eq!(characterwise_before.cursors.primary_position(), (0, 2));
 
-        let mut linewise =
-            CodeEditor::new("one\ntwo", "txt").with_vim_enabled(true);
+        let mut linewise = CodeEditor::new("one\ntwo", "txt").with_vim_enabled(true);
         vim_keys(&mut linewise, "yyp");
         assert_eq!(linewise.content(), "one\none\ntwo");
         assert_eq!(linewise.cursors.primary_position(), (1, 0));
 
-        let mut linewise_before =
-            CodeEditor::new("one\ntwo", "txt").with_vim_enabled(true);
+        let mut linewise_before = CodeEditor::new("one\ntwo", "txt").with_vim_enabled(true);
         linewise_before.cursors.set_single((1, 0));
         vim_keys(&mut linewise_before, "yyP");
         assert_eq!(linewise_before.content(), "one\ntwo\ntwo");
@@ -998,8 +874,7 @@ mod tests {
         // Vim paste rests the caret on the pasted text rather than after it;
         // undo must still remove exactly what was pasted.
         for keys in ["ylp", "ylP", "yl2lp", "yl2lP"] {
-            let mut editor =
-                CodeEditor::new("abc", "txt").with_vim_enabled(true);
+            let mut editor = CodeEditor::new("abc", "txt").with_vim_enabled(true);
             vim_keys(&mut editor, keys);
             assert_ne!(editor.content(), "abc", "keys: {keys}");
 
@@ -1008,8 +883,7 @@ mod tests {
         }
 
         for keys in ["yyp", "yyP"] {
-            let mut editor =
-                CodeEditor::new("one\ntwo", "txt").with_vim_enabled(true);
+            let mut editor = CodeEditor::new("one\ntwo", "txt").with_vim_enabled(true);
             vim_keys(&mut editor, keys);
             assert_ne!(editor.content(), "one\ntwo", "keys: {keys}");
 
@@ -1021,8 +895,7 @@ mod tests {
     #[test]
     fn test_vim_editing_operator_counts_multiply() {
         let mut editor =
-            CodeEditor::new("one two three four five six seven", "txt")
-                .with_vim_enabled(true);
+            CodeEditor::new("one two three four five six seven", "txt").with_vim_enabled(true);
 
         vim_keys(&mut editor, "2d3w");
 
@@ -1036,8 +909,7 @@ mod tests {
     #[test]
     fn test_vim_editing_undo_redo_is_one_command() {
         let original = "one two three";
-        let mut editor =
-            CodeEditor::new(original, "txt").with_vim_enabled(true);
+        let mut editor = CodeEditor::new(original, "txt").with_vim_enabled(true);
         focus_editor(&mut editor);
 
         vim_keys(&mut editor, "cw");
@@ -1069,11 +941,10 @@ mod tests {
     #[test]
     fn test_vim_editing_emits_incremental_lsp_change() {
         let changes = Rc::new(RefCell::new(Vec::new()));
-        let client = VimTestLspClient { changes: Rc::clone(&changes) };
-        let content = (0..10)
-            .map(|line| format!("line{line}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let client = VimTestLspClient {
+            changes: Rc::clone(&changes),
+        };
+        let content = (0..10).map(|line| format!("line{line}")).collect::<Vec<_>>().join("\n");
         let mut editor = CodeEditor::new(&content, "rs").with_vim_enabled(true);
         editor.attach_lsp(
             Box::new(client),

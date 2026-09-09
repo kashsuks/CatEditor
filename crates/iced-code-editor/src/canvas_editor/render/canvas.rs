@@ -41,8 +41,7 @@ impl canvas::Program<Message> for CodeEditor {
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
-        let visual_lines: Rc<Vec<VisualLine>> =
-            self.visual_lines_cached(bounds.width);
+        let visual_lines: Rc<Vec<VisualLine>> = self.visual_lines_cached(bounds.width);
 
         // Prefer the tracked viewport height when available, but fall back to
         // the current bounds during initial layout when viewport metrics have
@@ -52,21 +51,18 @@ impl canvas::Program<Message> for CodeEditor {
         } else {
             bounds.height
         };
-        let first_visible_line =
-            (self.viewport_scroll / self.line_height).floor() as usize;
+        let first_visible_line = (self.viewport_scroll / self.line_height).floor() as usize;
         let visible_lines_count =
             (effective_viewport_height / self.line_height).ceil() as usize + 2;
-        let last_visible_line =
-            (first_visible_line + visible_lines_count).min(visual_lines.len());
+        let last_visible_line = (first_visible_line + visible_lines_count).min(visual_lines.len());
 
-        let (start_idx, end_idx) =
-            if self.cache_window_end_line > self.cache_window_start_line {
-                let s = self.cache_window_start_line.min(visual_lines.len());
-                let e = self.cache_window_end_line.min(visual_lines.len());
-                (s, e)
-            } else {
-                (first_visible_line, last_visible_line)
-            };
+        let (start_idx, end_idx) = if self.cache_window_end_line > self.cache_window_start_line {
+            let s = self.cache_window_start_line.min(visual_lines.len());
+            let e = self.cache_window_end_line.min(visual_lines.len());
+            (s, e)
+        } else {
+            (first_visible_line, last_visible_line)
+        };
 
         // Split rendering into two cached layers:
         // - content: expensive, mostly static text/gutter rendering
@@ -75,108 +71,70 @@ impl canvas::Program<Message> for CodeEditor {
         // This keeps selection dragging and cursor blinking smooth by avoiding
         // invalidation of the text layer on every overlay update.
         let visual_lines_for_content = visual_lines.clone();
-        let content_geometry =
-            self.content_cache.draw(renderer, bounds.size(), |frame| {
-                // Bound sequential syntect catch-up work for this frame. This
-                // keeps a deep jump or a cache truncation in a huge file from
-                // blocking the UI while parsing every preceding line.
-                self.highlight_lines_remaining.set(HIGHLIGHT_LINES_PER_FRAME);
+        let content_geometry = self.content_cache.draw(renderer, bounds.size(), |frame| {
+            // Bound sequential syntect catch-up work for this frame. This
+            // keeps a deep jump or a cache truncation in a huge file from
+            // blocking the UI while parsing every preceding line.
+            self.highlight_lines_remaining.set(HIGHLIGHT_LINES_PER_FRAME);
 
-                // syntect initialization is relatively expensive; keep it global.
-                let syntax_set = SYNTAX_SET.get_or_init(|| {
-                    #[cfg(feature = "two-face")]
-                    {
-                        two_face::syntax::extra_newlines()
-                    }
-                    #[cfg(not(feature = "two-face"))]
-                    {
-                        SyntaxSet::load_defaults_newlines()
-                    }
-                });
-                let theme_set = THEME_SET.get_or_init(ThemeSet::load_defaults);
-                let syntax_theme = theme_set
-                    .themes
-                    .get("base16-ocean.dark")
-                    .or_else(|| theme_set.themes.values().next());
-
-                // Normalize common language aliases/extensions used by consumers.
-                let syntax_ref = match self.syntax.as_str() {
-                    "python" => syntax_set.find_syntax_by_extension("py"),
-                    "rust" => syntax_set.find_syntax_by_extension("rs"),
-                    "javascript" => syntax_set.find_syntax_by_extension("js"),
-                    "htm" => syntax_set.find_syntax_by_extension("html"),
-                    "svg" => syntax_set.find_syntax_by_extension("xml"),
-                    "markdown" => syntax_set.find_syntax_by_extension("md"),
-                    "text" => Some(syntax_set.find_syntax_plain_text()),
-                    _ => syntax_set
-                        .find_syntax_by_extension(self.syntax.as_str()),
+            // syntect initialization is relatively expensive; keep it global.
+            let syntax_set = SYNTAX_SET.get_or_init(|| {
+                #[cfg(feature = "two-face")]
+                {
+                    two_face::syntax::extra_newlines()
                 }
-                .or(Some(syntax_set.find_syntax_plain_text()));
+                #[cfg(not(feature = "two-face"))]
+                {
+                    SyntaxSet::load_defaults_newlines()
+                }
+            });
+            let theme_set = THEME_SET.get_or_init(ThemeSet::load_defaults);
+            let syntax_theme = theme_set
+                .themes
+                .get("base16-ocean.dark")
+                .or_else(|| theme_set.themes.values().next());
 
-                let ctx = RenderContext {
-                    visual_lines: visual_lines_for_content.as_ref(),
-                    bounds_width: bounds.width,
-                    gutter_width: self.gutter_width(),
-                    line_height: self.line_height,
-                    font_size: self.font_size,
-                    full_char_width: self.full_char_width,
-                    char_width: self.char_width,
-                    font: self.font,
-                    horizontal_scroll_offset: self.horizontal_scroll_offset,
-                };
+            // Normalize common language aliases/extensions used by consumers.
+            let syntax_ref = match self.syntax.as_str() {
+                "python" => syntax_set.find_syntax_by_extension("py"),
+                "rust" => syntax_set.find_syntax_by_extension("rs"),
+                "javascript" => syntax_set.find_syntax_by_extension("js"),
+                "htm" => syntax_set.find_syntax_by_extension("html"),
+                "svg" => syntax_set.find_syntax_by_extension("xml"),
+                "markdown" => syntax_set.find_syntax_by_extension("md"),
+                "text" => Some(syntax_set.find_syntax_plain_text()),
+                _ => syntax_set.find_syntax_by_extension(self.syntax.as_str()),
+            }
+            .or(Some(syntax_set.find_syntax_plain_text()));
 
-                // Clip code text to the code area (right of gutter) so that
-                // horizontal scrolling cannot cause text to bleed into the gutter.
-                // Note: iced renders ALL text on top of ALL geometry, so a
-                // fill_rectangle cannot mask text bleed — with_clip is required.
-                let code_clip = Rectangle {
-                    x: ctx.gutter_width,
-                    y: 0.0,
-                    width: (bounds.width - ctx.gutter_width).max(0.0),
-                    height: bounds.height,
-                };
-                frame.with_clip(code_clip, |f| {
-                    // Scoped to this pass: the memo is keyed on line index
-                    // alone, so it must not outlive a buffer that cannot
-                    // change underneath it.
-                    let mut color_literals =
-                        color_preview::LineLiterals::default();
+            let ctx = RenderContext {
+                visual_lines: visual_lines_for_content.as_ref(),
+                bounds_width: bounds.width,
+                gutter_width: self.gutter_width(),
+                line_height: self.line_height,
+                font_size: self.font_size,
+                full_char_width: self.full_char_width,
+                char_width: self.char_width,
+                font: self.font,
+                horizontal_scroll_offset: self.horizontal_scroll_offset,
+            };
 
-                    for (idx, visual_line) in visual_lines_for_content
-                        .iter()
-                        .enumerate()
-                        .skip(start_idx)
-                        .take(end_idx.saturating_sub(start_idx))
-                    {
-                        let y = idx as f32 * self.line_height;
-                        self.draw_indent_guides(f, &ctx, visual_line, y);
-                        self.draw_text_with_syntax_highlighting(
-                            f,
-                            &ctx,
-                            visual_line,
-                            y,
-                            syntax_ref,
-                            syntax_set,
-                            syntax_theme,
-                        );
-                        self.draw_bracket_pair_colors(f, &ctx, visual_line, y);
-                        self.draw_color_swatches(
-                            f,
-                            &ctx,
-                            visual_line,
-                            y,
-                            &mut color_literals,
-                        );
-                        self.draw_fold_collapsed_marker(
-                            f,
-                            &ctx,
-                            visual_line,
-                            y,
-                        );
-                    }
-                });
+            // Clip code text to the code area (right of gutter) so that
+            // horizontal scrolling cannot cause text to bleed into the gutter.
+            // Note: iced renders ALL text on top of ALL geometry, so a
+            // fill_rectangle cannot mask text bleed — with_clip is required.
+            let code_clip = Rectangle {
+                x: ctx.gutter_width,
+                y: 0.0,
+                width: (bounds.width - ctx.gutter_width).max(0.0),
+                height: bounds.height,
+            };
+            frame.with_clip(code_clip, |f| {
+                // Scoped to this pass: the memo is keyed on line index
+                // alone, so it must not outlive a buffer that cannot
+                // change underneath it.
+                let mut color_literals = color_preview::LineLiterals::default();
 
-                // Draw line numbers in the gutter (no clip — fixed position)
                 for (idx, visual_line) in visual_lines_for_content
                     .iter()
                     .enumerate()
@@ -184,48 +142,66 @@ impl canvas::Program<Message> for CodeEditor {
                     .take(end_idx.saturating_sub(start_idx))
                 {
                     let y = idx as f32 * self.line_height;
-                    self.draw_line_numbers(frame, &ctx, visual_line, y);
-                }
-            });
-
-        let visual_lines_for_overlay = visual_lines;
-        let overlay_geometry =
-            self.overlay_cache.draw(renderer, bounds.size(), |frame| {
-                // The overlay layer shares the same visual lines, but draws only
-                // elements that change without modifying the buffer content.
-                let ctx = RenderContext {
-                    visual_lines: visual_lines_for_overlay.as_ref(),
-                    bounds_width: bounds.width,
-                    gutter_width: self.gutter_width(),
-                    line_height: self.line_height,
-                    font_size: self.font_size,
-                    full_char_width: self.full_char_width,
-                    char_width: self.char_width,
-                    font: self.font,
-                    horizontal_scroll_offset: self.horizontal_scroll_offset,
-                };
-
-                for (idx, visual_line) in visual_lines_for_overlay
-                    .iter()
-                    .enumerate()
-                    .skip(start_idx)
-                    .take(end_idx.saturating_sub(start_idx))
-                {
-                    let y = idx as f32 * self.line_height;
-                    self.draw_current_line_highlight(
-                        frame,
+                    self.draw_indent_guides(f, &ctx, visual_line, y);
+                    self.draw_text_with_syntax_highlighting(
+                        f,
                         &ctx,
                         visual_line,
                         y,
+                        syntax_ref,
+                        syntax_set,
+                        syntax_theme,
                     );
+                    self.draw_bracket_pair_colors(f, &ctx, visual_line, y);
+                    self.draw_color_swatches(f, &ctx, visual_line, y, &mut color_literals);
+                    self.draw_fold_collapsed_marker(f, &ctx, visual_line, y);
                 }
-
-                self.draw_search_highlights(frame, &ctx, start_idx, end_idx);
-                self.draw_matching_bracket_highlight(frame, &ctx);
-                self.draw_selection_highlight(frame, &ctx);
-                self.draw_jump_link_highlight(frame, &ctx, bounds, _cursor);
-                self.draw_cursor(frame, &ctx);
             });
+
+            // Draw line numbers in the gutter (no clip — fixed position)
+            for (idx, visual_line) in visual_lines_for_content
+                .iter()
+                .enumerate()
+                .skip(start_idx)
+                .take(end_idx.saturating_sub(start_idx))
+            {
+                let y = idx as f32 * self.line_height;
+                self.draw_line_numbers(frame, &ctx, visual_line, y);
+            }
+        });
+
+        let visual_lines_for_overlay = visual_lines;
+        let overlay_geometry = self.overlay_cache.draw(renderer, bounds.size(), |frame| {
+            // The overlay layer shares the same visual lines, but draws only
+            // elements that change without modifying the buffer content.
+            let ctx = RenderContext {
+                visual_lines: visual_lines_for_overlay.as_ref(),
+                bounds_width: bounds.width,
+                gutter_width: self.gutter_width(),
+                line_height: self.line_height,
+                font_size: self.font_size,
+                full_char_width: self.full_char_width,
+                char_width: self.char_width,
+                font: self.font,
+                horizontal_scroll_offset: self.horizontal_scroll_offset,
+            };
+
+            for (idx, visual_line) in visual_lines_for_overlay
+                .iter()
+                .enumerate()
+                .skip(start_idx)
+                .take(end_idx.saturating_sub(start_idx))
+            {
+                let y = idx as f32 * self.line_height;
+                self.draw_current_line_highlight(frame, &ctx, visual_line, y);
+            }
+
+            self.draw_search_highlights(frame, &ctx, start_idx, end_idx);
+            self.draw_matching_bracket_highlight(frame, &ctx);
+            self.draw_selection_highlight(frame, &ctx);
+            self.draw_jump_link_highlight(frame, &ctx, bounds, _cursor);
+            self.draw_cursor(frame, &ctx);
+        });
 
         vec![content_geometry, overlay_geometry]
     }
@@ -253,7 +229,7 @@ impl canvas::Program<Message> for CodeEditor {
             Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
                 self.modifiers.set(*modifiers);
                 None
-            }
+            },
             Event::Keyboard(keyboard::Event::KeyPressed {
                 key,
                 modified_key,
@@ -262,27 +238,14 @@ impl canvas::Program<Message> for CodeEditor {
                 ..
             }) => {
                 self.modifiers.set(*modifiers);
-                self.handle_keyboard_event(
-                    key,
-                    modified_key,
-                    modifiers,
-                    text,
-                    bounds,
-                    &cursor,
-                )
-            }
-            Event::Keyboard(keyboard::Event::KeyReleased {
-                modifiers, ..
-            }) => {
+                self.handle_keyboard_event(key, modified_key, modifiers, text, bounds, &cursor)
+            },
+            Event::Keyboard(keyboard::Event::KeyReleased { modifiers, .. }) => {
                 self.modifiers.set(*modifiers);
                 None
-            }
-            Event::Mouse(mouse_event) => {
-                self.handle_mouse_event(mouse_event, bounds, &cursor)
-            }
-            Event::InputMethod(ime_event) => {
-                self.handle_ime_event(ime_event, bounds, &cursor)
-            }
+            },
+            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event, bounds, &cursor),
+            Event::InputMethod(ime_event) => self.handle_ime_event(ime_event, bounds, &cursor),
             _ => None,
         }
     }
@@ -323,22 +286,14 @@ mod tests {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> mouse::Interaction {
-        canvas::Program::<Message>::mouse_interaction(
-            editor,
-            &(),
-            bounds,
-            cursor,
-        )
+        canvas::Program::<Message>::mouse_interaction(editor, &(), bounds, cursor)
     }
 
     #[test]
     fn test_mouse_interaction_uses_text_cursor_in_editable_area() {
         let editor = CodeEditor::new("fn main() {}", "rs");
         let bounds = Rectangle::new(Point::ORIGIN, Size::new(800.0, 600.0));
-        let cursor = mouse::Cursor::Available(Point::new(
-            editor.gutter_width() + 10.0,
-            10.0,
-        ));
+        let cursor = mouse::Cursor::Available(Point::new(editor.gutter_width() + 10.0, 10.0));
 
         assert_eq!(
             editor_mouse_interaction(&editor, bounds, cursor),

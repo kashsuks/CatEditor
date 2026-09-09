@@ -34,11 +34,8 @@ impl CodeEditor {
                 // Draw line number for first segment, centered in the number area.
                 let line_num = visual_line.logical_line + 1;
                 let line_num_text = format!("{}", line_num);
-                let text_width = measure_text_width(
-                    &line_num_text,
-                    ctx.full_char_width,
-                    ctx.char_width,
-                );
+                let text_width =
+                    measure_text_width(&line_num_text, ctx.full_char_width, ctx.char_width);
                 let x_pos = (number_area_width - text_width) / 2.0;
                 frame.fill_text(canvas::Text {
                     content: line_num_text,
@@ -88,8 +85,7 @@ impl CodeEditor {
             return;
         }
 
-        if !folding::is_line_fold_header(&self.buffer, visual_line.logical_line)
-        {
+        if !folding::is_line_fold_header(&self.buffer, visual_line.logical_line) {
             return;
         }
 
@@ -130,14 +126,8 @@ impl CodeEditor {
         }
 
         let line_content = self.buffer.line(visual_line.logical_line);
-        let line_width = measure_text_width(
-            line_content,
-            ctx.full_char_width,
-            ctx.char_width,
-        );
-        let x = ctx.gutter_width + 5.0 - ctx.horizontal_scroll_offset
-            + line_width
-            + 6.0;
+        let line_width = measure_text_width(line_content, ctx.full_char_width, ctx.char_width);
+        let x = ctx.gutter_width + 5.0 - ctx.horizontal_scroll_offset + line_width + 6.0;
         frame.fill_text(canvas::Text {
             content: "⋯".to_string(),
             position: Point::new(x, y + 2.0),

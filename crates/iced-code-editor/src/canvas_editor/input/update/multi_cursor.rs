@@ -16,10 +16,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// `Task::none()` — no async work needed
-    pub(crate) fn handle_alt_click_msg(
-        &mut self,
-        point: iced::Point,
-    ) -> Task<Message> {
+    pub(crate) fn handle_alt_click_msg(&mut self, point: iced::Point) -> Task<Message> {
         if self.vim_enabled {
             return Task::none();
         }
@@ -83,9 +80,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// `Task::none()`
-    pub(crate) fn handle_select_next_occurrence_msg(
-        &mut self,
-    ) -> Task<Message> {
+    pub(crate) fn handle_select_next_occurrence_msg(&mut self) -> Task<Message> {
         if self.vim_enabled {
             return Task::none();
         }
@@ -118,11 +113,7 @@ impl CodeEditor {
             .cursors
             .as_slice()
             .last()
-            .map(|last| {
-                last.selection_range()
-                    .map(|(_, end)| end)
-                    .unwrap_or(last.position)
-            })
+            .map(|last| last.selection_range().map(|(_, end)| end).unwrap_or(last.position))
             .unwrap_or((0, 0));
 
         // Search forward from search_start for the next occurrence
@@ -135,7 +126,11 @@ impl CodeEditor {
             let line_str = self.buffer.line(line_idx);
 
             // On the first iteration, start after start_col; on wrap-around, start from 0
-            let search_col = if line_offset == 0 { start_col } else { 0 };
+            let search_col = if line_offset == 0 {
+                start_col
+            } else {
+                0
+            };
 
             // Build substring from search_col onward (char-indexed)
             let prefix_bytes = char_to_byte_index(line_str, search_col);
@@ -144,8 +139,7 @@ impl CodeEditor {
             // The search_text is also char-based; find it as a substring
             if let Some(byte_offset) = haystack.find(search_text.as_str()) {
                 // Convert byte_offset back to char offset
-                let char_start =
-                    search_col + haystack[..byte_offset].chars().count();
+                let char_start = search_col + haystack[..byte_offset].chars().count();
                 let char_end = char_start + search_char_len;
 
                 // Build cursor with selection for the found occurrence
@@ -224,12 +218,7 @@ mod tests {
         assert!(editor.cursors.is_multi());
         // New cursor should be at line 2, col 3
         assert_eq!(
-            editor
-                .cursors
-                .as_slice()
-                .iter()
-                .find(|c| c.position.0 == 2)
-                .map(|c| c.position),
+            editor.cursors.as_slice().iter().find(|c| c.position.0 == 2).map(|c| c.position),
             Some((2, 3))
         );
     }

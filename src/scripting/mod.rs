@@ -69,7 +69,10 @@ pub fn eval_script(source: &str) -> Result<Vec<EditorCommand>, String> {
         let commands = Arc::clone(&commands);
         let f = lua
             .create_function(move |_, name: String| -> LuaResult<()> {
-                commands.lock().unwrap_or_else(|e| e.into_inner()).push(EditorCommand::UseBuiltinTheme(name));
+                commands
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(EditorCommand::UseBuiltinTheme(name));
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
@@ -80,7 +83,10 @@ pub fn eval_script(source: &str) -> Result<Vec<EditorCommand>, String> {
         let commands = Arc::clone(&commands);
         let f = lua
             .create_function(move |_, (name, value): (String, String)| -> LuaResult<()> {
-                commands.lock().unwrap_or_else(|e| e.into_inner()).push(EditorCommand::SetThemeColor { name, value });
+                commands
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(EditorCommand::SetThemeColor { name, value });
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
@@ -91,7 +97,10 @@ pub fn eval_script(source: &str) -> Result<Vec<EditorCommand>, String> {
         let commands = Arc::clone(&commands);
         let f = lua
             .create_function(move |_, visible: bool| -> LuaResult<()> {
-                commands.lock().unwrap_or_else(|e| e.into_inner()).push(EditorCommand::SetSidebarVisible(visible));
+                commands
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(EditorCommand::SetSidebarVisible(visible));
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
@@ -102,7 +111,10 @@ pub fn eval_script(source: &str) -> Result<Vec<EditorCommand>, String> {
         let commands = Arc::clone(&commands);
         let f = lua
             .create_function(move |_, width: f32| -> LuaResult<()> {
-                commands.lock().unwrap_or_else(|e| e.into_inner()).push(EditorCommand::SetSidebarWidth(width));
+                commands
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .push(EditorCommand::SetSidebarWidth(width));
                 Ok(())
             })
             .map_err(|e| e.to_string())?;

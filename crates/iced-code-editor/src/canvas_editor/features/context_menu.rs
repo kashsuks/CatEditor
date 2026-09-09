@@ -4,8 +4,8 @@ use iced::widget::{Space, button, column, container, row, text};
 use iced::{Background, Border, Color, Element, Length, Shadow, Theme, Vector};
 
 use super::actions::{
-    ActionContext, COPY_SHORTCUT, CUT_SHORTCUT, PASTE_SHORTCUT, REDO_SHORTCUT,
-    SELECT_ALL_SHORTCUT, UNDO_SHORTCUT,
+    ActionContext, COPY_SHORTCUT, CUT_SHORTCUT, PASTE_SHORTCUT, REDO_SHORTCUT, SELECT_ALL_SHORTCUT,
+    UNDO_SHORTCUT,
 };
 use crate::canvas_editor::Message;
 use crate::i18n::Translations;
@@ -290,7 +290,11 @@ impl From<ContextMenuItem> for ContextMenuEntry {
 
 #[derive(Debug, Clone)]
 enum MenuEntry {
-    Item { label: String, shortcut: String, message: Option<Message> },
+    Item {
+        label: String,
+        shortcut: String,
+        message: Option<Message>,
+    },
     Separator,
 }
 
@@ -311,19 +315,14 @@ fn custom_entries(entries: &[ContextMenuEntry]) -> Vec<MenuEntry> {
             ContextMenuEntry::Item(item) => MenuEntry::Item {
                 label: item.label.clone(),
                 shortcut: item.shortcut.clone().unwrap_or_default(),
-                message: item
-                    .enabled
-                    .then(|| Message::CustomContextMenuAction(item.id.clone())),
+                message: item.enabled.then(|| Message::CustomContextMenuAction(item.id.clone())),
             },
             ContextMenuEntry::Separator => MenuEntry::Separator,
         })
         .collect()
 }
 
-fn default_entries(
-    context: ActionContext,
-    translations: &Translations,
-) -> Vec<MenuEntry> {
+fn default_entries(context: ActionContext, translations: &Translations) -> Vec<MenuEntry> {
     let mut entries = if context.reveal_in_file_manager_enabled {
         vec![
             MenuEntry::Item {
@@ -400,29 +399,24 @@ pub(crate) fn view(
     context: ActionContext,
     translations: Translations,
 ) -> Element<'static, Message> {
-    let items = build_entries(
-        custom,
-        default_context_menu_enabled,
-        context,
-        &translations,
-    )
-    .into_iter()
-    .map(|entry| match entry {
-        MenuEntry::Item { label, shortcut, message } => {
-            menu_item(label, shortcut, message)
-        }
-        MenuEntry::Separator => separator(),
-    })
-    .collect::<Vec<_>>();
+    let items = build_entries(custom, default_context_menu_enabled, context, &translations)
+        .into_iter()
+        .map(|entry| match entry {
+            MenuEntry::Item {
+                label,
+                shortcut,
+                message,
+            } => menu_item(label, shortcut, message),
+            MenuEntry::Separator => separator(),
+        })
+        .collect::<Vec<_>>();
 
     container(column(items).spacing(1).padding(4))
         .width(Length::Fixed(MENU_WIDTH))
         .style(|theme: &Theme| {
             let palette = theme.extended_palette();
             container::Style {
-                background: Some(Background::Color(
-                    palette.background.weak.color,
-                )),
+                background: Some(Background::Color(palette.background.weak.color)),
                 text_color: Some(palette.background.weak.text),
                 border: Border {
                     color: palette.background.strong.color,
@@ -464,16 +458,16 @@ fn menu_item(
             } else {
                 palette.background.weak.text.scale_alpha(0.35)
             };
-            let background = matches!(
-                status,
-                button::Status::Hovered | button::Status::Pressed
-            )
-            .then_some(Background::Color(palette.background.strong.color));
+            let background = matches!(status, button::Status::Hovered | button::Status::Pressed)
+                .then_some(Background::Color(palette.background.strong.color));
 
             button::Style {
                 background,
                 text_color,
-                border: Border { radius: 4.0.into(), ..Border::default() },
+                border: Border {
+                    radius: 4.0.into(),
+                    ..Border::default()
+                },
                 ..button::Style::default()
             }
         })
@@ -481,17 +475,15 @@ fn menu_item(
 }
 
 fn separator() -> Element<'static, Message> {
-    let line =
-        container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
-            .style(|theme: &Theme| {
-                let palette = theme.extended_palette();
-                container::Style {
-                    background: Some(Background::Color(
-                        palette.background.strong.color,
-                    )),
-                    ..container::Style::default()
-                }
-            });
+    let line = container(Space::new().width(Length::Fill).height(Length::Fixed(1.0))).style(
+        |theme: &Theme| {
+            let palette = theme.extended_palette();
+            container::Style {
+                background: Some(Background::Color(palette.background.strong.color)),
+                ..container::Style::default()
+            }
+        },
+    );
 
     container(line).padding([3, 7]).into()
 }
@@ -549,10 +541,7 @@ mod tests {
         assert_eq!(entries[5].label(), Some("粘贴"));
         assert_eq!(entries[7].label(), Some("选择全部"));
 
-        let custom = custom_entries(&[ContextMenuEntry::item(
-            "custom.format",
-            "Format document",
-        )]);
+        let custom = custom_entries(&[ContextMenuEntry::item("custom.format", "Format document")]);
         assert_eq!(custom[0].label(), Some("Format document"));
     }
 

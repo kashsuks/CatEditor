@@ -26,10 +26,7 @@ impl CodeEditor {
     }
 
     /// Updates the one-based line number entered by the user.
-    pub(crate) fn handle_goto_line_changed_msg(
-        &mut self,
-        query: &str,
-    ) -> Task<Message> {
+    pub(crate) fn handle_goto_line_changed_msg(&mut self, query: &str) -> Task<Message> {
         self.goto_line_state.query = query.to_string();
         Task::none()
     }
@@ -40,9 +37,8 @@ impl CodeEditor {
             return Task::none();
         };
 
-        let target_line = one_based_line
-            .saturating_sub(1)
-            .min(self.buffer.line_count().saturating_sub(1));
+        let target_line =
+            one_based_line.saturating_sub(1).min(self.buffer.line_count().saturating_sub(1));
         while self.hidden_lines_set().contains(&target_line) {
             let collapsed_count = self.collapsed_folds.len();
             self.unfold_at(target_line);
@@ -99,8 +95,7 @@ mod tests {
 
     #[test]
     fn test_submit_goto_line_reveals_folded_target() {
-        let mut editor =
-            CodeEditor::new("root\n    child\n        nested\ntail", "rs");
+        let mut editor = CodeEditor::new("root\n    child\n        nested\ntail", "rs");
         editor.fold_all();
         assert!(editor.hidden_lines_set().contains(&1));
         let _ = editor.update(&Message::OpenGotoLine);

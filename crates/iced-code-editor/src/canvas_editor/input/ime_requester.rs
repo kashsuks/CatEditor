@@ -94,7 +94,11 @@ impl ImeRequester {
         cursor: Rectangle,
         preedit: Option<input_method::Preedit<String>>,
     ) -> Self {
-        Self { enabled, cursor, preedit }
+        Self {
+            enabled,
+            cursor,
+            preedit,
+        }
     }
 }
 
@@ -239,16 +243,12 @@ where
                 let ime = input_method::InputMethod::Enabled {
                     cursor: cursor_rect,
                     purpose: input_method::Purpose::Normal,
-                    preedit: self
-                        .preedit
-                        .as_ref()
-                        .map(input_method::Preedit::as_ref),
+                    preedit: self.preedit.as_ref().map(input_method::Preedit::as_ref),
                 };
                 shell.request_input_method(&ime);
             } else {
                 // Disable IME when the editor loses focus
-                let disabled: input_method::InputMethod<&str> =
-                    input_method::InputMethod::Disabled;
+                let disabled: input_method::InputMethod<&str> = input_method::InputMethod::Disabled;
                 shell.request_input_method(&disabled);
             }
         }
@@ -298,8 +298,7 @@ where
         _renderer: &iced::Renderer,
         _viewport: &Rectangle,
         _translation: Vector,
-    ) -> Option<iced::overlay::Element<'a, Message, iced::Theme, iced::Renderer>>
-    {
+    ) -> Option<iced::overlay::Element<'a, Message, iced::Theme, iced::Renderer>> {
         None
     }
 }
@@ -318,8 +317,7 @@ mod tests {
     #[test]
     fn test_ime_requester_initialization() {
         // Setup test data
-        let cursor =
-            Rectangle::new(Point::new(10.0, 10.0), Size::new(2.0, 20.0));
+        let cursor = Rectangle::new(Point::new(10.0, 10.0), Size::new(2.0, 20.0));
         let preedit = Some(input_method::Preedit {
             content: "test".to_string(),
             selection: None,
@@ -353,26 +351,24 @@ mod tests {
         let requester = ImeRequester::new(false, cursor, None);
 
         // Test size strategy - should be Shrink/Shrink for invisible widget
-        let size =
-            <ImeRequester as Widget<(), iced::Theme, iced::Renderer>>::size(
-                &requester,
-            );
+        let size = <ImeRequester as Widget<(), iced::Theme, iced::Renderer>>::size(&requester);
         assert_eq!(size.width, Length::Shrink, "Width should be Shrink");
         assert_eq!(size.height, Length::Shrink, "Height should be Shrink");
 
         // Test widget tag - should be stateless since no state is managed
         assert_eq!(
-            <ImeRequester as Widget<(), iced::Theme, iced::Renderer>>::tag(
-                &requester
-            ),
+            <ImeRequester as Widget<(), iced::Theme, iced::Renderer>>::tag(&requester),
             tree::Tag::stateless(),
             "Widget should be stateless"
         );
 
         // Test widget state - should be None since no internal state exists
-        assert!(matches!(
-            <ImeRequester as Widget<(), iced::Theme, iced::Renderer>>::state(&requester),
-            tree::State::None
-        ), "Widget state should be None");
+        assert!(
+            matches!(
+                <ImeRequester as Widget<(), iced::Theme, iced::Renderer>>::state(&requester),
+                tree::State::None
+            ),
+            "Widget state should be None"
+        );
     }
 }

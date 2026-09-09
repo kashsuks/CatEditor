@@ -117,10 +117,17 @@ pub(crate) enum VimAction {
     /// distinguishes an explicitly typed count (e.g. `1G`) from the default
     /// of 1 (e.g. bare `G`), since some motions (`G`) behave differently in
     /// each case.
-    Motion { motion: VimMotion, count: usize, explicit_count: bool },
+    Motion {
+        motion: VimMotion,
+        count: usize,
+        explicit_count: bool,
+    },
     /// Enter Insert mode at the given position, repeating the eventual
     /// inserted text `count` times on exit.
-    Insert { position: VimInsertPosition, count: usize },
+    Insert {
+        position: VimInsertPosition,
+        count: usize,
+    },
     /// Apply an operator to the range covered by a motion, repeated `count`
     /// times. See [`VimAction::Motion`] for the meaning of `explicit_count`.
     Operator {
@@ -136,7 +143,10 @@ pub(crate) enum VimAction {
     /// Delete `count` characters under and after the cursor (`x`).
     DeleteCharacters { count: usize },
     /// Paste the unnamed register `count` times at the given position.
-    Paste { position: VimPastePosition, count: usize },
+    Paste {
+        position: VimPastePosition,
+        count: usize,
+    },
     /// Undo the last `count` grouped commands (`u`).
     Undo { count: usize },
     /// Redo the last `count` undone commands (`Ctrl+R`).
@@ -277,9 +287,7 @@ impl VimState {
         self.visual_active = Some(position);
     }
 
-    pub(crate) fn visual_positions(
-        &self,
-    ) -> Option<((usize, usize), (usize, usize))> {
+    pub(crate) fn visual_positions(&self) -> Option<((usize, usize), (usize, usize))> {
         Some((self.visual_anchor?, self.visual_active?))
     }
 
@@ -357,9 +365,9 @@ impl VimState {
             'O' => Some(self.insert(VimInsertPosition::NewLineAbove)),
             'v' => Some(self.set_mode(VimMode::Visual)),
             'V' => Some(self.set_mode(VimMode::VisualLine)),
-            'x' => {
-                Some(VimAction::DeleteCharacters { count: self.take_count() })
-            }
+            'x' => Some(VimAction::DeleteCharacters {
+                count: self.take_count(),
+            }),
             'p' => Some(VimAction::Paste {
                 position: VimPastePosition::AfterCursor,
                 count: self.take_count(),
@@ -368,8 +376,12 @@ impl VimState {
                 position: VimPastePosition::BeforeCursor,
                 count: self.take_count(),
             }),
-            'u' => Some(VimAction::Undo { count: self.take_count() }),
-            '\u{12}' => Some(VimAction::Redo { count: self.take_count() }),
+            'u' => Some(VimAction::Undo {
+                count: self.take_count(),
+            }),
+            '\u{12}' => Some(VimAction::Redo {
+                count: self.take_count(),
+            }),
             'n' => Some(VimAction::RepeatSearch { reverse: false }),
             'N' => Some(VimAction::RepeatSearch { reverse: true }),
             '/' => Some(self.open_command_line(VimCommandLineKind::Search)),
@@ -385,7 +397,10 @@ impl VimState {
 
     fn open_command_line(&mut self, kind: VimCommandLineKind) -> VimAction {
         self.clear_pending();
-        self.command_line = Some(VimCommandLine { kind, input: String::new() });
+        self.command_line = Some(VimCommandLine {
+            kind,
+            input: String::new(),
+        });
         VimAction::CommandLineChanged
     }
 
@@ -394,7 +409,7 @@ impl VimState {
             '\u{1b}' => {
                 self.command_line = None;
                 Some(VimAction::CommandLineChanged)
-            }
+            },
             '\u{8}' => {
                 if let Some(command_line) = self.command_line.as_mut()
                     && command_line.input.pop().is_none()
@@ -402,7 +417,7 @@ impl VimState {
                     self.command_line = None;
                 }
                 Some(VimAction::CommandLineChanged)
-            }
+            },
             '\n' | '\r' => {
                 let command_line = self.command_line.take()?;
                 if command_line.input.is_empty() {
@@ -412,33 +427,27 @@ impl VimState {
                     VimCommandLineKind::Search => {
                         self.last_search = Some(command_line.input.clone());
                         Some(VimAction::SubmitSearch(command_line.input))
-                    }
-                    VimCommandLineKind::Command => {
-                        match command_line.input.as_str() {
-                            "q" => Some(VimAction::ExitVimMode),
-                            "w" => {
-                                Some(VimAction::WriteFile { exit_vim: false })
-                            }
-                            "wq" => {
-                                Some(VimAction::WriteFile { exit_vim: true })
-                            }
-                            _ => command_line
-                                .input
-                                .parse::<usize>()
-                                .ok()
-                                .filter(|line| *line > 0)
-                                .map(VimAction::SubmitGotoLine)
-                                .or(Some(VimAction::CommandLineChanged)),
-                        }
-                    }
+                    },
+                    VimCommandLineKind::Command => match command_line.input.as_str() {
+                        "q" => Some(VimAction::ExitVimMode),
+                        "w" => Some(VimAction::WriteFile { exit_vim: false }),
+                        "wq" => Some(VimAction::WriteFile { exit_vim: true }),
+                        _ => command_line
+                            .input
+                            .parse::<usize>()
+                            .ok()
+                            .filter(|line| *line > 0)
+                            .map(VimAction::SubmitGotoLine)
+                            .or(Some(VimAction::CommandLineChanged)),
+                    },
                 }
-            }
+            },
             key if !key.is_control() => {
                 if let Some(command_line) = self.command_line.as_mut() {
                     command_line.input.push(key);
                 }
                 Some(VimAction::CommandLineChanged)
-            }
+            },
             _ => None,
         }
     }
@@ -464,9 +473,7 @@ impl VimState {
 
         if let Some(pending) = self.pending_operator {
             if pending == operator {
-                let count = self
-                    .pending_operator_count
-                    .saturating_mul(self.take_count());
+                let count = self.pending_operator_count.saturating_mul(self.take_count());
                 self.clear_pending();
                 return Some(VimAction::LineOperator { operator, count });
             }
@@ -483,15 +490,18 @@ impl VimState {
         let motion_count_explicit = self.count.is_some();
         let motion_count = self.take_count();
         if let Some(operator) = self.pending_operator {
-            let count =
-                self.pending_operator_count.saturating_mul(motion_count);
+            let count = self.pending_operator_count.saturating_mul(motion_count);
             // The operator's own count slot doesn't track whether it was
             // explicitly typed, so `1dG` vs `dG` stays ambiguous; this
             // approximates "explicit" for the combined count.
-            let explicit_count =
-                motion_count_explicit || self.pending_operator_count > 1;
+            let explicit_count = motion_count_explicit || self.pending_operator_count > 1;
             self.clear_pending();
-            VimAction::Operator { operator, motion, count, explicit_count }
+            VimAction::Operator {
+                operator,
+                motion,
+                count,
+                explicit_count,
+            }
         } else {
             self.g_prefix = false;
             VimAction::Motion {
@@ -504,12 +514,7 @@ impl VimState {
 
     fn push_count_digit(&mut self, key: char) {
         let digit = key.to_digit(10).unwrap_or_default() as usize;
-        self.count = Some(
-            self.count
-                .unwrap_or_default()
-                .saturating_mul(10)
-                .saturating_add(digit),
-        );
+        self.count = Some(self.count.unwrap_or_default().saturating_mul(10).saturating_add(digit));
     }
 
     fn take_count(&mut self) -> usize {
@@ -552,10 +557,7 @@ fn operator_for_key(key: char) -> Option<VimOperator> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        VimAction, VimMotion, VimOperator, VimRegister, VimRegisterKind,
-        VimState,
-    };
+    use super::{VimAction, VimMotion, VimOperator, VimRegister, VimRegisterKind, VimState};
 
     #[test]
     fn vim_parser_accumulates_count_and_operator() {
@@ -651,10 +653,7 @@ mod tests {
         assert_eq!(state.command_line_text().as_deref(), Some("/"));
 
         for key in "foo".chars() {
-            assert_eq!(
-                state.parse_key(key),
-                Some(VimAction::CommandLineChanged)
-            );
+            assert_eq!(state.parse_key(key), Some(VimAction::CommandLineChanged));
         }
         assert_eq!(state.command_line_text().as_deref(), Some("/foo"));
 
@@ -747,10 +746,7 @@ mod tests {
         let _ = state.parse_key('f');
         let _ = state.parse_key('o');
         let _ = state.parse_key('o');
-        assert_eq!(
-            state.status_line_text(),
-            ("/foo".to_owned(), String::new())
-        );
+        assert_eq!(state.status_line_text(), ("/foo".to_owned(), String::new()));
 
         let _ = state.parse_key('\u{1b}');
         let _ = state.parse_key('v');

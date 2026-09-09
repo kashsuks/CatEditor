@@ -132,11 +132,15 @@ impl TextBuffer {
     fn move_gap_to(&mut self, index: usize) {
         let target = index.min(self.line_count());
         while self.lines_before.len() < target {
-            let Some(line) = self.lines_after.pop() else { break };
+            let Some(line) = self.lines_after.pop() else {
+                break;
+            };
             self.lines_before.push(line);
         }
         while self.lines_before.len() > target {
-            let Some(line) = self.lines_before.pop() else { break };
+            let Some(line) = self.lines_before.pop() else {
+                break;
+            };
             self.lines_after.push(line);
         }
     }
@@ -163,7 +167,9 @@ impl TextBuffer {
     /// * `column` - Column position (UTF-8 character index)
     /// * `ch` - Character to insert
     pub fn insert_char(&mut self, line: usize, column: usize, ch: char) {
-        let Some(line_str) = self.line_mut(line) else { return };
+        let Some(line_str) = self.line_mut(line) else {
+            return;
+        };
         let byte_pos = char_to_byte_index(line_str, column);
         line_str.insert(byte_pos, ch);
     }
@@ -175,7 +181,9 @@ impl TextBuffer {
     /// * `line` - Line index
     /// * `column` - Column position where to split
     pub fn insert_newline(&mut self, line: usize, column: usize) {
-        let Some(line_str) = self.line_mut(line) else { return };
+        let Some(line_str) = self.line_mut(line) else {
+            return;
+        };
         let byte_pos = char_to_byte_index(line_str, column);
         let right = line_str.split_off(byte_pos);
         // `line_mut` leaves the gap after `line`; pushing here inserts the new
@@ -258,14 +266,10 @@ impl TextBuffer {
     /// * `col_start` - Column position to start replacing
     /// * `length` - Number of characters to replace
     /// * `new_text` - The text to insert
-    pub fn replace_range(
-        &mut self,
-        line: usize,
-        col_start: usize,
-        length: usize,
-        new_text: &str,
-    ) {
-        let Some(line_str) = self.line_mut(line) else { return };
+    pub fn replace_range(&mut self, line: usize, col_start: usize, length: usize, new_text: &str) {
+        let Some(line_str) = self.line_mut(line) else {
+            return;
+        };
         let (start_byte, end_byte) =
             char_range_to_byte_range(line_str, col_start, col_start + length);
 
@@ -285,7 +289,11 @@ impl TextBuffer {
         let line_count = self.line_count();
         let content_len = self.iter_lines().map(String::len).sum::<usize>()
             + line_count.saturating_sub(1) * eol.len()
-            + if self.trailing_newline { eol.len() } else { 0 };
+            + if self.trailing_newline {
+                eol.len()
+            } else {
+                0
+            };
         let mut content = String::with_capacity(content_len);
         for (index, line) in self.iter_lines().enumerate() {
             if index > 0 {
@@ -309,11 +317,7 @@ impl TextBuffer {
     /// [`Self::to_string`] — the two feed the same LSP document sync, and a
     /// CRLF file must not have some change payloads joined with `\n` while
     /// the full-text sync path (via `to_string`) uses `\r\n`.
-    pub(crate) fn line_range_to_string(
-        &self,
-        start: usize,
-        end_exclusive: usize,
-    ) -> String {
+    pub(crate) fn line_range_to_string(&self, start: usize, end_exclusive: usize) -> String {
         let eol = self.line_ending.as_str();
         let line_count = self.line_count();
         let start = start.min(line_count);
@@ -539,10 +543,7 @@ mod tests {
 
     #[test]
     fn test_gap_buffer_preserves_order_across_distant_edits() {
-        let content = (0..100)
-            .map(|line| format!("line-{line}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let content = (0..100).map(|line| format!("line-{line}")).collect::<Vec<_>>().join("\n");
         let mut buffer = TextBuffer::new(&content);
 
         buffer.insert_line(50, "middle".to_string());

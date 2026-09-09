@@ -39,11 +39,7 @@ const MAX_BLANK_RUN_SCAN: usize = 200;
 ///
 /// The number of guides to draw. Zero when `unit` is `0`, when `line` is out of
 /// bounds, or when the line sits at the top level.
-pub(crate) fn guide_levels(
-    buffer: &TextBuffer,
-    line: usize,
-    unit: usize,
-) -> usize {
+pub(crate) fn guide_levels(buffer: &TextBuffer, line: usize, unit: usize) -> usize {
     if unit == 0 || line >= buffer.line_count() {
         return 0;
     }
@@ -132,8 +128,7 @@ mod tests {
 
     #[test]
     fn test_guide_levels_blank_line_between_blocks_uses_min() {
-        let buffer =
-            TextBuffer::new("fn f() {\n        a();\n\n    b();\n    }");
+        let buffer = TextBuffer::new("fn f() {\n        a();\n\n    b();\n    }");
         assert_eq!(guide_levels(&buffer, 2, 4), 1);
     }
 

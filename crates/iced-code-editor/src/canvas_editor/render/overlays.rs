@@ -9,9 +9,7 @@ use super::text::{RenderContext, calculate_segment_geometry};
 use super::wrapping::{VisualLine, WrappingCalculator};
 use crate::canvas_editor::features::vim::VimMode;
 use crate::canvas_editor::features::{bracket_match, search};
-use crate::canvas_editor::{
-    CodeEditor, measure_char_width, measure_text_width,
-};
+use crate::canvas_editor::{CodeEditor, measure_char_width, measure_text_width};
 
 impl CodeEditor {
     /// Draws the background highlight for the current line.
@@ -29,8 +27,7 @@ impl CodeEditor {
         visual_line: &VisualLine,
         y: f32,
     ) {
-        if self.cursors.iter().any(|c| c.position.0 == visual_line.logical_line)
-        {
+        if self.cursors.iter().any(|c| c.position.0 == visual_line.logical_line) {
             frame.fill_rectangle(
                 Point::new(ctx.gutter_width, y),
                 Size::new(ctx.bounds_width - ctx.gutter_width, ctx.line_height),
@@ -97,8 +94,7 @@ impl CodeEditor {
         start_visual_idx: usize,
         end_visual_idx: usize,
     ) {
-        if !self.search_matches_visible() || self.search_state.query.is_empty()
-        {
+        if !self.search_matches_visible() || self.search_state.query.is_empty() {
             return;
         }
 
@@ -107,9 +103,8 @@ impl CodeEditor {
         let start_visual_idx = start_visual_idx.min(ctx.visual_lines.len());
         let end_visual_idx = end_visual_idx.min(ctx.visual_lines.len());
 
-        let end_visual_inclusive = end_visual_idx
-            .saturating_sub(1)
-            .min(ctx.visual_lines.len().saturating_sub(1));
+        let end_visual_inclusive =
+            end_visual_idx.saturating_sub(1).min(ctx.visual_lines.len().saturating_sub(1));
 
         if let (Some(start_vl), Some(end_vl)) = (
             ctx.visual_lines.get(start_visual_idx),
@@ -135,8 +130,7 @@ impl CodeEditor {
                 .take(match_range.len())
             {
                 // Determine if this is the current match
-                let is_current =
-                    self.search_state.current_match_index == Some(match_idx);
+                let is_current = self.search_state.current_match_index == Some(match_idx);
 
                 let highlight_color = if is_current {
                     self.style.search_match_current_color
@@ -156,8 +150,7 @@ impl CodeEditor {
                     search_match.col + query_len,
                 );
 
-                if let (Some(start_v), Some(end_v)) = (start_visual, end_visual)
-                {
+                if let (Some(start_v), Some(end_v)) = (start_visual, end_visual) {
                     if start_v == end_v {
                         // Match within same visual line
                         let vl = &ctx.visual_lines[start_v];
@@ -223,16 +216,9 @@ impl CodeEditor {
 
         if start.0 == end.0 {
             // Single line selection - need to handle wrapped segments
-            let start_visual = WrappingCalculator::logical_to_visual(
-                ctx.visual_lines,
-                start.0,
-                start.1,
-            );
-            let end_visual = WrappingCalculator::logical_to_visual(
-                ctx.visual_lines,
-                end.0,
-                end.1,
-            );
+            let start_visual =
+                WrappingCalculator::logical_to_visual(ctx.visual_lines, start.0, start.1);
+            let end_visual = WrappingCalculator::logical_to_visual(ctx.visual_lines, end.0, end.1);
 
             if let (Some(start_v), Some(end_v)) = (start_visual, end_visual) {
                 if start_v == end_v {
@@ -248,20 +234,19 @@ impl CodeEditor {
                     );
                 } else {
                     // Selection spans multiple visual lines (same logical line)
-                    for (v_idx, vl) in ctx
-                        .visual_lines
-                        .iter()
-                        .enumerate()
-                        .skip(start_v)
-                        .take(end_v - start_v + 1)
+                    for (v_idx, vl) in
+                        ctx.visual_lines.iter().enumerate().skip(start_v).take(end_v - start_v + 1)
                     {
                         let sel_start_col = if v_idx == start_v {
                             start.1
                         } else {
                             vl.start_col
                         };
-                        let sel_end_col =
-                            if v_idx == end_v { end.1 } else { vl.end_col };
+                        let sel_end_col = if v_idx == end_v {
+                            end.1
+                        } else {
+                            vl.end_col
+                        };
 
                         self.fill_highlight_segment(
                             frame,
@@ -276,38 +261,25 @@ impl CodeEditor {
             }
         } else {
             // Multi-line selection
-            let start_visual = WrappingCalculator::logical_to_visual(
-                ctx.visual_lines,
-                start.0,
-                start.1,
-            );
-            let end_visual = WrappingCalculator::logical_to_visual(
-                ctx.visual_lines,
-                end.0,
-                end.1,
-            );
+            let start_visual =
+                WrappingCalculator::logical_to_visual(ctx.visual_lines, start.0, start.1);
+            let end_visual = WrappingCalculator::logical_to_visual(ctx.visual_lines, end.0, end.1);
 
             if let (Some(start_v), Some(end_v)) = (start_visual, end_visual) {
-                for (v_idx, vl) in ctx
-                    .visual_lines
-                    .iter()
-                    .enumerate()
-                    .skip(start_v)
-                    .take(end_v - start_v + 1)
+                for (v_idx, vl) in
+                    ctx.visual_lines.iter().enumerate().skip(start_v).take(end_v - start_v + 1)
                 {
-                    let sel_start_col =
-                        if vl.logical_line == start.0 && v_idx == start_v {
-                            start.1
-                        } else {
-                            vl.start_col
-                        };
+                    let sel_start_col = if vl.logical_line == start.0 && v_idx == start_v {
+                        start.1
+                    } else {
+                        vl.start_col
+                    };
 
-                    let sel_end_col =
-                        if vl.logical_line == end.0 && v_idx == end_v {
-                            end.1
-                        } else {
-                            vl.end_col
-                        };
+                    let sel_end_col = if vl.logical_line == end.0 && v_idx == end_v {
+                        end.1
+                    } else {
+                        vl.end_col
+                    };
 
                     self.fill_highlight_segment(
                         frame,
@@ -338,21 +310,18 @@ impl CodeEditor {
             return;
         }
 
-        let Some((bracket_pos, match_pos)) = bracket_match::find_matching_pair(
-            &self.buffer,
-            self.cursors.primary_position(),
-        ) else {
+        let Some((bracket_pos, match_pos)) =
+            bracket_match::find_matching_pair(&self.buffer, self.cursors.primary_position())
+        else {
             return;
         };
 
         let bracket_color = self.style.bracket_match_color;
 
         for (line, col) in [bracket_pos, match_pos] {
-            if let Some(visual_idx) = WrappingCalculator::logical_to_visual(
-                ctx.visual_lines,
-                line,
-                col,
-            ) {
+            if let Some(visual_idx) =
+                WrappingCalculator::logical_to_visual(ctx.visual_lines, line, col)
+            {
                 let vl = &ctx.visual_lines[visual_idx];
                 self.fill_highlight_segment(
                     frame,
@@ -372,11 +341,7 @@ impl CodeEditor {
     ///
     /// * `frame` - The canvas frame to draw on
     /// * `ctx` - Rendering context containing visual lines and metrics
-    pub(super) fn draw_selection_highlight(
-        &self,
-        frame: &mut canvas::Frame,
-        ctx: &RenderContext,
-    ) {
+    pub(super) fn draw_selection_highlight(&self, frame: &mut canvas::Frame, ctx: &RenderContext) {
         for cursor in self.cursors.iter() {
             if let Some((start, end)) = cursor.selection_range()
                 && start != end
@@ -392,11 +357,7 @@ impl CodeEditor {
     ///
     /// * `frame` - The canvas frame to draw on
     /// * `ctx` - Rendering context containing visual lines and metrics
-    pub(super) fn draw_cursor(
-        &self,
-        frame: &mut canvas::Frame,
-        ctx: &RenderContext,
-    ) {
+    pub(super) fn draw_cursor(&self, frame: &mut canvas::Frame, ctx: &RenderContext) {
         // Cursor drawing logic (only when the editor has focus)
         // -------------------------------------------------------------------------
         // Core notes:
@@ -406,10 +367,7 @@ impl CodeEditor {
         // 3. Use `WrappingCalculator` to map logical (line, col) to visual (x, y)
         //    for correct cursor positioning with line wrapping.
         // -------------------------------------------------------------------------
-        if self.show_cursor
-            && self.cursor_visible
-            && self.has_focus()
-            && self.ime_preedit.is_some()
+        if self.show_cursor && self.cursor_visible && self.has_focus() && self.ime_preedit.is_some()
         {
             // [Branch A] IME preedit rendering mode
             // ---------------------------------------------------------------------
@@ -443,11 +401,8 @@ impl CodeEditor {
                 let cursor_y = cursor_visual as f32 * ctx.line_height;
 
                 if let Some(preedit) = self.ime_preedit.as_ref() {
-                    let preedit_width = measure_text_width(
-                        &preedit.content,
-                        ctx.full_char_width,
-                        ctx.char_width,
-                    );
+                    let preedit_width =
+                        measure_text_width(&preedit.content, ctx.full_char_width, ctx.char_width);
 
                     // 1. Draw preedit background (light translucent)
                     // This indicates the text is not committed yet
@@ -464,11 +419,9 @@ impl CodeEditor {
                         && range.start != range.end
                     {
                         // Validate indices before slicing to prevent panic
-                        if let Some((start, end)) = validate_selection_indices(
-                            &preedit.content,
-                            range.start,
-                            range.end,
-                        ) {
+                        if let Some((start, end)) =
+                            validate_selection_indices(&preedit.content, range.start, range.end)
+                        {
                             let selected_prefix = &preedit.content[..start];
                             let selected_text = &preedit.content[start..end];
 
@@ -563,20 +516,13 @@ impl CodeEditor {
     /// Normal and Visual modes use the width of the character under the cursor;
     /// an empty line or end-of-line position uses one narrow character width.
     fn cursor_size_for_position(&self, position: (usize, usize)) -> Size {
-        let uses_block =
-            self.vim_enabled && self.vim_state.mode() != VimMode::Insert;
+        let uses_block = self.vim_enabled && self.vim_state.mode() != VimMode::Insert;
         let width = if uses_block {
             self.buffer
                 .line(position.0)
                 .chars()
                 .nth(position.1)
-                .map(|ch| {
-                    measure_char_width(
-                        ch,
-                        self.full_char_width,
-                        self.char_width,
-                    )
-                })
+                .map(|ch| measure_char_width(ch, self.full_char_width, self.char_width))
                 .filter(|width| *width > 0.0)
                 .unwrap_or(self.char_width)
         } else {
@@ -600,11 +546,9 @@ impl CodeEditor {
         position: (usize, usize),
     ) {
         // Map logical cursor position (line, col) to visual line index
-        if let Some(cursor_visual) = WrappingCalculator::logical_to_visual(
-            ctx.visual_lines,
-            position.0,
-            position.1,
-        ) {
+        if let Some(cursor_visual) =
+            WrappingCalculator::logical_to_visual(ctx.visual_lines, position.0, position.1)
+        {
             let vl = &ctx.visual_lines[cursor_visual];
             let line_content = self.buffer.line(vl.logical_line);
 
@@ -667,8 +611,7 @@ impl CodeEditor {
             }
 
             // Find the first visual line for this logical line
-            if let Some(mut idx) =
-                WrappingCalculator::logical_to_visual(ctx.visual_lines, line, 0)
+            if let Some(mut idx) = WrappingCalculator::logical_to_visual(ctx.visual_lines, line, 0)
             {
                 // Iterate all visual lines belonging to this logical line
                 while idx < ctx.visual_lines.len() {
@@ -687,8 +630,7 @@ impl CodeEditor {
                             visual_line.start_col,
                             seg_start,
                             seg_end,
-                            ctx.gutter_width + 5.0
-                                - ctx.horizontal_scroll_offset,
+                            ctx.gutter_width + 5.0 - ctx.horizontal_scroll_offset,
                             ctx.full_char_width,
                             ctx.char_width,
                         );
@@ -696,10 +638,7 @@ impl CodeEditor {
                         let y = idx as f32 * ctx.line_height + ctx.line_height; // Underline at bottom
 
                         // Draw underline
-                        let path = canvas::Path::line(
-                            Point::new(x, y),
-                            Point::new(x + width, y),
-                        );
+                        let path = canvas::Path::line(Point::new(x, y), Point::new(x + width, y));
 
                         frame.stroke(
                             &path,
@@ -728,11 +667,7 @@ impl CodeEditor {
 /// # Returns
 ///
 /// `Some((start, end))` if indices are valid, `None` otherwise.
-fn validate_selection_indices(
-    content: &str,
-    start: usize,
-    end: usize,
-) -> Option<(usize, usize)> {
+fn validate_selection_indices(content: &str, start: usize, end: usize) -> Option<(usize, usize)> {
     let len = content.len();
     // Clamp indices to content length
     let start = start.min(len);

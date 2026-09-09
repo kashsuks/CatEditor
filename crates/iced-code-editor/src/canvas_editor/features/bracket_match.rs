@@ -61,8 +61,7 @@ fn scan_forward(
 ) -> Option<(usize, usize)> {
     let mut depth = 1usize;
     let mut start_col = col + 1;
-    let scan_limit =
-        buffer.line_count().min(line.saturating_add(MAX_SCAN_LINES));
+    let scan_limit = buffer.line_count().min(line.saturating_add(MAX_SCAN_LINES));
 
     for l in line..scan_limit {
         let text = buffer.line(l);
@@ -100,7 +99,11 @@ fn scan_backward(
 
     loop {
         let text = buffer.line(l);
-        let end_col = if l == line { col } else { text.chars().count() };
+        let end_col = if l == line {
+            col
+        } else {
+            text.chars().count()
+        };
         let chars: Vec<char> = text.chars().take(end_col).collect();
 
         for (c, ch) in chars.iter().enumerate().rev() {
@@ -145,7 +148,11 @@ fn find_matching_quote(
         .collect();
 
     let idx = positions.iter().position(|&c| c == target_col)?;
-    let partner_idx = if idx % 2 == 0 { idx + 1 } else { idx - 1 };
+    let partner_idx = if idx % 2 == 0 {
+        idx + 1
+    } else {
+        idx - 1
+    };
     positions.get(partner_idx).map(|&c| (line, c))
 }
 
@@ -175,10 +182,12 @@ pub(crate) fn find_matching_pair(
     let (line, col) = pos;
     let text = buffer.line(line);
     let char_after = text.chars().nth(col);
-    let char_before = if col > 0 { text.chars().nth(col - 1) } else { None };
-    let is_pairable = |c: &char| {
-        is_opening_bracket(*c) || is_closing_bracket(*c) || is_quote(*c)
+    let char_before = if col > 0 {
+        text.chars().nth(col - 1)
+    } else {
+        None
     };
+    let is_pairable = |c: &char| is_opening_bracket(*c) || is_closing_bracket(*c) || is_quote(*c);
 
     let (target_pos, ch) = if let Some(ch) = char_after.filter(is_pairable) {
         ((line, col), ch)
@@ -189,8 +198,7 @@ pub(crate) fn find_matching_pair(
     };
 
     if is_quote(ch) {
-        let match_pos =
-            find_matching_quote(buffer, target_pos.0, target_pos.1, ch)?;
+        let match_pos = find_matching_quote(buffer, target_pos.0, target_pos.1, ch)?;
         return Some((target_pos, match_pos));
     }
 
@@ -218,10 +226,7 @@ pub(crate) fn find_matching_pair(
 /// assert_eq!(bracket_depth_after_line("fn main() {", 0), 1);
 /// assert_eq!(bracket_depth_after_line("}", 1), 0);
 /// ```
-pub(crate) fn bracket_depth_after_line(
-    line: &str,
-    start_depth: usize,
-) -> usize {
+pub(crate) fn bracket_depth_after_line(line: &str, start_depth: usize) -> usize {
     let mut depth = start_depth;
     for ch in line.chars() {
         if is_opening_bracket(ch) {
@@ -251,10 +256,7 @@ pub(crate) fn bracket_depth_after_line(
 ///     vec![(1, 0), (3, 1), (5, 1), (6, 0)]
 /// );
 /// ```
-pub(crate) fn bracket_depth_indices(
-    line: &str,
-    start_depth: usize,
-) -> Vec<(usize, usize)> {
+pub(crate) fn bracket_depth_indices(line: &str, start_depth: usize) -> Vec<(usize, usize)> {
     let mut depth = start_depth;
     let mut result = Vec::new();
     for (col, ch) in line.chars().enumerate() {
@@ -351,10 +353,7 @@ mod tests {
     #[test]
     fn cursor_before_opening_double_quote_matches_closing() {
         let buffer = buffer_from(&[r#"let s = "hello";"#]);
-        assert_eq!(
-            find_matching_pair(&buffer, (0, 8)),
-            Some(((0, 8), (0, 14)))
-        );
+        assert_eq!(find_matching_pair(&buffer, (0, 8)), Some(((0, 8), (0, 14))));
     }
 
     #[test]
@@ -370,10 +369,7 @@ mod tests {
     fn two_string_literals_on_same_line_pair_independently() {
         let buffer = buffer_from(&[r#"foo("a", "b")"#]);
         assert_eq!(find_matching_pair(&buffer, (0, 4)), Some(((0, 4), (0, 6))));
-        assert_eq!(
-            find_matching_pair(&buffer, (0, 9)),
-            Some(((0, 9), (0, 11)))
-        );
+        assert_eq!(find_matching_pair(&buffer, (0, 9)), Some(((0, 9), (0, 11))));
     }
 
     #[test]

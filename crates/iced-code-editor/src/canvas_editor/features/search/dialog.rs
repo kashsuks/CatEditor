@@ -3,8 +3,7 @@
 //! This module provides the visual interface for the search/replace functionality.
 
 use iced::widget::{
-    Space, Tooltip, button, checkbox, column, container, row, text, text_input,
-    tooltip,
+    Space, Tooltip, button, checkbox, column, container, row, text, text_input, tooltip,
 };
 use iced::{Element, Length};
 use iced_font_awesome::fa_icon_solid;
@@ -33,13 +32,12 @@ pub fn view<'a>(
     }
 
     // Search input field - compact, minimum practical width with placeholder
-    let search_input =
-        text_input(&translations.search_placeholder(), &search_state.query)
-            .id(search_state.search_input_id.clone())
-            .on_input(Message::SearchQueryChanged)
-            .on_submit(Message::FindNext)
-            .padding(4)
-            .width(Length::Fixed(180.0));
+    let search_input = text_input(&translations.search_placeholder(), &search_state.query)
+        .id(search_state.search_input_id.clone())
+        .on_input(Message::SearchQueryChanged)
+        .on_submit(Message::FindNext)
+        .padding(4)
+        .width(Length::Fixed(180.0));
 
     // Match counter display
     let match_info = if search_state.query.is_empty() {
@@ -80,8 +78,8 @@ pub fn view<'a>(
     .style(container::rounded_box);
 
     // Case sensitivity checkbox
-    let case_checkbox = checkbox(search_state.case_sensitive)
-        .on_toggle(|_| Message::ToggleCaseSensitive);
+    let case_checkbox =
+        checkbox(search_state.case_sensitive).on_toggle(|_| Message::ToggleCaseSensitive);
 
     let case_icon = fa_icon_solid("font").size(11.0);
     let case_label_text = text(translations.case_sensitive_label()).size(11);
@@ -172,7 +170,7 @@ pub fn view<'a>(
                             a: 0.85, // 85% opacity
                             ..color
                         })
-                    }
+                    },
                     _ => bg,
                 }),
                 ..base

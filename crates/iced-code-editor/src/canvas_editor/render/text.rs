@@ -6,21 +6,16 @@ use iced::{Color, Point, Size};
 use std::borrow::Cow;
 use std::rc::Rc;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{
-    HighlightIterator, HighlightState, Highlighter, Style,
-};
+use syntect::highlighting::{HighlightIterator, HighlightState, Highlighter, Style};
 use syntect::parsing::{ParseState, ScopeStack, SyntaxSet};
 
 use crate::buffer::text_utils::char_range_to_byte_range;
 
 use super::wrapping::VisualLine;
 use crate::canvas_editor::IndentStyle;
-use crate::canvas_editor::features::{
-    bracket_match, color_preview, indent_guides,
-};
+use crate::canvas_editor::features::{bracket_match, color_preview, indent_guides};
 use crate::canvas_editor::{
-    CodeEditor, HighlightCache, TAB_WIDTH, measure_char_width,
-    measure_text_width,
+    CodeEditor, HighlightCache, TAB_WIDTH, measure_char_width, measure_text_width,
 };
 
 /// Width in pixels of a single indentation guide line.
@@ -119,7 +114,7 @@ fn expand_tabs_visible(text: &str, tab_width: usize) -> String {
                 for _ in 1..tab_width {
                     result.push('·');
                 }
-            }
+            },
             ' ' => result.push('·'),
             other => result.push(other),
         }
@@ -211,9 +206,24 @@ pub fn highlight_line_spans(
 /// well-known VS Code default rainbow-bracket palette (gold, orchid, light
 /// sky blue) for a look users are likely already familiar with.
 const BRACKET_PAIR_COLORS: [Color; 3] = [
-    Color { r: 1.0, g: 0.843, b: 0.0, a: 1.0 }, // gold
-    Color { r: 0.855, g: 0.439, b: 0.839, a: 1.0 }, // orchid
-    Color { r: 0.529, g: 0.808, b: 0.980, a: 1.0 }, // light sky blue
+    Color {
+        r: 1.0,
+        g: 0.843,
+        b: 0.0,
+        a: 1.0,
+    }, // gold
+    Color {
+        r: 0.855,
+        g: 0.439,
+        b: 0.839,
+        a: 1.0,
+    }, // orchid
+    Color {
+        r: 0.529,
+        g: 0.808,
+        b: 0.980,
+        a: 1.0,
+    }, // light sky blue
 ];
 
 /// Context for canvas rendering operations.
@@ -274,8 +284,7 @@ impl CodeEditor {
         let mut guard = self.highlight_cache.borrow_mut();
 
         // Reset the whole cache only when the active syntax changes.
-        let needs_reset =
-            guard.as_ref().is_none_or(|cache| cache.syntax() != self.syntax);
+        let needs_reset = guard.as_ref().is_none_or(|cache| cache.syntax() != self.syntax);
         if needs_reset {
             *guard = Some(HighlightCache::new(self.syntax.clone()));
         }
@@ -298,25 +307,19 @@ impl CodeEditor {
         // Extend the valid prefix sequentially up to `logical_line`, carrying
         // the parser/highlight state forward across lines.
         let highlighter = Highlighter::new(theme);
-        let (mut parse_state, mut highlight_state) =
-            cache.resume_state().unwrap_or_else(|| {
-                (
-                    ParseState::new(syntax),
-                    HighlightState::new(&highlighter, ScopeStack::new()),
-                )
-            });
+        let (mut parse_state, mut highlight_state) = cache.resume_state().unwrap_or_else(|| {
+            (
+                ParseState::new(syntax),
+                HighlightState::new(&highlighter, ScopeStack::new()),
+            )
+        });
 
         let line_count = self.buffer.line_count();
         let target = logical_line.min(line_count.saturating_sub(1));
-        let missing_lines =
-            target.saturating_add(1).saturating_sub(cache.valid_len());
-        let lines_to_parse =
-            missing_lines.min(self.highlight_lines_remaining.get());
-        let parse_end = cache
-            .valid_len()
-            .saturating_add(lines_to_parse)
-            .saturating_sub(1)
-            .min(target);
+        let missing_lines = target.saturating_add(1).saturating_sub(cache.valid_len());
+        let lines_to_parse = missing_lines.min(self.highlight_lines_remaining.get());
+        let parse_end =
+            cache.valid_len().saturating_add(lines_to_parse).saturating_sub(1).min(target);
         let mut result = None;
         if lines_to_parse > 0 {
             for index in cache.valid_len()..=parse_end {
@@ -325,24 +328,18 @@ impl CodeEditor {
                 let mut line = self.buffer.line(index).to_string();
                 line.push('\n');
 
-                let ops = parse_state
-                    .parse_line(&line, syntax_set)
-                    .unwrap_or_default();
-                let spans: Vec<(Color, String)> = HighlightIterator::new(
-                    &mut highlight_state,
-                    &ops,
-                    &line,
-                    &highlighter,
-                )
-                .filter_map(|(style, text)| {
-                    let text = text.strip_suffix('\n').unwrap_or(text);
-                    if text.is_empty() {
-                        None
-                    } else {
-                        Some((color_from_style(style), text.to_string()))
-                    }
-                })
-                .collect();
+                let ops = parse_state.parse_line(&line, syntax_set).unwrap_or_default();
+                let spans: Vec<(Color, String)> =
+                    HighlightIterator::new(&mut highlight_state, &ops, &line, &highlighter)
+                        .filter_map(|(style, text)| {
+                            let text = text.strip_suffix('\n').unwrap_or(text);
+                            if text.is_empty() {
+                                None
+                            } else {
+                                Some((color_from_style(style), text.to_string()))
+                            }
+                        })
+                        .collect();
 
                 let spans = Rc::new(spans);
                 cache.push_line(
@@ -355,9 +352,8 @@ impl CodeEditor {
                 }
             }
         }
-        self.highlight_lines_remaining.set(
-            self.highlight_lines_remaining.get().saturating_sub(lines_to_parse),
-        );
+        self.highlight_lines_remaining
+            .set(self.highlight_lines_remaining.get().saturating_sub(lines_to_parse));
 
         result.or_else(|| cache.spans(logical_line)).unwrap_or_else(|| {
             Rc::new(vec![(
@@ -399,8 +395,7 @@ impl CodeEditor {
                 syntax_set,
             );
 
-            let mut x_offset =
-                ctx.gutter_width + 5.0 - ctx.horizontal_scroll_offset;
+            let mut x_offset = ctx.gutter_width + 5.0 - ctx.horizontal_scroll_offset;
             let mut char_pos = 0;
 
             for (color, text) in spans.iter() {
@@ -408,23 +403,16 @@ impl CodeEditor {
                 let text_end = char_pos + text_len;
 
                 // Check if this token intersects with our segment
-                if text_end > visual_line.start_col
-                    && char_pos < visual_line.end_col
-                {
+                if text_end > visual_line.start_col && char_pos < visual_line.end_col {
                     // Calculate the intersection
                     let segment_start = char_pos.max(visual_line.start_col);
                     let segment_end = text_end.min(visual_line.end_col);
 
-                    let text_start_offset =
-                        segment_start.saturating_sub(char_pos);
-                    let text_end_offset =
-                        text_start_offset + (segment_end - segment_start);
+                    let text_start_offset = segment_start.saturating_sub(char_pos);
+                    let text_end_offset = text_start_offset + (segment_end - segment_start);
 
-                    let (start_byte, end_byte) = char_range_to_byte_range(
-                        text,
-                        text_start_offset,
-                        text_end_offset,
-                    );
+                    let (start_byte, end_byte) =
+                        char_range_to_byte_range(text, text_start_offset, text_end_offset);
 
                     let segment_text = &text[start_byte..end_byte];
                     let display_text = if self.show_whitespace {
@@ -432,25 +420,20 @@ impl CodeEditor {
                     } else {
                         expand_tabs(segment_text, TAB_WIDTH).into_owned()
                     };
-                    let display_width = measure_text_width(
-                        &display_text,
-                        ctx.full_char_width,
-                        ctx.char_width,
-                    );
+                    let display_width =
+                        measure_text_width(&display_text, ctx.full_char_width, ctx.char_width);
 
                     if self.show_whitespace {
                         let ws_color = self.style.whitespace_color;
                         let mut seg_x = x_offset;
-                        for (is_ws, seg) in
-                            split_whitespace_segments(&display_text)
-                        {
-                            let seg_color =
-                                if is_ws { ws_color } else { *color };
-                            let seg_width = measure_text_width(
-                                seg,
-                                ctx.full_char_width,
-                                ctx.char_width,
-                            );
+                        for (is_ws, seg) in split_whitespace_segments(&display_text) {
+                            let seg_color = if is_ws {
+                                ws_color
+                            } else {
+                                *color
+                            };
+                            let seg_width =
+                                measure_text_width(seg, ctx.full_char_width, ctx.char_width);
                             frame.fill_text(canvas::Text {
                                 content: seg.to_string(),
                                 position: Point::new(seg_x, y + 2.0),
@@ -497,12 +480,12 @@ impl CodeEditor {
                 let text_color = self.style.text_color;
                 let mut seg_x = base_x;
                 for (is_ws, seg) in split_whitespace_segments(&display_text) {
-                    let seg_color = if is_ws { ws_color } else { text_color };
-                    let seg_width = measure_text_width(
-                        seg,
-                        ctx.full_char_width,
-                        ctx.char_width,
-                    );
+                    let seg_color = if is_ws {
+                        ws_color
+                    } else {
+                        text_color
+                    };
+                    let seg_width = measure_text_width(seg, ctx.full_char_width, ctx.char_width);
                     frame.fill_text(canvas::Text {
                         content: seg.to_string(),
                         position: Point::new(seg_x, y + 2.0),
@@ -560,11 +543,7 @@ impl CodeEditor {
             IndentStyle::Spaces(width) => usize::from(width),
             IndentStyle::Tab => TAB_WIDTH,
         };
-        let levels = indent_guides::guide_levels(
-            &self.buffer,
-            visual_line.logical_line,
-            unit,
-        );
+        let levels = indent_guides::guide_levels(&self.buffer, visual_line.logical_line, unit);
 
         let base_x = ctx.gutter_width + 5.0 - ctx.horizontal_scroll_offset;
         for level in 0..levels {
@@ -620,9 +599,7 @@ impl CodeEditor {
         let inner_side = (side - 2.0 * SWATCH_BORDER_WIDTH).max(1.0);
 
         for literal in literals.get(&self.buffer, visual_line.logical_line) {
-            if literal.end_col <= visual_line.start_col
-                || literal.end_col > visual_line.end_col
-            {
+            if literal.end_col <= visual_line.start_col || literal.end_col > visual_line.end_col {
                 continue;
             }
 
@@ -650,11 +627,7 @@ impl CodeEditor {
                 self.style.gutter_border,
             );
             for color in [self.style.background, literal.color] {
-                frame.fill_rectangle(
-                    inner_position,
-                    Size::new(inner_side, inner_side),
-                    color,
-                );
+                frame.fill_rectangle(inner_position, Size::new(inner_side, inner_side), color);
             }
         }
     }
@@ -692,8 +665,7 @@ impl CodeEditor {
             .depth_at_line_start(&self.buffer, logical_line);
 
         let line_content = self.buffer.line(logical_line);
-        let indices =
-            bracket_match::bracket_depth_indices(line_content, start_depth);
+        let indices = bracket_match::bracket_depth_indices(line_content, start_depth);
 
         for (col, depth) in indices {
             if col < visual_line.start_col || col >= visual_line.end_col {
@@ -743,9 +715,7 @@ mod tests {
         // width("Hello ") = 6 * CHAR_WIDTH
         // width("World") = 5 * CHAR_WIDTH
         let content = "Hello World";
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 6, 11, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 6, 11, 0.0, FONT_SIZE, CHAR_WIDTH);
 
         let expected_x = CHAR_WIDTH * 6.0;
         let expected_w = CHAR_WIDTH * 5.0;
@@ -770,9 +740,7 @@ mod tests {
         // width("你好") = 2 * FONT_SIZE
         // width("世界") = 2 * FONT_SIZE
         let content = "你好世界";
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 2, 4, 10.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 2, 4, 10.0, FONT_SIZE, CHAR_WIDTH);
 
         let expected_x = 10.0 + FONT_SIZE * 2.0;
         let expected_w = FONT_SIZE * 2.0;
@@ -797,9 +765,7 @@ mod tests {
         // width("Hi") = 2 * CHAR_WIDTH
         // width("你好") = 2 * FONT_SIZE
         let content = "Hi你好";
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 2, 4, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 2, 4, 0.0, FONT_SIZE, CHAR_WIDTH);
 
         let expected_x = CHAR_WIDTH * 2.0;
         let expected_w = FONT_SIZE * 2.0;
@@ -819,9 +785,7 @@ mod tests {
     #[test]
     fn test_calculate_segment_geometry_empty_range() {
         let content = "Hello";
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 0, 0, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 0, 0, 0.0, FONT_SIZE, CHAR_WIDTH);
         assert!((x - 0.0).abs() < f32::EPSILON);
         assert!((w - 0.0).abs() < f32::EPSILON);
     }
@@ -835,9 +799,7 @@ mod tests {
         // prefix width: 1 * CHAR_WIDTH
         // segment width: 2 * CHAR_WIDTH
         let content = "0123456789";
-        let (x, w) = calculate_segment_geometry(
-            content, 2, 3, 5, 5.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 2, 3, 5, 5.0, FONT_SIZE, CHAR_WIDTH);
 
         let expected_x = 5.0 + CHAR_WIDTH * 1.0;
         let expected_w = CHAR_WIDTH * 2.0;
@@ -862,9 +824,7 @@ mod tests {
         // Prefix should consume whole string ("Hello") and stop.
         // Segment should be empty.
         let content = "Hello";
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 10, 15, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 10, 15, 0.0, FONT_SIZE, CHAR_WIDTH);
 
         let expected_x = CHAR_WIDTH * 5.0; // Width of "Hello"
         let expected_w = 0.0;
@@ -889,9 +849,7 @@ mod tests {
         // Indices in chars: 'A' (0), '👋' (1), '\t' (2), 'B' (3)
 
         // Segment covering Emoji
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 1, 2, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 1, 2, 0.0, FONT_SIZE, CHAR_WIDTH);
         let expected_x_emoji = CHAR_WIDTH; // 'A'
         let expected_w_emoji = FONT_SIZE; // '👋'
 
@@ -907,12 +865,10 @@ mod tests {
         );
 
         // Segment covering Tab
-        let (x_tab, w_tab) = calculate_segment_geometry(
-            content, 0, 2, 3, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x_tab, w_tab) =
+            calculate_segment_geometry(content, 0, 2, 3, 0.0, FONT_SIZE, CHAR_WIDTH);
         let expected_x_tab = CHAR_WIDTH + FONT_SIZE; // 'A' + '👋'
-        let expected_w_tab =
-            CHAR_WIDTH * crate::canvas_editor::TAB_WIDTH as f32;
+        let expected_w_tab = CHAR_WIDTH * crate::canvas_editor::TAB_WIDTH as f32;
 
         assert_eq!(
             compare_floats(x_tab, expected_x_tab),
@@ -931,9 +887,7 @@ mod tests {
         // Start 5, End 3
         // Should result in empty segment at start 5
         let content = "0123456789";
-        let (x, w) = calculate_segment_geometry(
-            content, 0, 5, 3, 0.0, FONT_SIZE, CHAR_WIDTH,
-        );
+        let (x, w) = calculate_segment_geometry(content, 0, 5, 3, 0.0, FONT_SIZE, CHAR_WIDTH);
 
         let expected_x = CHAR_WIDTH * 5.0;
         let expected_w = 0.0;
@@ -959,8 +913,7 @@ mod tests {
         let spans = highlight_line_spans(line, syntax, &theme, &syntax_set);
 
         assert!(!spans.is_empty(), "expected at least one span");
-        let combined: String =
-            spans.iter().map(|(_, text)| text.as_str()).collect();
+        let combined: String = spans.iter().map(|(_, text)| text.as_str()).collect();
         assert_eq!(combined, line, "spans must cover the entire line");
     }
 
@@ -971,18 +924,15 @@ mod tests {
         let syntax = syntax_set.find_syntax_plain_text();
         let theme = syntect::highlighting::Theme::default();
 
-        let first =
-            editor.highlighted_line_cached(0, syntax, &theme, &syntax_set);
-        let second =
-            editor.highlighted_line_cached(0, syntax, &theme, &syntax_set);
+        let first = editor.highlighted_line_cached(0, syntax, &theme, &syntax_set);
+        let second = editor.highlighted_line_cached(0, syntax, &theme, &syntax_set);
         assert!(
             Rc::ptr_eq(&first, &second),
             "a cached line should be reused as the same Rc"
         );
 
         editor.invalidate_highlight_from(0);
-        let third =
-            editor.highlighted_line_cached(0, syntax, &theme, &syntax_set);
+        let third = editor.highlighted_line_cached(0, syntax, &theme, &syntax_set);
         assert!(
             !Rc::ptr_eq(&first, &third),
             "invalidation should force the line to be recomputed"
@@ -997,18 +947,12 @@ mod tests {
         let theme = syntect::highlighting::Theme::default();
         editor.highlight_lines_remaining.set(2);
 
-        let spans =
-            editor.highlighted_line_cached(4, syntax, &theme, &syntax_set);
-        let combined: String =
-            spans.iter().map(|(_, text)| text.as_str()).collect();
+        let spans = editor.highlighted_line_cached(4, syntax, &theme, &syntax_set);
+        let combined: String = spans.iter().map(|(_, text)| text.as_str()).collect();
 
         assert_eq!(combined, "four");
         assert_eq!(
-            editor
-                .highlight_cache
-                .borrow()
-                .as_ref()
-                .map(super::HighlightCache::valid_len),
+            editor.highlight_cache.borrow().as_ref().map(super::HighlightCache::valid_len),
             Some(2)
         );
         assert_eq!(editor.highlight_lines_remaining.get(), 0);
@@ -1031,15 +975,9 @@ mod tests {
         let editor = CodeEditor::new(code, "rs");
 
         // Sequential highlighting resumes inside the block comment.
-        let sequential =
-            editor.highlighted_line_cached(2, syntax, &theme, &syntax_set);
+        let sequential = editor.highlighted_line_cached(2, syntax, &theme, &syntax_set);
         // Independent highlighting wrongly treats the line as ordinary code.
-        let independent = highlight_line_spans(
-            editor.buffer.line(2),
-            syntax,
-            &theme,
-            &syntax_set,
-        );
+        let independent = highlight_line_spans(editor.buffer.line(2), syntax, &theme, &syntax_set);
 
         let sequential_color = sequential.first().map(|(color, _)| *color);
         let independent_color = independent.first().map(|(color, _)| *color);

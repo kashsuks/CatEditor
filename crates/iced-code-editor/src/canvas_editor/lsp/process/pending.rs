@@ -42,13 +42,10 @@ const PENDING_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 /// Called whenever a new request is registered (see
 /// [`LspProcessClient::request_hover`] and friends), so a server that stops
 /// responding can't grow this map without bound.
-pub(super) fn evict_expired_requests(
-    pending: &mut HashMap<u64, PendingRequest>,
-) {
+pub(super) fn evict_expired_requests(pending: &mut HashMap<u64, PendingRequest>) {
     let now = Instant::now();
     pending.retain(|_, entry| {
-        now.saturating_duration_since(entry.requested_at)
-            < PENDING_REQUEST_TIMEOUT
+        now.saturating_duration_since(entry.requested_at) < PENDING_REQUEST_TIMEOUT
     });
 }
 
@@ -58,7 +55,10 @@ mod tests {
 
     /// Builds a [`PendingRequest`] of `kind`, sent "now" for test purposes.
     fn pending_request(kind: LspRequestKind) -> PendingRequest {
-        PendingRequest { kind, requested_at: Instant::now() }
+        PendingRequest {
+            kind,
+            requested_at: Instant::now(),
+        }
     }
 
     #[test]
@@ -68,9 +68,7 @@ mod tests {
             1u64,
             PendingRequest {
                 kind: LspRequestKind::Hover,
-                requested_at: Instant::now()
-                    - PENDING_REQUEST_TIMEOUT
-                    - Duration::from_secs(1),
+                requested_at: Instant::now() - PENDING_REQUEST_TIMEOUT - Duration::from_secs(1),
             },
         );
         pending.insert(2u64, pending_request(LspRequestKind::Completion));

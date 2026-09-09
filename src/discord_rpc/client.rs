@@ -78,11 +78,7 @@ impl DiscordRpcClient {
             activity = activity.state(state);
         }
         if let Some(LargeImage { key, text }) = large_image {
-            activity = activity.assets(
-                activity::Assets::new()
-                    .large_image(key)
-                    .large_text(text),
-            );
+            activity = activity.assets(activity::Assets::new().large_image(key).large_text(text));
         }
 
         if self.inner.set_activity(activity).is_err() {

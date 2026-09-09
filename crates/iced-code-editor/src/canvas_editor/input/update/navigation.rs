@@ -174,11 +174,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// A `Task<Message>` that scrolls to keep the cursor visible
-    pub(crate) fn handle_goto_position(
-        &mut self,
-        line: usize,
-        col: usize,
-    ) -> Task<Message> {
+    pub(crate) fn handle_goto_position(&mut self, line: usize, col: usize) -> Task<Message> {
         // End grouping on navigation command
         self.end_grouping_if_active();
         self.set_cursor(line, col)

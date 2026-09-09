@@ -29,8 +29,7 @@ fn compute_next_position(
     let (line, col) = pos;
     match direction {
         ArrowDirection::Up | ArrowDirection::Down => {
-            let current_visual =
-                WrappingCalculator::logical_to_visual(visual_lines, line, col)?;
+            let current_visual = WrappingCalculator::logical_to_visual(visual_lines, line, col)?;
 
             let target_visual = match direction {
                 ArrowDirection::Up => current_visual.checked_sub(1)?,
@@ -41,7 +40,7 @@ fn compute_next_position(
                     } else {
                         return None;
                     }
-                }
+                },
                 _ => return None,
             };
 
@@ -49,8 +48,7 @@ fn compute_next_position(
             let current_vl = &visual_lines[current_visual];
 
             let new_col = if target_vl.logical_line == line {
-                let offset_in_current =
-                    col.saturating_sub(current_vl.start_col);
+                let offset_in_current = col.saturating_sub(current_vl.start_col);
                 let target_col = target_vl.start_col + offset_in_current;
                 if target_col >= target_vl.end_col {
                     target_vl.end_col.saturating_sub(1).max(target_vl.start_col)
@@ -59,12 +57,11 @@ fn compute_next_position(
                 }
             } else {
                 let target_line_len = buffer.line_len(target_vl.logical_line);
-                (target_vl.start_col + col.min(target_vl.len()))
-                    .min(target_line_len)
+                (target_vl.start_col + col.min(target_vl.len())).min(target_line_len)
             };
 
             Some((target_vl.logical_line, new_col))
-        }
+        },
         ArrowDirection::Left => {
             if col > 0 {
                 Some((line, col - 1))
@@ -73,7 +70,7 @@ fn compute_next_position(
             } else {
                 None
             }
-        }
+        },
         ArrowDirection::Right => {
             let line_len = buffer.line_len(line);
             if col < line_len {
@@ -83,7 +80,7 @@ fn compute_next_position(
             } else {
                 None
             }
-        }
+        },
     }
 }
 
@@ -91,10 +88,7 @@ impl CodeEditor {
     /// Clamps a logical position to a character on which Normal/Visual mode can
     /// land. Non-empty lines use their final character as the maximum column;
     /// empty lines retain column zero.
-    pub(crate) fn vim_normal_position(
-        &self,
-        position: (usize, usize),
-    ) -> (usize, usize) {
+    pub(crate) fn vim_normal_position(&self, position: (usize, usize)) -> (usize, usize) {
         let line = position.0.min(self.buffer.line_count().saturating_sub(1));
         let line_len = self.buffer.line_len(line);
         let max_col = line_len.saturating_sub(1);
@@ -132,7 +126,10 @@ impl CodeEditor {
             } else {
                 (end_line, self.buffer.line_len(end_line))
             };
-            cursor_set::Cursor { position: end, anchor: Some((start_line, 0)) }
+            cursor_set::Cursor {
+                position: end,
+                anchor: Some((start_line, 0)),
+            }
         } else if active >= anchor {
             cursor_set::Cursor {
                 position: self.vim_position_after(active),
@@ -164,40 +161,33 @@ impl CodeEditor {
         match motion {
             VimMotion::Left => {
                 position.1 = position.1.saturating_sub(count);
-            }
+            },
             VimMotion::Right => {
-                let max_col =
-                    self.buffer.line_len(position.0).saturating_sub(1);
+                let max_col = self.buffer.line_len(position.0).saturating_sub(1);
                 position.1 = position.1.saturating_add(count).min(max_col);
-            }
+            },
             VimMotion::Up | VimMotion::Down => {
                 let direction = if motion == VimMotion::Up {
                     ArrowDirection::Up
                 } else {
                     ArrowDirection::Down
                 };
-                let visual_lines =
-                    self.visual_lines_cached(self.viewport_width);
+                let visual_lines = self.visual_lines_cached(self.viewport_width);
                 for _ in 0..count {
-                    let Some(next) = compute_next_position(
-                        position,
-                        direction,
-                        &self.buffer,
-                        &visual_lines,
-                    ) else {
+                    let Some(next) =
+                        compute_next_position(position, direction, &self.buffer, &visual_lines)
+                    else {
                         break;
                     };
                     position = self.vim_normal_position(next);
                 }
-            }
-            VimMotion::WordForward
-            | VimMotion::WordBackward
-            | VimMotion::WordEnd => {
+            },
+            VimMotion::WordForward | VimMotion::WordBackward | VimMotion::WordEnd => {
                 let chars = self.vim_char_index();
                 for _ in 0..count {
                     position = Self::vim_word_motion(&chars, position, motion);
                 }
-            }
+            },
             VimMotion::LineStart => position.1 = 0,
             VimMotion::FirstNonBlank => {
                 position.1 = self
@@ -206,26 +196,22 @@ impl CodeEditor {
                     .chars()
                     .position(|ch| !ch.is_whitespace())
                     .unwrap_or(0);
-            }
+            },
             VimMotion::LineEnd => {
                 position.1 = self.buffer.line_len(position.0).saturating_sub(1);
-            }
+            },
             VimMotion::DocumentStart => {
-                let line = count
-                    .saturating_sub(1)
-                    .min(self.buffer.line_count().saturating_sub(1));
+                let line = count.saturating_sub(1).min(self.buffer.line_count().saturating_sub(1));
                 position = (line, 0);
-            }
+            },
             VimMotion::DocumentEnd => {
                 let line = if explicit_count {
-                    count
-                        .saturating_sub(1)
-                        .min(self.buffer.line_count().saturating_sub(1))
+                    count.saturating_sub(1).min(self.buffer.line_count().saturating_sub(1))
                 } else {
                     self.buffer.line_count().saturating_sub(1)
                 };
                 position = (line, 0);
-            }
+            },
         }
 
         self.vim_normal_position(position)
@@ -240,11 +226,7 @@ impl CodeEditor {
         let mut chars = Vec::new();
         for line in 0..self.buffer.line_count() {
             chars.extend(
-                self.buffer
-                    .line(line)
-                    .chars()
-                    .enumerate()
-                    .map(|(col, ch)| ((line, col), ch)),
+                self.buffer.line(line).chars().enumerate().map(|(col, ch)| ((line, col), ch)),
             );
             if line + 1 < self.buffer.line_count() {
                 chars.push(((line, self.buffer.line_len(line)), '\n'));
@@ -281,8 +263,7 @@ impl CodeEditor {
             return (0, 0);
         }
 
-        let insertion =
-            chars.partition_point(|(position, _)| *position < start);
+        let insertion = chars.partition_point(|(position, _)| *position < start);
         let exact = insertion < chars.len() && chars[insertion].0 == start;
 
         match motion {
@@ -291,26 +272,20 @@ impl CodeEditor {
                 if exact {
                     let current_class = class(chars[index].1);
                     if current_class == Class::Space {
-                        while index < chars.len()
-                            && class(chars[index].1) == Class::Space
-                        {
+                        while index < chars.len() && class(chars[index].1) == Class::Space {
                             index += 1;
                         }
                     } else {
-                        while index < chars.len()
-                            && class(chars[index].1) == current_class
-                        {
+                        while index < chars.len() && class(chars[index].1) == current_class {
                             index += 1;
                         }
-                        while index < chars.len()
-                            && class(chars[index].1) == Class::Space
-                        {
+                        while index < chars.len() && class(chars[index].1) == Class::Space {
                             index += 1;
                         }
                     }
                 }
                 chars[index.min(chars.len() - 1)].0
-            }
+            },
             VimMotion::WordBackward => {
                 let mut index = insertion.saturating_sub(1);
                 while index > 0 && class(chars[index].1) == Class::Space {
@@ -321,7 +296,7 @@ impl CodeEditor {
                     index -= 1;
                 }
                 chars[index].0
-            }
+            },
             VimMotion::WordEnd => {
                 let mut index = insertion.min(chars.len() - 1);
                 if exact {
@@ -330,8 +305,7 @@ impl CodeEditor {
                         && index + 1 < chars.len()
                         && class(chars[index + 1].1) == current_class
                     {
-                        while index + 1 < chars.len()
-                            && class(chars[index + 1].1) == current_class
+                        while index + 1 < chars.len() && class(chars[index + 1].1) == current_class
                         {
                             index += 1;
                         }
@@ -339,19 +313,15 @@ impl CodeEditor {
                     }
                     index = (index + 1).min(chars.len() - 1);
                 }
-                while index + 1 < chars.len()
-                    && class(chars[index].1) == Class::Space
-                {
+                while index + 1 < chars.len() && class(chars[index].1) == Class::Space {
                     index += 1;
                 }
                 let target_class = class(chars[index].1);
-                while index + 1 < chars.len()
-                    && class(chars[index + 1].1) == target_class
-                {
+                while index + 1 < chars.len() && class(chars[index + 1].1) == target_class {
                     index += 1;
                 }
                 chars[index].0
-            }
+            },
             _ => start,
         }
     }
@@ -415,12 +385,9 @@ impl CodeEditor {
         let visual_lines = self.visual_lines_cached(self.viewport_width);
 
         for cursor in self.cursors.as_mut_slice() {
-            if let Some(new_pos) = compute_next_position(
-                cursor.position,
-                direction,
-                &self.buffer,
-                &visual_lines,
-            ) {
+            if let Some(new_pos) =
+                compute_next_position(cursor.position, direction, &self.buffer, &visual_lines)
+            {
                 cursor.position = new_pos;
             }
         }
@@ -439,10 +406,7 @@ impl CodeEditor {
     /// 1. Whether the click is inside the gutter area.
     /// 2. Visual line mapping after wrapping.
     /// 3. CJK character widths (wide characters use FONT_SIZE, narrow use CHAR_WIDTH).
-    pub(crate) fn calculate_cursor_from_point(
-        &self,
-        point: Point,
-    ) -> Option<(usize, usize)> {
+    pub(crate) fn calculate_cursor_from_point(&self, point: Point) -> Option<(usize, usize)> {
         // Account for gutter width
         if point.x < self.gutter_width() {
             return None; // Clicked in gutter
@@ -465,8 +429,7 @@ impl CodeEditor {
         let visual_line = &visual_lines[visual_line_idx];
 
         // Calculate column within the segment, accounting for horizontal scroll
-        let x_in_text =
-            point.x - self.gutter_width() - 5.0 + self.horizontal_scroll_offset;
+        let x_in_text = point.x - self.gutter_width() - 5.0 + self.horizontal_scroll_offset;
 
         // Use correct width calculation for CJK support
         let line_content = self.buffer.line(visual_line.logical_line);
@@ -480,8 +443,7 @@ impl CodeEditor {
             .skip(visual_line.start_col)
             .take(visual_line.end_col - visual_line.start_col)
         {
-            let char_width =
-                measure_char_width(c, self.full_char_width, self.char_width);
+            let char_width = measure_char_width(c, self.full_char_width, self.char_width);
 
             if current_width + char_width / 2.0 > x_in_text {
                 break;
@@ -518,8 +480,7 @@ impl CodeEditor {
         let now = Instant::now();
         let count = match self.last_click.get() {
             Some((time, pos, count))
-                if now.duration_since(time)
-                    < std::time::Duration::from_millis(400)
+                if now.duration_since(time) < std::time::Duration::from_millis(400)
                     && pos.distance(position) < 6.0 =>
             {
                 if count >= 3 {
@@ -527,7 +488,7 @@ impl CodeEditor {
                 } else {
                     count + 1
                 }
-            }
+            },
             _ => 1,
         };
         self.last_click.set(Some((now, position, count)));
@@ -541,8 +502,7 @@ impl CodeEditor {
         let visual_lines = self.visual_lines_cached(self.viewport_width);
 
         let pos = self.cursors.primary_position();
-        let cursor_visual =
-            WrappingCalculator::logical_to_visual(&visual_lines, pos.0, pos.1);
+        let cursor_visual = WrappingCalculator::logical_to_visual(&visual_lines, pos.0, pos.1);
 
         let cursor_y = if let Some(visual_idx) = cursor_visual {
             visual_idx as f32 * self.line_height
@@ -562,13 +522,9 @@ impl CodeEditor {
         let new_v_scroll = if cursor_y < viewport_top + top_margin {
             // Cursor is above viewport - scroll up
             Some((cursor_y - top_margin).max(0.0))
-        } else if cursor_y + self.line_height > viewport_bottom - bottom_margin
-        {
+        } else if cursor_y + self.line_height > viewport_bottom - bottom_margin {
             // Cursor is below viewport - scroll down
-            Some(
-                cursor_y + self.line_height + bottom_margin
-                    - self.viewport_height,
-            )
+            Some(cursor_y + self.line_height + bottom_margin - self.viewport_height)
         } else {
             None
         };
@@ -576,7 +532,10 @@ impl CodeEditor {
         let vertical_task = if let Some(new_scroll) = new_v_scroll {
             scroll_to(
                 self.scrollable_id.clone(),
-                scrollable::AbsoluteOffset { x: 0.0, y: new_scroll },
+                scrollable::AbsoluteOffset {
+                    x: 0.0,
+                    y: new_scroll,
+                },
             )
         } else {
             Task::none()
@@ -595,19 +554,14 @@ impl CodeEditor {
                     .collect();
                 self.gutter_width()
                     + 5.0
-                    + measure_text_width(
-                        &prefix,
-                        self.full_char_width,
-                        self.char_width,
-                    )
+                    + measure_text_width(&prefix, self.full_char_width, self.char_width)
             } else {
                 self.gutter_width() + 5.0
             };
 
             let left_boundary = self.gutter_width() + self.char_width;
             let right_boundary = self.viewport_width - self.char_width * 2.0;
-            let cursor_viewport_x =
-                cursor_content_x - self.horizontal_scroll_offset;
+            let cursor_viewport_x = cursor_content_x - self.horizontal_scroll_offset;
 
             let new_h_offset = if cursor_viewport_x < left_boundary {
                 (cursor_content_x - left_boundary).max(0.0)
@@ -620,7 +574,10 @@ impl CodeEditor {
             if (new_h_offset - self.horizontal_scroll_offset).abs() > 0.5 {
                 scroll_to(
                     self.horizontal_scrollable_id.clone(),
-                    scrollable::AbsoluteOffset { x: new_h_offset, y: 0.0 },
+                    scrollable::AbsoluteOffset {
+                        x: new_h_offset,
+                        y: 0.0,
+                    },
                 )
             } else {
                 Task::none()
@@ -676,29 +633,17 @@ impl CodeEditor {
 
 impl CodeEditor {
     /// Converts a logical buffer position into a canvas point, if visible.
-    pub(crate) fn point_from_position(
-        &self,
-        line: usize,
-        col: usize,
-    ) -> Option<iced::Point> {
+    pub(crate) fn point_from_position(&self, line: usize, col: usize) -> Option<iced::Point> {
         let visual_lines = self.visual_lines_cached(self.viewport_width);
-        let visual_index =
-            WrappingCalculator::logical_to_visual(&visual_lines, line, col)?;
+        let visual_index = WrappingCalculator::logical_to_visual(&visual_lines, line, col)?;
         let visual_line = &visual_lines[visual_index];
         let line_content = self.buffer.line(visual_line.logical_line);
         let prefix_len = col.saturating_sub(visual_line.start_col);
-        let prefix_text: String = line_content
-            .chars()
-            .skip(visual_line.start_col)
-            .take(prefix_len)
-            .collect();
+        let prefix_text: String =
+            line_content.chars().skip(visual_line.start_col).take(prefix_len).collect();
         let x = self.gutter_width()
             + 5.0
-            + measure_text_width(
-                &prefix_text,
-                self.full_char_width,
-                self.char_width,
-            );
+            + measure_text_width(&prefix_text, self.full_char_width, self.char_width);
         let y = visual_index as f32 * self.line_height;
         Some(iced::Point::new(x, y))
     }
@@ -836,11 +781,7 @@ mod tests {
             (1, 0)
         );
         assert_eq!(
-            CodeEditor::vim_word_motion(
-                &chars,
-                (1, 0),
-                VimMotion::WordBackward
-            ),
+            CodeEditor::vim_word_motion(&chars, (1, 0), VimMotion::WordBackward),
             (0, 4)
         );
         assert_eq!(
@@ -861,10 +802,7 @@ mod tests {
     #[test]
     fn test_page_down() {
         // Create editor with many lines
-        let content = (0..100)
-            .map(|i| format!("line {i}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let content = (0..100).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
         let mut editor = CodeEditor::new(&content, "py");
 
         editor.page_down();
@@ -876,10 +814,7 @@ mod tests {
     #[test]
     fn test_page_up() {
         // Create editor with many lines
-        let content = (0..100)
-            .map(|i| format!("line {i}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let content = (0..100).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
         let mut editor = CodeEditor::new(&content, "py");
 
         // Move to line 50
@@ -893,8 +828,7 @@ mod tests {
 
     #[test]
     fn test_page_down_at_end() {
-        let content =
-            (0..10).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
+        let content = (0..10).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
         let mut editor = CodeEditor::new(&content, "py");
 
         editor.page_down();
@@ -904,10 +838,7 @@ mod tests {
 
     #[test]
     fn test_page_up_at_start() {
-        let content = (0..100)
-            .map(|i| format!("line {i}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let content = (0..100).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
         let mut editor = CodeEditor::new(&content, "py");
 
         // Already at start
@@ -934,15 +865,13 @@ mod tests {
         //
         // Case 1: Click inside "你", at less than half its width.
         // Expect col 0
-        editor
-            .handle_mouse_click(Point::new((half_width - 2.0) + padding, 10.0));
+        editor.handle_mouse_click(Point::new((half_width - 2.0) + padding, 10.0));
 
         assert_eq!(editor.cursors.primary_position(), (0, 0));
 
         // Case 2: Click inside "你", at more than half its width.
         // Expect col 1
-        editor
-            .handle_mouse_click(Point::new((half_width + 2.0) + padding, 10.0));
+        editor.handle_mouse_click(Point::new((half_width + 2.0) + padding, 10.0));
         assert_eq!(editor.cursors.primary_position(), (0, 1));
 
         // Case 3: Click inside "好", at less than half its width.
@@ -973,8 +902,7 @@ mod tests {
         editor.move_cursor(ArrowDirection::Left);
 
         // Both cursors should have moved left by one
-        let positions: Vec<(usize, usize)> =
-            editor.cursors.iter().map(|c| c.position).collect();
+        let positions: Vec<(usize, usize)> = editor.cursors.iter().map(|c| c.position).collect();
         assert!(positions.contains(&(0, 1)));
         assert!(positions.contains(&(1, 1)));
     }
@@ -987,8 +915,7 @@ mod tests {
 
         editor.move_cursor(ArrowDirection::Right);
 
-        let positions: Vec<(usize, usize)> =
-            editor.cursors.iter().map(|c| c.position).collect();
+        let positions: Vec<(usize, usize)> = editor.cursors.iter().map(|c| c.position).collect();
         assert!(positions.contains(&(0, 2)));
         assert!(positions.contains(&(1, 2)));
     }

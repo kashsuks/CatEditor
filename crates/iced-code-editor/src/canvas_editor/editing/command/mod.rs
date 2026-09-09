@@ -19,8 +19,8 @@ pub use comment::ToggleCommentCommand;
 pub(crate) use comment::line_comment_token;
 pub use composite::{CompositeCommand, ReplaceTextCommand};
 pub use edit::{
-    DeleteCharCommand, DeleteForwardCommand, DeleteRangeCommand,
-    InsertCharCommand, InsertNewlineCommand, InsertTextCommand,
+    DeleteCharCommand, DeleteForwardCommand, DeleteRangeCommand, InsertCharCommand,
+    InsertNewlineCommand, InsertTextCommand,
 };
 pub use lines::{DuplicateLinesCommand, MoveLinesCommand};
 

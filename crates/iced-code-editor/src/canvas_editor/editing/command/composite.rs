@@ -14,7 +14,9 @@ pub struct CompositeCommand {
 impl CompositeCommand {
     /// Creates a new, empty composite command.
     pub fn new() -> Self {
-        Self { commands: Vec::new() }
+        Self {
+            commands: Vec::new(),
+        }
     }
 
     /// Adds a command to this composite.
@@ -29,11 +31,7 @@ impl CompositeCommand {
 }
 
 impl Command for CompositeCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         for cmd in &mut self.commands {
             cmd.execute(buffer, cursor);
         }
@@ -77,8 +75,7 @@ impl ReplaceTextCommand {
         // Extract the old text being replaced
         let line = buffer.line(position.0);
         let chars: Vec<char> = line.chars().collect();
-        let old_text: String =
-            chars.iter().skip(position.1).take(old_text_len).collect();
+        let old_text: String = chars.iter().skip(position.1).take(old_text_len).collect();
 
         let cursor_after = (position.0, position.1 + new_text.chars().count());
 
@@ -93,11 +90,7 @@ impl ReplaceTextCommand {
 }
 
 impl Command for ReplaceTextCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         // Optimized replacement using replace_range
         buffer.replace_range(
             self.position.0,
@@ -150,13 +143,7 @@ mod tests {
     fn test_replace_text_command() {
         let mut buffer = TextBuffer::new("hello world");
         let mut cursor = (0, 0);
-        let mut cmd = ReplaceTextCommand::new(
-            &buffer,
-            (0, 0),
-            5,
-            "goodbye".to_string(),
-            cursor,
-        );
+        let mut cmd = ReplaceTextCommand::new(&buffer, (0, 0), 5, "goodbye".to_string(), cursor);
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "goodbye world");
@@ -173,13 +160,7 @@ mod tests {
         let mut cursor = (0, 4);
 
         // Replace "bar" (3 chars) with "x" (1 char)
-        let mut cmd = ReplaceTextCommand::new(
-            &buffer,
-            (0, 4),
-            3,
-            "x".to_string(),
-            cursor,
-        );
+        let mut cmd = ReplaceTextCommand::new(&buffer, (0, 4), 3, "x".to_string(), cursor);
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "foo x baz");

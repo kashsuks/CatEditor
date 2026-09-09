@@ -19,18 +19,15 @@ mod protocol;
 mod text_model;
 
 use self::config::{
-    LspCommand, ensure_rust_analyzer_config, lsp_server_config,
-    resolve_lsp_command,
+    LspCommand, ensure_rust_analyzer_config, lsp_server_config, resolve_lsp_command,
 };
 use self::pending::{LspRequestKind, PendingRequest, evict_expired_requests};
 use self::protocol::{
-    frame_message, handle_client_response, handle_server_notification,
-    handle_server_request, read_log_line, read_message,
+    frame_message, handle_client_response, handle_server_notification, handle_server_request,
+    read_log_line, read_message,
 };
 use self::text_model::{DocumentState, TextModel, apply_changes_to_document};
-use crate::canvas_editor::lsp::{
-    LspClient, LspDocument, LspPosition, LspRange, LspTextChange,
-};
+use crate::canvas_editor::lsp::{LspClient, LspDocument, LspPosition, LspRange, LspTextChange};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::{BufReader, Write};
@@ -269,24 +266,14 @@ impl LspProcessClient {
         let reader_thread = thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
             while let Some(buf) = read_message(&mut reader) {
-                if let Ok(value) =
-                    serde_json::from_slice::<serde_json::Value>(&buf)
-                {
+                if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&buf) {
                     if let Some(id) = value.get("id").and_then(|v| v.as_u64()) {
-                        if let Some(method) =
-                            value.get("method").and_then(|m| m.as_str())
-                        {
+                        if let Some(method) = value.get("method").and_then(|m| m.as_str()) {
                             handle_server_request(id, method, &tx_reader);
                         } else {
-                            handle_client_response(
-                                id,
-                                &value,
-                                &pending_reader,
-                                &events_reader,
-                            );
+                            handle_client_response(id, &value, &pending_reader, &events_reader);
                         }
-                    } else if let Some(method) =
-                        value.get("method").and_then(|m| m.as_str())
+                    } else if let Some(method) = value.get("method").and_then(|m| m.as_str())
                         && let Some(params) = value.get("params")
                     {
                         handle_server_notification(
@@ -392,7 +379,9 @@ impl LspProcessClient {
         changes: &[LspTextChange],
     ) -> Vec<serde_json::Value> {
         let mut docs = self.documents.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(state) = docs.get_mut(uri) else { return Vec::new() };
+        let Some(state) = docs.get_mut(uri) else {
+            return Vec::new();
+        };
 
         match apply_changes_to_document(state, changes) {
             Some(out) => out,
@@ -407,7 +396,7 @@ impl LspProcessClient {
                     ),
                 });
                 Vec::new()
-            }
+            },
         }
     }
 }
@@ -448,7 +437,9 @@ impl LspClient for LspProcessClient {
         let mut docs = self.documents.lock().unwrap_or_else(|e| e.into_inner());
         docs.insert(
             document.uri.clone(),
-            DocumentState { text: TextModel::from_text(text) },
+            DocumentState {
+                text: TextModel::from_text(text),
+            },
         );
 
         let msg = json!({
@@ -466,13 +457,8 @@ impl LspClient for LspProcessClient {
         self.send_message(&msg);
     }
 
-    fn did_change(
-        &mut self,
-        document: &LspDocument,
-        changes: &[LspTextChange],
-    ) {
-        let content_changes =
-            self.apply_change_and_convert(&document.uri, changes);
+    fn did_change(&mut self, document: &LspDocument, changes: &[LspTextChange]) {
+        let content_changes = self.apply_change_and_convert(&document.uri, changes);
         if content_changes.is_empty() {
             return;
         }
@@ -519,13 +505,14 @@ impl LspClient for LspProcessClient {
 
     fn request_hover(&mut self, document: &LspDocument, position: LspPosition) {
         let docs = self.documents.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(state) = docs.get(&document.uri) else { return };
+        let Some(state) = docs.get(&document.uri) else {
+            return;
+        };
         let pos = state.text.to_utf16_position(position);
 
         let id = self.next_id();
         {
-            let mut pending =
-                self.pending_requests.lock().unwrap_or_else(|e| e.into_inner());
+            let mut pending = self.pending_requests.lock().unwrap_or_else(|e| e.into_inner());
             evict_expired_requests(&mut pending);
             pending.insert(
                 id,
@@ -548,19 +535,16 @@ impl LspClient for LspProcessClient {
         self.send_message(&msg);
     }
 
-    fn request_completion(
-        &mut self,
-        document: &LspDocument,
-        position: LspPosition,
-    ) {
+    fn request_completion(&mut self, document: &LspDocument, position: LspPosition) {
         let docs = self.documents.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(state) = docs.get(&document.uri) else { return };
+        let Some(state) = docs.get(&document.uri) else {
+            return;
+        };
         let pos = state.text.to_utf16_position(position);
 
         let id = self.next_id();
         {
-            let mut pending =
-                self.pending_requests.lock().unwrap_or_else(|e| e.into_inner());
+            let mut pending = self.pending_requests.lock().unwrap_or_else(|e| e.into_inner());
             evict_expired_requests(&mut pending);
             pending.insert(
                 id,
@@ -584,19 +568,16 @@ impl LspClient for LspProcessClient {
         self.send_message(&msg);
     }
 
-    fn request_definition(
-        &mut self,
-        document: &LspDocument,
-        position: LspPosition,
-    ) {
+    fn request_definition(&mut self, document: &LspDocument, position: LspPosition) {
         let docs = self.documents.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(state) = docs.get(&document.uri) else { return };
+        let Some(state) = docs.get(&document.uri) else {
+            return;
+        };
         let pos = state.text.to_utf16_position(position);
 
         let id = self.next_id();
         {
-            let mut pending =
-                self.pending_requests.lock().unwrap_or_else(|e| e.into_inner());
+            let mut pending = self.pending_requests.lock().unwrap_or_else(|e| e.into_inner());
             evict_expired_requests(&mut pending);
             pending.insert(
                 id,
@@ -638,9 +619,11 @@ mod tests {
     /// tests exercise the client's own methods directly rather than the wire
     /// protocol those background threads drive.
     #[allow(clippy::expect_used)]
-    fn test_client()
-    -> (LspProcessClient, mpsc::Receiver<Vec<u8>>, mpsc::Receiver<LspEvent>)
-    {
+    fn test_client() -> (
+        LspProcessClient,
+        mpsc::Receiver<Vec<u8>>,
+        mpsc::Receiver<LspEvent>,
+    ) {
         let child = Command::new("true").spawn().expect("spawn stub process");
         let (writer_tx, writer_rx) = mpsc::channel::<Vec<u8>>();
         let (events_tx, events_rx) = mpsc::channel::<LspEvent>();
@@ -681,8 +664,14 @@ mod tests {
 
     fn range(sl: u32, sc: u32, el: u32, ec: u32) -> LspRange {
         LspRange {
-            start: LspPosition { line: sl, character: sc },
-            end: LspPosition { line: el, character: ec },
+            start: LspPosition {
+                line: sl,
+                character: sc,
+            },
+            end: LspPosition {
+                line: el,
+                character: ec,
+            },
         }
     }
 
@@ -788,7 +777,7 @@ mod tests {
         match events_rx.try_recv().expect("desync logged") {
             LspEvent::Log { message, .. } => {
                 assert!(message.contains("desynchronized"));
-            }
+            },
             _ => panic!("expected LspEvent::Log"),
         }
     }
@@ -834,7 +823,13 @@ mod tests {
         client.did_open(&doc, "hello");
         writer_rx.try_recv().expect("drain didOpen");
 
-        client.request_hover(&doc, LspPosition { line: 0, character: 2 });
+        client.request_hover(
+            &doc,
+            LspPosition {
+                line: 0,
+                character: 2,
+            },
+        );
 
         let bytes = writer_rx.try_recv().expect("hover request sent");
         let value = decode_sent(&bytes);
@@ -843,7 +838,7 @@ mod tests {
 
         let pending = client.pending_requests.lock().unwrap();
         match pending.get(&id).map(|p| &p.kind) {
-            Some(LspRequestKind::Hover) => {}
+            Some(LspRequestKind::Hover) => {},
             _ => panic!("expected a pending Hover request"),
         }
     }
@@ -854,7 +849,13 @@ mod tests {
         let (mut client, writer_rx, _events_rx) = test_client();
         let doc = document("file:///missing.rs");
 
-        client.request_hover(&doc, LspPosition { line: 0, character: 0 });
+        client.request_hover(
+            &doc,
+            LspPosition {
+                line: 0,
+                character: 0,
+            },
+        );
 
         assert!(writer_rx.try_recv().is_err());
         assert!(client.pending_requests.lock().unwrap().is_empty());
@@ -868,7 +869,13 @@ mod tests {
         client.did_open(&doc, "hello");
         writer_rx.try_recv().expect("drain didOpen");
 
-        client.request_completion(&doc, LspPosition { line: 0, character: 2 });
+        client.request_completion(
+            &doc,
+            LspPosition {
+                line: 0,
+                character: 2,
+            },
+        );
 
         let bytes = writer_rx.try_recv().expect("completion request sent");
         let value = decode_sent(&bytes);
@@ -877,7 +884,7 @@ mod tests {
 
         let pending = client.pending_requests.lock().unwrap();
         match pending.get(&id).map(|p| &p.kind) {
-            Some(LspRequestKind::Completion) => {}
+            Some(LspRequestKind::Completion) => {},
             _ => panic!("expected a pending Completion request"),
         }
     }
@@ -890,7 +897,13 @@ mod tests {
         client.did_open(&doc, "hello");
         writer_rx.try_recv().expect("drain didOpen");
 
-        client.request_definition(&doc, LspPosition { line: 0, character: 2 });
+        client.request_definition(
+            &doc,
+            LspPosition {
+                line: 0,
+                character: 2,
+            },
+        );
 
         let bytes = writer_rx.try_recv().expect("definition request sent");
         let value = decode_sent(&bytes);
@@ -899,7 +912,7 @@ mod tests {
 
         let pending = client.pending_requests.lock().unwrap();
         match pending.get(&id).map(|p| &p.kind) {
-            Some(LspRequestKind::Definition) => {}
+            Some(LspRequestKind::Definition) => {},
             _ => panic!("expected a pending Definition request"),
         }
     }

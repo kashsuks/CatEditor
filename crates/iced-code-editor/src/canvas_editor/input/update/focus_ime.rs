@@ -87,10 +87,7 @@ impl CodeEditor {
     /// # Returns
     ///
     /// A `Task<Message>` that scrolls to cursor after insertion
-    pub(crate) fn handle_ime_commit_msg(
-        &mut self,
-        text: &str,
-    ) -> Task<Message> {
+    pub(crate) fn handle_ime_commit_msg(&mut self, text: &str) -> Task<Message> {
         self.ime_preedit = None;
 
         if text.is_empty() || !self.vim_accepts_insert_input() {
@@ -164,7 +161,10 @@ mod tests {
         // When focus is regained, it should be unlocked
         editor.request_focus();
         let _ = editor.update(&Message::CanvasFocusGained);
-        assert!(!editor.focus_locked, "Focus should be unlocked when regained");
+        assert!(
+            !editor.focus_locked,
+            "Focus should be unlocked when regained"
+        );
 
         // Can manually reset focus lock
         editor.focus_locked = true;
@@ -193,8 +193,7 @@ mod tests {
         // Preedit with Chinese content and a selection range
         let content = "安全与合规".to_string();
         let selection = Some(0..3); // range aligned to UTF-8 character boundary
-        let _ = editor
-            .update(&Message::ImePreedit(content.clone(), selection.clone()));
+        let _ = editor.update(&Message::ImePreedit(content.clone(), selection.clone()));
 
         assert!(editor.ime_preedit.is_some());
         assert_eq!(

@@ -70,11 +70,7 @@ impl TextModel {
             for mid in inserted.iter().take(inserted.len() - 1).skip(1) {
                 replacement.push((*mid).to_string());
             }
-            replacement.push(format!(
-                "{}{}",
-                inserted[inserted.len() - 1],
-                suffix
-            ));
+            replacement.push(format!("{}{}", inserted[inserted.len() - 1], suffix));
         }
 
         self.lines.splice(start_line..=end_line, replacement);
@@ -84,17 +80,16 @@ impl TextModel {
     /// Converts a UTF-8 character position to a UTF-16 position.
     ///
     /// This is necessary because LSP uses UTF-16 for character positions.
-    pub(super) fn to_utf16_position(
-        &self,
-        position: LspPosition,
-    ) -> LspPosition {
+    pub(super) fn to_utf16_position(&self, position: LspPosition) -> LspPosition {
         let line_index = position.line as usize;
         let char_index = position.character as usize;
         let line = self.lines.get(line_index).map_or("", |l| l.as_str());
 
-        let utf16_col =
-            line.chars().take(char_index).map(|c| c.len_utf16() as u32).sum();
-        LspPosition { line: position.line, character: utf16_col }
+        let utf16_col = line.chars().take(char_index).map(|c| c.len_utf16() as u32).sum();
+        LspPosition {
+            line: position.line,
+            character: utf16_col,
+        }
     }
 }
 
@@ -159,8 +154,14 @@ mod tests {
     ) -> LspTextChange {
         LspTextChange {
             range: LspRange {
-                start: LspPosition { line: start_line, character: start_char },
-                end: LspPosition { line: end_line, character: end_char },
+                start: LspPosition {
+                    line: start_line,
+                    character: start_char,
+                },
+                end: LspPosition {
+                    line: end_line,
+                    character: end_char,
+                },
             },
             text: text.to_string(),
         }
@@ -196,11 +197,11 @@ mod tests {
     #[test]
     #[allow(clippy::panic)]
     fn test_apply_changes_to_document_converts_every_change() {
-        let mut state =
-            DocumentState { text: TextModel::from_text("hello\nworld") };
+        let mut state = DocumentState {
+            text: TextModel::from_text("hello\nworld"),
+        };
 
-        let changes =
-            vec![change(0, 0, 0, 5, "hi"), change(1, 0, 1, 5, "earth")];
+        let changes = vec![change(0, 0, 0, 5, "hi"), change(1, 0, 1, 5, "earth")];
         let Some(out) = apply_changes_to_document(&mut state, &changes) else {
             panic!("in-range changes must convert");
         };
@@ -216,15 +217,16 @@ mod tests {
 
     #[test]
     fn test_apply_changes_to_document_stops_at_first_desync() {
-        let mut state = DocumentState { text: TextModel::from_text("hello") };
+        let mut state = DocumentState {
+            text: TextModel::from_text("hello"),
+        };
 
         // The first change is valid and does get applied to the mirror; the
         // second references a line that doesn't exist. The whole batch must
         // report `None` rather than a partial result, since every change
         // after the desync point is computed against a mirror state that no
         // longer reflects reality.
-        let changes =
-            vec![change(0, 0, 0, 5, "hi"), change(9, 0, 9, 0, "unreachable")];
+        let changes = vec![change(0, 0, 0, 5, "hi"), change(9, 0, 9, 0, "unreachable")];
         let out = apply_changes_to_document(&mut state, &changes);
 
         assert!(out.is_none());

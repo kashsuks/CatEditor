@@ -277,11 +277,7 @@ impl CommandHistory {
     /// ```
     ///
     /// [`Message::Undo`]: crate::Message::Undo
-    pub fn undo(
-        &self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) -> bool {
+    pub fn undo(&self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) -> bool {
         let mut inner = self.lock_inner();
 
         // End any current grouping
@@ -327,11 +323,7 @@ impl CommandHistory {
     /// ```
     ///
     /// [`Message::Redo`]: crate::Message::Redo
-    pub fn redo(
-        &self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) -> bool {
+    pub fn redo(&self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) -> bool {
         let mut inner = self.lock_inner();
 
         if let Some(mut command) = inner.redo_stack.pop() {
@@ -1064,18 +1056,9 @@ mod tests {
     struct PanickingUndoCommand;
 
     impl Command for PanickingUndoCommand {
-        fn execute(
-            &mut self,
-            _buffer: &mut TextBuffer,
-            _cursor: &mut (usize, usize),
-        ) {
-        }
+        fn execute(&mut self, _buffer: &mut TextBuffer, _cursor: &mut (usize, usize)) {}
 
-        fn undo(
-            &mut self,
-            _buffer: &mut TextBuffer,
-            _cursor: &mut (usize, usize),
-        ) {
+        fn undo(&mut self, _buffer: &mut TextBuffer, _cursor: &mut (usize, usize)) {
             let empty: Vec<u8> = Vec::new();
             let _ = empty[0];
         }
@@ -1101,10 +1084,9 @@ mod tests {
         // restore the default hook for the rest of the suite.
         let previous_hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(|_| {}));
-        let outcome =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                history.undo(&mut buffer, &mut cursor)
-            }));
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            history.undo(&mut buffer, &mut cursor)
+        }));
         std::panic::set_hook(previous_hook);
         assert!(outcome.is_err(), "the command under test must panic");
 

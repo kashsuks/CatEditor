@@ -37,7 +37,10 @@ impl FoldRegion {
     /// * `start_line` - Index of the header line
     /// * `end_line` - Index of the last line in the region
     pub fn new(start_line: usize, end_line: usize) -> Self {
-        Self { start_line, end_line }
+        Self {
+            start_line,
+            end_line,
+        }
     }
 }
 
@@ -79,10 +82,7 @@ pub fn compute_foldable_regions(buffer: &TextBuffer) -> Vec<FoldRegion> {
 
     let mut previous_non_blank = None;
     while let Some((line, indent)) = non_blank.next() {
-        while open_regions
-            .last()
-            .is_some_and(|(header_indent, _)| *header_indent >= indent)
-        {
+        while open_regions.last().is_some_and(|(header_indent, _)| *header_indent >= indent) {
             if let Some((_, region_index)) = open_regions.pop()
                 && let Some(end_line) = previous_non_blank
                 && let Some(region) = regions.get_mut(region_index)
@@ -91,10 +91,7 @@ pub fn compute_foldable_regions(buffer: &TextBuffer) -> Vec<FoldRegion> {
             }
         }
 
-        if non_blank
-            .peek()
-            .is_some_and(|(_, next_indent)| *next_indent > indent)
-        {
+        if non_blank.peek().is_some_and(|(_, next_indent)| *next_indent > indent) {
             let region_index = regions.len();
             regions.push(FoldRegion::new(line, line));
             open_regions.push((indent, region_index));
@@ -153,10 +150,7 @@ pub fn is_line_fold_header(buffer: &TextBuffer, line: usize) -> bool {
 /// # Returns
 ///
 /// The set of logical line indices that must not be rendered.
-pub fn hidden_lines(
-    regions: &[FoldRegion],
-    collapsed: &HashSet<usize>,
-) -> HashSet<usize> {
+pub fn hidden_lines(regions: &[FoldRegion], collapsed: &HashSet<usize>) -> HashSet<usize> {
     let mut hidden = HashSet::new();
     for region in regions {
         if collapsed.contains(&region.start_line) {
@@ -179,8 +173,7 @@ mod tests {
     #[test]
     fn test_simple_block() {
         // `fn main` header at line 0, body at lines 1-2, closing brace dedented.
-        let buffer =
-            TextBuffer::new("fn main() {\n    let x = 1;\n    let y = 2;\n}");
+        let buffer = TextBuffer::new("fn main() {\n    let x = 1;\n    let y = 2;\n}");
         let regions = compute_foldable_regions(&buffer);
         assert_eq!(regions, vec![FoldRegion::new(0, 2)]);
     }
@@ -188,9 +181,8 @@ mod tests {
     #[test]
     fn test_nested_blocks() {
         // Two nesting levels produce two independent regions.
-        let buffer = TextBuffer::new(
-            "outer:\n    inner:\n        deep\n        deeper\n    after_inner",
-        );
+        let buffer =
+            TextBuffer::new("outer:\n    inner:\n        deep\n        deeper\n    after_inner");
         let regions = compute_foldable_regions(&buffer);
         assert_eq!(regions, vec![FoldRegion::new(0, 4), FoldRegion::new(1, 3)]);
     }
@@ -199,8 +191,7 @@ mod tests {
     fn test_blank_lines_inside_and_trailing() {
         // Blank line (idx 2) stays inside the block; trailing blank (idx 4)
         // before a dedented line is trimmed.
-        let buffer =
-            TextBuffer::new("def f():\n    a = 1\n\n    b = 2\n\ng = 3");
+        let buffer = TextBuffer::new("def f():\n    a = 1\n\n    b = 2\n\ng = 3");
         let regions = compute_foldable_regions(&buffer);
         // Region covers lines 1..=3 (the blank at 2 is absorbed), but not the
         // trailing blank at line 4.

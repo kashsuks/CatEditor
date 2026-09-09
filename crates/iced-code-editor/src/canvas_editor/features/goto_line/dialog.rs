@@ -49,10 +49,7 @@ impl canvas::Program<Message> for EscapeListener {
 }
 
 /// Builds the go-to-line input shown over the editor.
-pub(crate) fn view(
-    state: &GotoLineState,
-    line_count: usize,
-) -> Element<'_, Message> {
+pub(crate) fn view(state: &GotoLineState, line_count: usize) -> Element<'_, Message> {
     if !state.is_open {
         return Space::new().into();
     }
@@ -83,7 +80,7 @@ pub(crate) fn view(
             background: base.background.map(|background| match background {
                 iced::Background::Color(color) => {
                     iced::Background::Color(iced::Color { a: 0.9, ..color })
-                }
+                },
                 _ => background,
             }),
             ..base
@@ -92,10 +89,6 @@ pub(crate) fn view(
 
     Stack::new()
         .push(dialog)
-        .push(
-            Canvas::new(EscapeListener)
-                .width(Length::Fill)
-                .height(Length::Fill),
-        )
+        .push(Canvas::new(EscapeListener).width(Length::Fill).height(Length::Fill))
         .into()
 }

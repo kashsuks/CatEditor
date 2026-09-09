@@ -3,9 +3,7 @@
 use iced::Task;
 
 use super::{EditType, adjust_other_cursors};
-use crate::canvas_editor::editing::command::{
-    Command, InsertCharCommand, InsertNewlineCommand,
-};
+use crate::canvas_editor::editing::command::{Command, InsertCharCommand, InsertNewlineCommand};
 use crate::canvas_editor::{CodeEditor, IndentStyle, Message};
 
 /// Returns the closing character auto-inserted for an opening bracket or
@@ -58,10 +56,7 @@ impl CodeEditor {
     ///
     /// A `Task<Message>` that scrolls to keep the cursor visible (including
     /// horizontal scroll when wrap is disabled)
-    pub(crate) fn handle_character_input_msg(
-        &mut self,
-        ch: char,
-    ) -> Task<Message> {
+    pub(crate) fn handle_character_input_msg(&mut self, ch: char) -> Task<Message> {
         // Guard clause: only process character input if editor has focus and is not locked
         if !self.has_focus() {
             return Task::none();
@@ -70,8 +65,7 @@ impl CodeEditor {
         // Start grouping if not already grouping (for smart undo)
         self.ensure_grouping_started();
 
-        let has_any_selection =
-            self.cursors.iter().any(|cursor| cursor.has_selection());
+        let has_any_selection = self.cursors.iter().any(|cursor| cursor.has_selection());
         let surround_close = if self.auto_close_brackets && has_any_selection {
             matching_close(ch)
         } else {
@@ -103,14 +97,11 @@ impl CodeEditor {
                 // The current cursor position is therefore the insertion point.
                 let pos = self.cursors.as_slice()[idx].position;
 
-                if self.auto_close_brackets
-                    && is_closing_char(ch)
-                    && self.char_at(pos) == Some(ch)
+                if self.auto_close_brackets && is_closing_char(ch) && self.char_at(pos) == Some(ch)
                 {
                     // An auto-inserted closer already sits here: step over it
                     // instead of inserting a duplicate.
-                    self.cursors.as_mut_slice()[idx].position =
-                        (pos.0, pos.1 + 1);
+                    self.cursors.as_mut_slice()[idx].position = (pos.0, pos.1 + 1);
                     continue;
                 }
 
@@ -178,20 +169,13 @@ impl CodeEditor {
     /// `InsertTextCommand::undo`'s backward walk from the resting cursor
     /// delete the wrong character. Adjusts every other cursor for the
     /// resulting 2-character insert.
-    fn insert_pair_at_cursor(
-        &mut self,
-        idx: usize,
-        pos: (usize, usize),
-        open: char,
-        close: char,
-    ) {
+    fn insert_pair_at_cursor(&mut self, idx: usize, pos: (usize, usize), open: char, close: char) {
         let mut open_cmd = InsertCharCommand::new(pos.0, pos.1, open, pos);
         let mut cursor_pos = pos;
         open_cmd.execute(&mut self.buffer, &mut cursor_pos);
         self.history.push(Box::new(open_cmd));
 
-        let mut close_cmd =
-            InsertCharCommand::new(pos.0, pos.1 + 1, close, cursor_pos);
+        let mut close_cmd = InsertCharCommand::new(pos.0, pos.1 + 1, close, cursor_pos);
         close_cmd.execute(&mut self.buffer, &mut cursor_pos);
         self.history.push(Box::new(close_cmd));
 
@@ -239,8 +223,7 @@ impl CodeEditor {
             };
             let anchor_is_start = cursor.anchor == Some(start);
 
-            let mut open_cmd =
-                InsertCharCommand::new(start.0, start.1, open, cursor.position);
+            let mut open_cmd = InsertCharCommand::new(start.0, start.1, open, cursor.position);
             let mut cursor_pos = cursor.position;
             open_cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.history.push(Box::new(open_cmd));
@@ -254,9 +237,12 @@ impl CodeEditor {
 
             // The open char shifted everything after it on the same line by
             // one column, including `end` if the selection is single-line.
-            let close_col = if end.0 == start.0 { end.1 + 1 } else { end.1 };
-            let mut close_cmd =
-                InsertCharCommand::new(end.0, close_col, close, cursor_pos);
+            let close_col = if end.0 == start.0 {
+                end.1 + 1
+            } else {
+                end.1
+            };
+            let mut close_cmd = InsertCharCommand::new(end.0, close_col, close, cursor_pos);
             close_cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.history.push(Box::new(close_cmd));
             adjust_other_cursors(
@@ -305,12 +291,7 @@ impl CodeEditor {
                     let mut cursor_pos = pos;
                     for _i in 0..n as usize {
                         let current_col = cursor_pos.1;
-                        let mut cmd = InsertCharCommand::new(
-                            pos.0,
-                            current_col,
-                            ' ',
-                            cursor_pos,
-                        );
+                        let mut cmd = InsertCharCommand::new(pos.0, current_col, ' ', cursor_pos);
                         cmd.execute(&mut self.buffer, &mut cursor_pos);
                         adjust_other_cursors(
                             self.cursors.as_mut_slice(),
@@ -322,10 +303,9 @@ impl CodeEditor {
                         self.history.push(Box::new(cmd));
                     }
                     self.cursors.as_mut_slice()[idx].position = cursor_pos;
-                }
+                },
                 IndentStyle::Tab => {
-                    let mut cmd =
-                        InsertCharCommand::new(pos.0, pos.1, '\t', pos);
+                    let mut cmd = InsertCharCommand::new(pos.0, pos.1, '\t', pos);
                     let mut cursor_pos = pos;
                     cmd.execute(&mut self.buffer, &mut cursor_pos);
                     adjust_other_cursors(
@@ -337,7 +317,7 @@ impl CodeEditor {
                     );
                     self.cursors.as_mut_slice()[idx].position = cursor_pos;
                     self.history.push(Box::new(cmd));
-                }
+                },
             }
         }
 
@@ -384,8 +364,7 @@ impl CodeEditor {
         //
         // For a real selection, Enter replaces the selected text with a
         // newline. Group both commands so one undo restores the selection.
-        let replaces_selection =
-            self.cursors.iter().any(|cursor| cursor.has_selection());
+        let replaces_selection = self.cursors.iter().any(|cursor| cursor.has_selection());
         if replaces_selection {
             self.ensure_grouping_started();
             self.delete_selection();
@@ -401,18 +380,13 @@ impl CodeEditor {
 
             // Copy leading whitespace of the current line to the new line (if enabled)
             let indent: String = if self.auto_indent_enabled {
-                self.buffer
-                    .line(pos.0)
-                    .chars()
-                    .take_while(|c| c.is_whitespace())
-                    .collect()
+                self.buffer.line(pos.0).chars().take_while(|c| c.is_whitespace()).collect()
             } else {
                 String::new()
             };
             let indent_len = indent.chars().count();
 
-            let mut cmd =
-                InsertNewlineCommand::with_indent(pos.0, pos.1, pos, indent);
+            let mut cmd = InsertNewlineCommand::with_indent(pos.0, pos.1, pos, indent);
             let mut cursor_pos = pos;
             cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.cursors.as_mut_slice()[idx].position = cursor_pos;
@@ -514,9 +488,7 @@ mod tests {
 
     #[test]
     fn test_auto_close_inserts_pair_with_cursor_between() {
-        for &(open, close) in
-            &[('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')]
-        {
+        for &(open, close) in &[('(', ')'), ('[', ']'), ('{', '}'), ('"', '"'), ('\'', '\'')] {
             let mut editor = CodeEditor::new("", "py");
             focus_editor(&mut editor);
 

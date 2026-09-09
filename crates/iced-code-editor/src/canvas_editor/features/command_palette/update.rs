@@ -53,30 +53,28 @@ impl CodeEditor {
     /// The highlight resets rather than being kept at the same index: after
     /// a keystroke the row at that index is a different command, so keeping
     /// it would run something the user never looked at.
-    pub(crate) fn handle_command_palette_changed_msg(
-        &mut self,
-        query: &str,
-    ) -> Task<Message> {
+    pub(crate) fn handle_command_palette_changed_msg(&mut self, query: &str) -> Task<Message> {
         self.command_palette_state.query = query.to_string();
         self.command_palette_state.select_first_row();
         self.scroll_command_palette_to_selection()
     }
 
     /// Moves the highlight one row down (`forward`) or up.
-    pub(crate) fn handle_command_palette_navigate_msg(
-        &mut self,
-        forward: bool,
-    ) -> Task<Message> {
+    pub(crate) fn handle_command_palette_navigate_msg(&mut self, forward: bool) -> Task<Message> {
         let len = self.command_palette_entries().len();
-        self.command_palette_state.navigate(if forward { 1 } else { -1 }, len);
+        self.command_palette_state.navigate(
+            if forward {
+                1
+            } else {
+                -1
+            },
+            len,
+        );
         self.scroll_command_palette_to_selection()
     }
 
     /// Highlights the clicked row and runs it.
-    pub(crate) fn handle_command_palette_selected_msg(
-        &mut self,
-        index: usize,
-    ) -> Task<Message> {
+    pub(crate) fn handle_command_palette_selected_msg(&mut self, index: usize) -> Task<Message> {
         self.command_palette_state.selected = index;
         self.handle_submit_command_palette_msg()
     }
@@ -88,19 +86,14 @@ impl CodeEditor {
     /// user had pressed the shortcut. That matters for the actions the editor
     /// itself does not perform — saving, revealing the file, and every
     /// host-registered command — which the host intercepts on its way in.
-    pub(crate) fn handle_submit_command_palette_msg(
-        &mut self,
-    ) -> Task<Message> {
+    pub(crate) fn handle_submit_command_palette_msg(&mut self) -> Task<Message> {
         let entries = self.command_palette_entries();
-        let Some(entry) = entries.get(self.command_palette_state.selected)
-        else {
+        let Some(entry) = entries.get(self.command_palette_state.selected) else {
             return Task::none();
         };
         let message = match &entry.action {
             PaletteAction::Builtin(message) => (**message).clone(),
-            PaletteAction::Custom(id) => {
-                Message::CommandPaletteAction(id.clone())
-            }
+            PaletteAction::Custom(id) => Message::CommandPaletteAction(id.clone()),
         };
 
         self.command_palette_state.close();
@@ -143,8 +136,7 @@ mod tests {
         let mut editor = CodeEditor::new("one\ntwo", "rs");
         let _ = editor.update(&Message::OpenSearch);
         let _ = editor.update(&Message::OpenCommandPalette);
-        let _ =
-            editor.update(&Message::CommandPaletteChanged("fold".to_string()));
+        let _ = editor.update(&Message::CommandPaletteChanged("fold".to_string()));
         let _ = editor.update(&Message::CloseCommandPalette);
 
         let _ = editor.update(&Message::OpenCommandPalette);
@@ -157,8 +149,7 @@ mod tests {
 
     #[test]
     fn test_open_is_ignored_when_the_palette_is_disabled() {
-        let mut editor = CodeEditor::new("one\ntwo", "rs")
-            .with_command_palette_enabled(false);
+        let mut editor = CodeEditor::new("one\ntwo", "rs").with_command_palette_enabled(false);
 
         let _ = editor.update(&Message::OpenCommandPalette);
 
@@ -172,8 +163,7 @@ mod tests {
         let _ = editor.update(&Message::CommandPaletteNavigate(true));
         assert_ne!(editor.command_palette_state.selected, 0);
 
-        let _ = editor
-            .update(&Message::CommandPaletteChanged("fold all".to_string()));
+        let _ = editor.update(&Message::CommandPaletteChanged("fold all".to_string()));
 
         assert_eq!(editor.command_palette_state.selected, 0);
         assert_eq!(selected_label(&editor), "Fold All");
@@ -183,8 +173,7 @@ mod tests {
     fn test_navigation_wraps_over_the_filtered_list() {
         let mut editor = CodeEditor::new("one\ntwo", "rs");
         let _ = editor.update(&Message::OpenCommandPalette);
-        let _ =
-            editor.update(&Message::CommandPaletteChanged("fold".to_string()));
+        let _ = editor.update(&Message::CommandPaletteChanged("fold".to_string()));
         let count = editor.command_palette_entries().len();
         assert!(count > 1);
 
@@ -197,8 +186,7 @@ mod tests {
     fn test_submit_emits_the_built_in_action_and_closes_the_palette() {
         let mut editor = CodeEditor::new("fn main() {}", "rs");
         let _ = editor.update(&Message::OpenCommandPalette);
-        let _ = editor
-            .update(&Message::CommandPaletteChanged("goto line".to_string()));
+        let _ = editor.update(&Message::CommandPaletteChanged("goto line".to_string()));
         assert_eq!(selected_label(&editor), "Go to Line");
 
         let _ = editor.update(&Message::SubmitCommandPalette);
@@ -213,14 +201,12 @@ mod tests {
 
     #[test]
     fn test_submit_forwards_host_commands_by_id() {
-        let mut editor = CodeEditor::new("fn main() {}", "rs")
-            .with_custom_command_palette_entries(vec![ContextMenuItem::new(
-                "app.open_file",
-                "Open File",
-            )]);
+        let mut editor =
+            CodeEditor::new("fn main() {}", "rs").with_custom_command_palette_entries(vec![
+                ContextMenuItem::new("app.open_file", "Open File"),
+            ]);
         let _ = editor.update(&Message::OpenCommandPalette);
-        let _ = editor
-            .update(&Message::CommandPaletteChanged("open file".to_string()));
+        let _ = editor.update(&Message::CommandPaletteChanged("open file".to_string()));
 
         assert_eq!(selected_label(&editor), "Open File");
         let _ = editor.update(&Message::SubmitCommandPalette);
@@ -245,8 +231,7 @@ mod tests {
     fn test_clicking_a_row_runs_that_row() {
         let mut editor = CodeEditor::new("fn main() {}", "rs");
         let _ = editor.update(&Message::OpenCommandPalette);
-        let _ =
-            editor.update(&Message::CommandPaletteChanged("fold".to_string()));
+        let _ = editor.update(&Message::CommandPaletteChanged("fold".to_string()));
         let target = editor.command_palette_entries().len() - 1;
 
         let _ = editor.update(&Message::CommandPaletteSelected(target));
@@ -260,9 +245,7 @@ mod tests {
         let mut editor = CodeEditor::new("fn main() {}", "rs");
         let before = editor.content();
 
-        let _ = editor.update(&Message::CommandPaletteAction(
-            "app.open_file".to_string(),
-        ));
+        let _ = editor.update(&Message::CommandPaletteAction("app.open_file".to_string()));
 
         assert_eq!(editor.content(), before);
     }

@@ -3,9 +3,7 @@
 use iced::Task;
 
 use super::{EditType, adjust_other_cursors};
-use crate::canvas_editor::editing::command::{
-    Command, DeleteCharCommand, DeleteForwardCommand,
-};
+use crate::canvas_editor::editing::command::{Command, DeleteCharCommand, DeleteForwardCommand};
 use crate::canvas_editor::{CodeEditor, Message};
 
 impl CodeEditor {
@@ -51,18 +49,11 @@ impl CodeEditor {
                 // At very start of document: nothing to delete
                 continue;
             };
-            let mut cmd =
-                DeleteCharCommand::new(&self.buffer, pos.0, pos.1, pos);
+            let mut cmd = DeleteCharCommand::new(&self.buffer, pos.0, pos.1, pos);
             let mut cursor_pos = pos;
             cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.cursors.as_mut_slice()[idx].position = cursor_pos;
-            adjust_other_cursors(
-                self.cursors.as_mut_slice(),
-                idx,
-                pos.0,
-                pos.1,
-                edit_kind,
-            );
+            adjust_other_cursors(self.cursors.as_mut_slice(), idx, pos.0, pos.1, edit_kind);
             self.history.push(Box::new(cmd));
         }
 
@@ -103,23 +94,18 @@ impl CodeEditor {
             let edit_kind = if pos.1 < line_len {
                 EditType::DeleteCharForward
             } else if pos.0 + 1 < self.buffer.line_count() {
-                EditType::MergeNext { edit_line_len: line_len }
+                EditType::MergeNext {
+                    edit_line_len: line_len,
+                }
             } else {
                 // At very end of document: nothing to delete
                 continue;
             };
-            let mut cmd =
-                DeleteForwardCommand::new(&self.buffer, pos.0, pos.1, pos);
+            let mut cmd = DeleteForwardCommand::new(&self.buffer, pos.0, pos.1, pos);
             let mut cursor_pos = pos;
             cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.cursors.as_mut_slice()[idx].position = cursor_pos;
-            adjust_other_cursors(
-                self.cursors.as_mut_slice(),
-                idx,
-                pos.0,
-                pos.1,
-                edit_kind,
-            );
+            adjust_other_cursors(self.cursors.as_mut_slice(), idx, pos.0, pos.1, edit_kind);
             self.history.push(Box::new(cmd));
         }
 

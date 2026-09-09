@@ -248,12 +248,11 @@ pub use canvas_editor::bench_support;
 pub use canvas_editor::features::folding::FoldRegion;
 /// LSP integration types and traits for editor clients.
 pub use canvas_editor::lsp::{
-    LspClient, LspDocument, LspPosition, LspRange, LspTextChange,
-    compute_text_change,
+    LspClient, LspDocument, LspPosition, LspRange, LspTextChange, compute_text_change,
 };
 pub use canvas_editor::{
-    ArrowDirection, CodeEditor, CommandHistory, ContextMenuEntry,
-    ContextMenuItem, IndentStyle, Message, VimMode,
+    ArrowDirection, CodeEditor, CommandHistory, ContextMenuEntry, ContextMenuItem, IndentStyle,
+    Message, VimMode,
 };
 pub use i18n::{Language, Translations};
 pub use theme::{Catalog, Style, StyleFn, from_iced_theme};
@@ -264,8 +263,7 @@ pub use canvas_editor::lsp::process::{LspEvent, LspProcessClient};
 #[cfg(all(feature = "lsp-process", not(target_arch = "wasm32")))]
 pub use canvas_editor::lsp::process::config::{
     LspCommand, LspLanguage, LspServerConfig, ensure_rust_analyzer_config,
-    lsp_language_for_extension, lsp_language_for_path, lsp_server_config,
-    resolve_lsp_command,
+    lsp_language_for_extension, lsp_language_for_path, lsp_server_config, resolve_lsp_command,
 };
 
 #[cfg(all(feature = "lsp-process", not(target_arch = "wasm32")))]

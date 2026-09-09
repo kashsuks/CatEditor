@@ -2625,7 +2625,8 @@ impl App {
                             ..
                         } = tab.kind
                         {
-                            if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+                            if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref()
+                            {
                                 s.pause();
                                 *playing = false;
                             }
@@ -2645,7 +2646,8 @@ impl App {
                             ..
                         } = tab.kind
                         {
-                            if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+                            if let Some(s) = sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref()
+                            {
                                 s.stop();
                                 *playing = false;
                                 *position_secs = 0.0;

@@ -6,11 +6,7 @@ use iced::widget::canvas;
 use iced::{Event, Point, Rectangle, Size, keyboard, mouse};
 use iced_code_editor::{CodeEditor, Message, VimMode};
 
-fn key_event(
-    key: &str,
-    code: keyboard::key::Code,
-    modifiers: keyboard::Modifiers,
-) -> Event {
+fn key_event(key: &str, code: keyboard::key::Code, modifiers: keyboard::Modifiers) -> Event {
     let key = keyboard::Key::Character(key.into());
     Event::Keyboard(keyboard::Event::KeyPressed {
         key: key.clone(),
@@ -39,8 +35,7 @@ fn routed_message(editor: &mut CodeEditor, event: &Event) -> Option<Message> {
 #[test]
 fn vim_toggle_shortcut_routes_real_keyboard_event() {
     let mut editor = CodeEditor::new("abc", "txt");
-    let toggle_modifiers =
-        keyboard::Modifiers::COMMAND | keyboard::Modifiers::ALT;
+    let toggle_modifiers = keyboard::Modifiers::COMMAND | keyboard::Modifiers::ALT;
 
     let message = routed_message(
         &mut editor,
@@ -50,11 +45,7 @@ fn vim_toggle_shortcut_routes_real_keyboard_event() {
 
     let paste_message = routed_message(
         &mut editor,
-        &key_event(
-            "v",
-            keyboard::key::Code::KeyV,
-            keyboard::Modifiers::COMMAND,
-        ),
+        &key_event("v", keyboard::key::Code::KeyV, keyboard::Modifiers::COMMAND),
     );
     assert!(!matches!(paste_message, Some(Message::ToggleVimMode)));
 }

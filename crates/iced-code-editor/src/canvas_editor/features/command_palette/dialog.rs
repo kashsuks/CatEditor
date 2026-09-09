@@ -2,12 +2,10 @@
 
 use iced::mouse;
 use iced::widget::canvas::{self, Canvas};
-use iced::widget::{
-    Space, Stack, button, column, container, row, scrollable, text, text_input,
-};
+use iced::widget::{Space, Stack, button, column, container, row, scrollable, text, text_input};
 use iced::{
-    Background, Border, Color, Element, Event, Length, Rectangle, Renderer,
-    Shadow, Theme, Vector, keyboard,
+    Background, Border, Color, Element, Event, Length, Rectangle, Renderer, Shadow, Theme, Vector,
+    keyboard,
 };
 
 use super::{CommandPaletteState, PaletteEntry};
@@ -74,21 +72,18 @@ impl canvas::Program<Message> for KeyListener {
         _bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Option<canvas::Action<Message>> {
-        let Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) = event
-        else {
+        let Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) = event else {
             return None;
         };
 
         let message = match key {
-            keyboard::Key::Named(keyboard::key::Named::Escape) => {
-                Message::CloseCommandPalette
-            }
+            keyboard::Key::Named(keyboard::key::Named::Escape) => Message::CloseCommandPalette,
             keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
                 Message::CommandPaletteNavigate(true)
-            }
+            },
             keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
                 Message::CommandPaletteNavigate(false)
-            }
+            },
             _ => return None,
         };
 
@@ -123,14 +118,13 @@ pub(crate) fn view<'a>(
         return Space::new().into();
     }
 
-    let query_input =
-        text_input(&translations.command_palette_placeholder(), &state.query)
-            .id(state.input_id.clone())
-            .on_input(Message::CommandPaletteChanged)
-            .on_submit(Message::SubmitCommandPalette)
-            .padding(8)
-            .size(14)
-            .width(Length::Fill);
+    let query_input = text_input(&translations.command_palette_placeholder(), &state.query)
+        .id(state.input_id.clone())
+        .on_input(Message::CommandPaletteChanged)
+        .on_submit(Message::SubmitCommandPalette)
+        .padding(8)
+        .size(14)
+        .width(Length::Fill);
 
     let results: Element<'a, Message> = if entries.is_empty() {
         container(text(translations.command_palette_no_results()).size(13))
@@ -141,9 +135,7 @@ pub(crate) fn view<'a>(
         let rows = entries
             .iter()
             .enumerate()
-            .map(|(index, entry)| {
-                command_row(entry, index, index == state.selected)
-            })
+            .map(|(index, entry)| command_row(entry, index, index == state.selected))
             .collect::<Vec<_>>();
 
         // The last row of the window is not followed by a gap, so the window
@@ -182,30 +174,27 @@ pub(crate) fn view<'a>(
             .into()
     };
 
-    let dialog =
-        container(column![query_input, results].spacing(6).width(Length::Fill))
-            .padding(8)
-            .width(Length::Fixed(PALETTE_WIDTH))
-            .style(|theme: &Theme| {
-                let palette = theme.extended_palette();
-                container::Style {
-                    background: Some(Background::Color(
-                        palette.background.weak.color,
-                    )),
-                    text_color: Some(palette.background.weak.text),
-                    border: Border {
-                        color: palette.background.strong.color,
-                        width: 1.0,
-                        radius: BORDER_RADIUS.into(),
-                    },
-                    shadow: Shadow {
-                        color: Color::BLACK.scale_alpha(0.35),
-                        offset: Vector::new(0.0, 4.0),
-                        blur_radius: 14.0,
-                    },
-                    ..container::Style::default()
-                }
-            });
+    let dialog = container(column![query_input, results].spacing(6).width(Length::Fill))
+        .padding(8)
+        .width(Length::Fixed(PALETTE_WIDTH))
+        .style(|theme: &Theme| {
+            let palette = theme.extended_palette();
+            container::Style {
+                background: Some(Background::Color(palette.background.weak.color)),
+                text_color: Some(palette.background.weak.text),
+                border: Border {
+                    color: palette.background.strong.color,
+                    width: 1.0,
+                    radius: BORDER_RADIUS.into(),
+                },
+                shadow: Shadow {
+                    color: Color::BLACK.scale_alpha(0.35),
+                    offset: Vector::new(0.0, 4.0),
+                    blur_radius: 14.0,
+                },
+                ..container::Style::default()
+            }
+        });
 
     Stack::new()
         .push(dialog)
@@ -214,11 +203,7 @@ pub(crate) fn view<'a>(
 }
 
 /// Builds one command row: the label on the left, its shortcut hint right.
-fn command_row<'a>(
-    entry: &PaletteEntry,
-    index: usize,
-    is_selected: bool,
-) -> Element<'a, Message> {
+fn command_row<'a>(entry: &PaletteEntry, index: usize, is_selected: bool) -> Element<'a, Message> {
     let content = row![
         text(entry.label.clone()).size(13),
         Space::new().width(Length::Fill),
@@ -233,10 +218,7 @@ fn command_row<'a>(
         .on_press(Message::CommandPaletteSelected(index))
         .style(move |theme: &Theme, status| {
             let palette = theme.extended_palette();
-            let hovered = matches!(
-                status,
-                button::Status::Hovered | button::Status::Pressed
-            );
+            let hovered = matches!(status, button::Status::Hovered | button::Status::Pressed);
             let background = if is_selected {
                 Some(Background::Color(palette.primary.weak.color))
             } else if hovered {
@@ -253,7 +235,10 @@ fn command_row<'a>(
             button::Style {
                 background,
                 text_color,
-                border: Border { radius: 4.0.into(), ..Border::default() },
+                border: Border {
+                    radius: 4.0.into(),
+                    ..Border::default()
+                },
                 ..button::Style::default()
             }
         })

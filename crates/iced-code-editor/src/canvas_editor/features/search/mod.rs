@@ -148,12 +148,7 @@ impl SearchState {
 
     /// Updates the matches list based on current query and options.
     pub fn update_matches(&mut self, buffer: &TextBuffer) {
-        self.matches = find_matches(
-            buffer,
-            &self.query,
-            self.case_sensitive,
-            Some(MAX_MATCHES),
-        );
+        self.matches = find_matches(buffer, &self.query, self.case_sensitive, Some(MAX_MATCHES));
         self.buffer_line_count = buffer.line_count();
 
         // Update current match index
@@ -164,8 +159,7 @@ impl SearchState {
         } else if let Some(idx) = self.current_match_index {
             // Clamp to valid range
             if idx >= self.matches.len() {
-                self.current_match_index =
-                    Some(self.matches.len().saturating_sub(1));
+                self.current_match_index = Some(self.matches.len().saturating_sub(1));
             }
         }
     }
@@ -189,8 +183,7 @@ impl SearchState {
         let old_line_count = self.buffer_line_count;
         let new_line_count = buffer.line_count();
         let start_line = start_line.min(old_line_count).min(new_line_count);
-        let old_end_exclusive =
-            old_end_exclusive.min(old_line_count).max(start_line);
+        let old_end_exclusive = old_end_exclusive.min(old_line_count).max(start_line);
         let new_end_exclusive = if new_line_count >= old_line_count {
             old_end_exclusive
                 .saturating_add(new_line_count - old_line_count)
@@ -202,10 +195,8 @@ impl SearchState {
                 .min(new_line_count)
         };
 
-        let replace_start =
-            self.matches.partition_point(|item| item.line < start_line);
-        let replace_end =
-            self.matches.partition_point(|item| item.line < old_end_exclusive);
+        let replace_start = self.matches.partition_point(|item| item.line < start_line);
+        let replace_end = self.matches.partition_point(|item| item.line < old_end_exclusive);
         let replacement = find_matches_in_range(
             buffer,
             &self.query,
@@ -254,7 +245,7 @@ impl SearchState {
                 } else {
                     idx + 1
                 }
-            }
+            },
             None => 0,
         });
     }
@@ -272,7 +263,7 @@ impl SearchState {
                 } else {
                     idx - 1
                 }
-            }
+            },
             None => self.matches.len() - 1,
         });
     }
@@ -316,8 +307,7 @@ impl SearchState {
 
             self.matches_on_line(start.0).find(|&index| {
                 let match_item = self.matches[index];
-                match_item.col == start.1
-                    && match_item.col.saturating_add(query_len) == end.1
+                match_item.col == start.1 && match_item.col.saturating_add(query_len) == end.1
             })
         });
         let cursor_index = exact_selection_index.or_else(|| {
@@ -326,14 +316,12 @@ impl SearchState {
                 .clone()
                 .find(|&index| {
                     let match_item = self.matches[index];
-                    (match_item.col..=match_item.col.saturating_add(query_len))
-                        .contains(&cursor.1)
+                    (match_item.col..=match_item.col.saturating_add(query_len)).contains(&cursor.1)
                 })
                 .or_else(|| {
                     line_matches.min_by_key(|&index| {
                         let match_item = self.matches[index];
-                        let match_end =
-                            match_item.col.saturating_add(query_len);
+                        let match_end = match_item.col.saturating_add(query_len);
                         if cursor.1 < match_item.col {
                             match_item.col - cursor.1
                         } else {
@@ -372,9 +360,9 @@ impl SearchState {
         }
 
         let (cursor_line, cursor_col) = cursor;
-        let insertion = self.matches.partition_point(|item| {
-            (item.line, item.col) < (cursor_line, cursor_col)
-        });
+        let insertion = self
+            .matches
+            .partition_point(|item| (item.line, item.col) < (cursor_line, cursor_col));
         let mut left = insertion.checked_sub(1);
         let mut right = (insertion < self.matches.len()).then_some(insertion);
         let mut closest_index = insertion.min(self.matches.len() - 1);
@@ -382,16 +370,10 @@ impl SearchState {
 
         while left.is_some() || right.is_some() {
             let left_line_distance = left.map_or(usize::MAX, |index| {
-                self.matches[index]
-                    .line
-                    .abs_diff(cursor_line)
-                    .saturating_mul(1000)
+                self.matches[index].line.abs_diff(cursor_line).saturating_mul(1000)
             });
             let right_line_distance = right.map_or(usize::MAX, |index| {
-                self.matches[index]
-                    .line
-                    .abs_diff(cursor_line)
-                    .saturating_mul(1000)
+                self.matches[index].line.abs_diff(cursor_line).saturating_mul(1000)
             });
 
             if left_line_distance.min(right_line_distance) > closest_distance {
@@ -399,21 +381,18 @@ impl SearchState {
             }
 
             let index = match (left, right) {
-                (Some(index), Some(_))
-                    if left_line_distance <= right_line_distance =>
-                {
+                (Some(index), Some(_)) if left_line_distance <= right_line_distance => {
                     left = index.checked_sub(1);
                     index
-                }
+                },
                 (_, Some(index)) => {
-                    right =
-                        (index + 1 < self.matches.len()).then_some(index + 1);
+                    right = (index + 1 < self.matches.len()).then_some(index + 1);
                     index
-                }
+                },
                 (Some(index), None) => {
                     left = index.checked_sub(1);
                     index
-                }
+                },
                 (None, None) => break,
             };
             let item = self.matches[index];
@@ -463,8 +442,7 @@ pub fn find_matches(
     // Use parallel search for larger files
     // Threshold can be tuned, but PARALLEL_SEARCH_THRESHOLD lines is a reasonable start to offset thread creation overhead
     if line_count > PARALLEL_SEARCH_THRESHOLD {
-        let num_threads =
-            std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+        let num_threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
 
         if num_threads > 1 {
             let chunk_size = line_count.div_ceil(num_threads);
@@ -481,14 +459,7 @@ pub fn find_matches(
                     }
 
                     handles.push(s.spawn(move || {
-                        find_matches_in_range(
-                            buffer,
-                            query,
-                            case_sensitive,
-                            start,
-                            end,
-                            limit,
-                        )
+                        find_matches_in_range(buffer, query, case_sensitive, start, end, limit)
                     }));
                 }
 
@@ -578,19 +549,9 @@ fn find_matches_in_range(
         }
 
         if case_sensitive {
-            find_matches_case_sensitive(
-                line,
-                search_query.as_ref(),
-                line_idx,
-                &mut matches,
-            );
+            find_matches_case_sensitive(line, search_query.as_ref(), line_idx, &mut matches);
         } else {
-            find_matches_case_insensitive(
-                line,
-                search_query.as_ref(),
-                line_idx,
-                &mut matches,
-            );
+            find_matches_case_insensitive(line, search_query.as_ref(), line_idx, &mut matches);
         }
     }
 
@@ -612,7 +573,10 @@ fn find_matches_case_sensitive(
     while let Some(relative_pos) = line[start_pos..].find(search_query) {
         let absolute_pos = start_pos + relative_pos;
         let col = line[..absolute_pos].chars().count();
-        matches.push(SearchMatch { line: line_idx, col });
+        matches.push(SearchMatch {
+            line: line_idx,
+            col,
+        });
         start_pos = absolute_pos + search_query.len();
     }
 }
@@ -640,19 +604,19 @@ fn find_matches_case_insensitive(
     if line.is_ascii() {
         let search_line = line.to_ascii_lowercase();
         let mut start_pos = 0;
-        while let Some(relative_pos) =
-            search_line[start_pos..].find(search_query)
-        {
+        while let Some(relative_pos) = search_line[start_pos..].find(search_query) {
             let absolute_pos = start_pos + relative_pos;
-            matches.push(SearchMatch { line: line_idx, col: absolute_pos });
+            matches.push(SearchMatch {
+                line: line_idx,
+                col: absolute_pos,
+            });
             start_pos = absolute_pos + search_query.len();
         }
         return;
     }
 
     let mut search_line = String::with_capacity(line.len());
-    let mut boundaries: Vec<(usize, usize)> =
-        Vec::with_capacity(line.len() + 1);
+    let mut boundaries: Vec<(usize, usize)> = Vec::with_capacity(line.len() + 1);
     for (char_idx, ch) in line.chars().enumerate() {
         boundaries.push((search_line.len(), char_idx));
         for lower_ch in ch.to_lowercase() {
@@ -664,13 +628,14 @@ fn find_matches_case_insensitive(
     let mut start_pos = 0;
     while let Some(relative_pos) = search_line[start_pos..].find(search_query) {
         let absolute_pos = start_pos + relative_pos;
-        let col = match boundaries
-            .binary_search_by_key(&absolute_pos, |&(byte, _)| byte)
-        {
+        let col = match boundaries.binary_search_by_key(&absolute_pos, |&(byte, _)| byte) {
             Ok(idx) => boundaries[idx].1,
             Err(idx) => boundaries[idx.saturating_sub(1)].1,
         };
-        matches.push(SearchMatch { line: line_idx, col });
+        matches.push(SearchMatch {
+            line: line_idx,
+            col,
+        });
         start_pos = absolute_pos + search_query.len();
     }
 }
@@ -682,8 +647,7 @@ impl CodeEditor {
     /// If search is active, recalculates only the affected logical lines and
     /// selects the match closest to the current cursor position.
     pub(crate) fn refresh_search_matches_if_needed(&mut self) {
-        if self.search_matches_visible() && !self.search_state.query.is_empty()
-        {
+        if self.search_matches_visible() && !self.search_state.query.is_empty() {
             let start_line = self.pre_edit_line.saturating_sub(1);
             let old_end_exclusive = self.pre_edit_last_line.saturating_add(2);
             self.search_state.update_matches_after_edit(
@@ -693,14 +657,12 @@ impl CodeEditor {
             );
 
             // Select match closest to cursor to maintain context
-            self.search_state
-                .select_match_near_cursor(self.cursors.primary_position());
+            self.search_state.select_match_near_cursor(self.cursors.primary_position());
         }
     }
 
     pub(crate) fn search_matches_visible(&self) -> bool {
-        self.search_state.is_open
-            || (self.vim_enabled && self.vim_state.last_search().is_some())
+        self.search_state.is_open || (self.vim_enabled && self.vim_state.last_search().is_some())
     }
 
     /// Opens the search dialog programmatically.
@@ -780,8 +742,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_matches_case_insensitive_unicode_match_starts_after_expansion()
-    {
+    fn test_find_matches_case_insensitive_unicode_match_starts_after_expansion() {
         // The character whose lowercase form changes length ('İ') sits right
         // before the match itself, so the reported column must point at the
         // first lowercased character of the match, not the lowercased 'İ'.
@@ -875,16 +836,10 @@ mod tests {
 
         state.select_match_near_cursor((2, 7));
         assert_eq!(state.current_match_index, Some(2));
-        assert_eq!(
-            state.current_match(),
-            Some(SearchMatch { line: 2, col: 8 })
-        );
+        assert_eq!(state.current_match(), Some(SearchMatch { line: 2, col: 8 }));
 
         state.select_match_near_cursor((4, 0));
-        assert_eq!(
-            state.current_match(),
-            Some(SearchMatch { line: 4, col: 0 })
-        );
+        assert_eq!(state.current_match(), Some(SearchMatch { line: 4, col: 0 }));
     }
 
     #[test]
@@ -956,10 +911,7 @@ mod tests {
 
         assert_eq!(state.matches.len(), 2);
         assert_eq!(state.current_match_index, Some(1));
-        assert_eq!(
-            state.current_match(),
-            Some(SearchMatch { line: 1, col: 0 })
-        );
+        assert_eq!(state.current_match(), Some(SearchMatch { line: 1, col: 0 }));
     }
 
     #[test]

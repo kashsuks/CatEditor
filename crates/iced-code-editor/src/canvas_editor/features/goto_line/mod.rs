@@ -20,7 +20,11 @@ pub(crate) struct GotoLineState {
 
 impl Default for GotoLineState {
     fn default() -> Self {
-        Self { query: String::new(), is_open: false, input_id: Id::unique() }
+        Self {
+            query: String::new(),
+            is_open: false,
+            input_id: Id::unique(),
+        }
     }
 }
 

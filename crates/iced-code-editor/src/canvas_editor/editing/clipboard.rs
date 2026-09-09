@@ -102,8 +102,7 @@ impl CodeEditor {
             .cursors
             .iter()
             .filter_map(|c| {
-                c.selection_range()
-                    .map(|(start, end)| self.extract_text_range(start, end))
+                c.selection_range().map(|(start, end)| self.extract_text_range(start, end))
             })
             .collect();
 
@@ -123,21 +122,18 @@ impl CodeEditor {
     pub(crate) fn delete_selection(&mut self) {
         // Collect indices of cursors that have a non-empty selection, sorted
         // descending by the start of their selection range.
-        let indices =
-            self.cursors.descending_order_by_key(Cursor::has_selection, |c| {
-                c.selection_range().map_or((0, 0), |(s, _)| s)
-            });
+        let indices = self.cursors.descending_order_by_key(Cursor::has_selection, |c| {
+            c.selection_range().map_or((0, 0), |(s, _)| s)
+        });
 
         for idx in indices {
-            let (start, end) =
-                match self.cursors.as_slice()[idx].selection_range() {
-                    Some(r) if r.0 != r.1 => r,
-                    _ => continue,
-                };
+            let (start, end) = match self.cursors.as_slice()[idx].selection_range() {
+                Some(r) if r.0 != r.1 => r,
+                _ => continue,
+            };
 
             let pos = self.cursors.as_slice()[idx].position;
-            let mut cmd =
-                DeleteRangeCommand::new(&self.buffer, start, end, pos);
+            let mut cmd = DeleteRangeCommand::new(&self.buffer, start, end, pos);
             let mut cursor_pos = pos;
             cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.cursors.as_mut_slice()[idx].position = cursor_pos;
@@ -188,8 +184,7 @@ impl CodeEditor {
         // Fast path: single cursor.
         if cursor_count == 1 {
             let pos = self.cursors.primary_position();
-            let mut cmd =
-                InsertTextCommand::new(pos.0, pos.1, text.to_string(), pos);
+            let mut cmd = InsertTextCommand::new(pos.0, pos.1, text.to_string(), pos);
             let mut cursor_pos = pos;
             cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.cursors.primary_mut().position = cursor_pos;
@@ -218,12 +213,7 @@ impl CodeEditor {
             let pos = self.cursors.as_slice()[idx].position;
             let (line_delta, col_delta) = text_deltas(paste_str);
 
-            let mut cmd = InsertTextCommand::new(
-                pos.0,
-                pos.1,
-                paste_str.to_string(),
-                pos,
-            );
+            let mut cmd = InsertTextCommand::new(pos.0, pos.1, paste_str.to_string(), pos);
             let mut cursor_pos = pos;
             cmd.execute(&mut self.buffer, &mut cursor_pos);
             self.cursors.as_mut_slice()[idx].position = cursor_pos;
@@ -235,17 +225,9 @@ impl CodeEditor {
                     continue;
                 }
                 let cursor = &mut self.cursors.as_mut_slice()[other_idx];
-                adjust_pos_for_insert(
-                    &mut cursor.position,
-                    pos.0,
-                    pos.1,
-                    line_delta,
-                    col_delta,
-                );
+                adjust_pos_for_insert(&mut cursor.position, pos.0, pos.1, line_delta, col_delta);
                 if let Some(ref mut anchor) = cursor.anchor {
-                    adjust_pos_for_insert(
-                        anchor, pos.0, pos.1, line_delta, col_delta,
-                    );
+                    adjust_pos_for_insert(anchor, pos.0, pos.1, line_delta, col_delta);
                 }
             }
         }

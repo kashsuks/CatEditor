@@ -115,11 +115,7 @@ impl LineLiterals {
     /// # Returns
     ///
     /// The literals found, ordered by increasing column
-    pub(crate) fn get(
-        &mut self,
-        buffer: &TextBuffer,
-        line: usize,
-    ) -> &[ColorLiteral] {
+    pub(crate) fn get(&mut self, buffer: &TextBuffer, line: usize) -> &[ColorLiteral] {
         if self.line != Some(line) {
             self.literals = color_literals(buffer.line(line));
             self.line = Some(line);
@@ -190,10 +186,7 @@ fn hexadecimal_at(chars: &[char], col: usize) -> Option<ColorLiteral> {
     let end_col = digits_start + digits.chars().count();
 
     // A trailing letter means the run is part of a longer word, not a color.
-    if chars
-        .get(end_col)
-        .is_some_and(|next| next.is_alphanumeric() || *next == '_')
-    {
+    if chars.get(end_col).is_some_and(|next| next.is_alphanumeric() || *next == '_') {
         return None;
     }
 
@@ -203,7 +196,11 @@ fn hexadecimal_at(chars: &[char], col: usize) -> Option<ColorLiteral> {
         _ => None,
     }?;
 
-    Some(ColorLiteral { start_col: col, end_col, color })
+    Some(ColorLiteral {
+        start_col: col,
+        end_col,
+        color,
+    })
 }
 
 /// Expands a three- or four-digit hexadecimal color by doubling each digit.
@@ -216,8 +213,7 @@ fn hexadecimal_at(chars: &[char], col: usize) -> Option<ColorLiteral> {
 ///
 /// The color, or `None` when a digit is not hexadecimal.
 fn expand_short_hexadecimal(digits: &str) -> Option<Color> {
-    let expanded: String =
-        digits.chars().flat_map(|digit| [digit, digit]).collect();
+    let expanded: String = digits.chars().flat_map(|digit| [digit, digit]).collect();
 
     parse_hexadecimal(&expanded)
 }
@@ -266,11 +262,10 @@ fn functional_at(chars: &[char], col: usize) -> Option<ColorLiteral> {
     let name_len = ["rgba", "rgb"].into_iter().find_map(|name| {
         let end = col + name.len();
         let matches_name = chars.len() >= end
-            && chars[col..end].iter().zip(name.chars()).all(
-                |(candidate, expected)| {
-                    candidate.to_ascii_lowercase() == expected
-                },
-            )
+            && chars[col..end]
+                .iter()
+                .zip(name.chars())
+                .all(|(candidate, expected)| candidate.to_ascii_lowercase() == expected)
             && matches!(chars.get(end), Some('('));
 
         matches_name.then_some(name.len())
@@ -282,8 +277,7 @@ fn functional_at(chars: &[char], col: usize) -> Option<ColorLiteral> {
         .iter()
         .take(MAX_FUNCTION_SCAN)
         .position(|character| *character == ')')?;
-    let arguments: String =
-        chars[arguments_start..arguments_start + close_offset].iter().collect();
+    let arguments: String = chars[arguments_start..arguments_start + close_offset].iter().collect();
 
     Some(ColorLiteral {
         start_col: col,
@@ -309,9 +303,7 @@ fn parse_components(arguments: &str) -> Option<Color> {
     }
 
     let mut channels = [0_u8; RGB_COMPONENTS];
-    for (channel, component) in
-        channels.iter_mut().zip(components.iter().copied())
-    {
+    for (channel, component) in channels.iter_mut().zip(components.iter().copied()) {
         *channel = parse_channel(component)?;
     }
 
@@ -320,7 +312,12 @@ fn parse_components(arguments: &str) -> Option<Color> {
         None => 1.0,
     };
 
-    Some(Color::from_rgba8(channels[0], channels[1], channels[2], alpha))
+    Some(Color::from_rgba8(
+        channels[0],
+        channels[1],
+        channels[2],
+        alpha,
+    ))
 }
 
 /// Parses one red, green or blue component.
@@ -371,9 +368,7 @@ fn parse_ratio(component: &str, full_scale: f32) -> Option<f32> {
     let component = component.trim();
 
     match component.strip_suffix('%') {
-        Some(percentage) => Some(
-            percentage.trim_end().parse::<f32>().ok()? / 100.0 * full_scale,
-        ),
+        Some(percentage) => Some(percentage.trim_end().parse::<f32>().ok()? / 100.0 * full_scale),
         None => component.parse::<f32>().ok(),
     }
 }
@@ -388,17 +383,15 @@ mod tests {
 
     /// Asserts that `line` holds exactly one literal, spanning `start_col`
     /// to `end_col` and denoting `expected`.
-    fn assert_single(
-        line: &str,
-        start_col: usize,
-        end_col: usize,
-        expected: Color,
-    ) {
+    fn assert_single(line: &str, start_col: usize, end_col: usize, expected: Color) {
         let literals = color_literals(line);
         assert_eq!(literals.len(), 1, "expected one literal in {line:?}");
 
-        let ColorLiteral { start_col: found_start, end_col: found_end, color } =
-            literals[0];
+        let ColorLiteral {
+            start_col: found_start,
+            end_col: found_end,
+            color,
+        } = literals[0];
         assert_eq!(found_start, start_col, "start column in {line:?}");
         assert_eq!(found_end, end_col, "end column in {line:?}");
 
@@ -468,12 +461,7 @@ mod tests {
 
     #[test]
     fn test_functional_notation() {
-        assert_single(
-            "rgb(58, 123, 213)",
-            0,
-            17,
-            Color::from_rgb8(58, 123, 213),
-        );
+        assert_single("rgb(58, 123, 213)", 0, 17, Color::from_rgb8(58, 123, 213));
     }
 
     #[test]
@@ -488,12 +476,7 @@ mod tests {
 
     #[test]
     fn test_functional_notation_with_percentages() {
-        assert_single(
-            "rgb(100%, 0%, 50%)",
-            0,
-            18,
-            Color::from_rgb8(255, 0, 128),
-        );
+        assert_single("rgb(100%, 0%, 50%)", 0, 18, Color::from_rgb8(255, 0, 128));
     }
 
     #[test]
@@ -512,12 +495,7 @@ mod tests {
     #[test]
     fn test_columns_count_characters_not_bytes() {
         // "// éàü " is 7 characters but 10 bytes.
-        assert_single(
-            "// éàü #123456",
-            7,
-            14,
-            Color::from_rgb8(0x12, 0x34, 0x56),
-        );
+        assert_single("// éàü #123456", 7, 14, Color::from_rgb8(0x12, 0x34, 0x56));
     }
 
     #[test]

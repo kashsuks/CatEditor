@@ -88,9 +88,7 @@ pub(super) fn read_message(reader: &mut impl BufRead) -> Option<Vec<u8>> {
         // Called through UFCS so `Self` is `&mut R`: written as a method call,
         // the probe derefs to `R` and `take` moves the reader out from under
         // the borrow.
-        let read = Read::take(&mut *reader, MAX_HEADER_LINE_BYTES)
-            .read_line(&mut line)
-            .ok()?;
+        let read = Read::take(&mut *reader, MAX_HEADER_LINE_BYTES).read_line(&mut line).ok()?;
 
         // A zero-length read means end of stream, not an empty header line.
         if read == 0 {
@@ -135,9 +133,7 @@ pub(super) fn read_log_line(reader: &mut impl BufRead) -> Option<String> {
     let mut buf = Vec::new();
     // Bounded like the protocol header lines, and for the same reason; see
     // `read_message`.
-    let read = Read::take(&mut *reader, MAX_LOG_LINE_BYTES)
-        .read_until(b'\n', &mut buf)
-        .ok()?;
+    let read = Read::take(&mut *reader, MAX_LOG_LINE_BYTES).read_until(b'\n', &mut buf).ok()?;
     if read == 0 {
         return None;
     }
@@ -167,7 +163,9 @@ pub(super) fn read_log_line(reader: &mut impl BufRead) -> Option<String> {
 fn skip_to_newline(reader: &mut impl BufRead) {
     let mut skipped: u64 = 0;
     while skipped < MAX_LOG_SKIP_BYTES {
-        let Ok(available) = reader.fill_buf() else { return };
+        let Ok(available) = reader.fill_buf() else {
+            return;
+        };
         if available.is_empty() {
             return;
         }
@@ -185,10 +183,7 @@ fn skip_to_newline(reader: &mut impl BufRead) {
 ///
 /// A missing `Content-Length` is treated as a zero-length body; see
 /// [`read_message`].
-fn read_body(
-    reader: &mut impl BufRead,
-    content_length: Option<usize>,
-) -> Option<Vec<u8>> {
+fn read_body(reader: &mut impl BufRead, content_length: Option<usize>) -> Option<Vec<u8>> {
     let len = content_length.unwrap_or(0);
     if len > MAX_MESSAGE_BYTES {
         return None;
@@ -214,8 +209,7 @@ fn read_body(
 /// ```
 pub(super) fn frame_message(value: &serde_json::Value) -> Option<Vec<u8>> {
     let data = serde_json::to_vec(value).ok()?;
-    let mut framed =
-        format!("Content-Length: {}\r\n\r\n", data.len()).into_bytes();
+    let mut framed = format!("Content-Length: {}\r\n\r\n", data.len()).into_bytes();
     framed.extend_from_slice(&data);
     Some(framed)
 }
@@ -224,11 +218,7 @@ pub(super) fn frame_message(value: &serde_json::Value) -> Option<Vec<u8>> {
 ///
 /// Currently handles `window/workDoneProgress/create` by replying with a null
 /// result. Unknown methods are silently ignored.
-pub(super) fn handle_server_request(
-    id: u64,
-    method: &str,
-    tx: &mpsc::Sender<Vec<u8>>,
-) {
+pub(super) fn handle_server_request(id: u64, method: &str, tx: &mpsc::Sender<Vec<u8>>) {
     if method == METHOD_WORK_DONE_PROGRESS_CREATE {
         let response = json!({
             "jsonrpc": "2.0",
@@ -263,18 +253,18 @@ pub(super) fn handle_client_response(
         LspRequestKind::Hover => {
             let text = parse_hover_text(result).unwrap_or_default();
             let _ = events.send(LspEvent::Hover { text });
-        }
+        },
         LspRequestKind::Completion => {
             let items = parse_completion_items(result);
             if !items.is_empty() {
                 let _ = events.send(LspEvent::Completion { items });
             }
-        }
+        },
         LspRequestKind::Definition => {
             if let Some((uri, range)) = parse_definition_location(result) {
                 let _ = events.send(LspEvent::Definition { uri, range });
             }
-        }
+        },
     }
 }
 
@@ -292,25 +282,21 @@ pub(super) fn handle_server_notification(
         return;
     }
 
-    let Some(token) = params.get("token").and_then(|t| {
-        t.as_str()
-            .map(String::from)
-            .or_else(|| t.as_i64().map(|i| i.to_string()))
-    }) else {
+    let Some(token) = params
+        .get("token")
+        .and_then(|t| t.as_str().map(String::from).or_else(|| t.as_i64().map(|i| i.to_string())))
+    else {
         return;
     };
 
-    let Some(val) = params.get("value") else { return };
+    let Some(val) = params.get("value") else {
+        return;
+    };
 
     let kind = val.get("kind").and_then(|k| k.as_str()).unwrap_or("");
-    let title = val
-        .get("title")
-        .and_then(|t| t.as_str())
-        .map(String::from)
-        .unwrap_or_default();
+    let title = val.get("title").and_then(|t| t.as_str()).map(String::from).unwrap_or_default();
     let message = val.get("message").and_then(|m| m.as_str()).map(String::from);
-    let percentage =
-        val.get("percentage").and_then(|p| p.as_u64()).map(|p| p as u32);
+    let percentage = val.get("percentage").and_then(|p| p.as_u64()).map(|p| p as u32);
     let done = kind == PROGRESS_KIND_END;
 
     let _ = events.send(LspEvent::Progress {
@@ -340,13 +326,16 @@ fn hover_text_from_contents(value: &serde_json::Value) -> Option<String> {
     match value {
         serde_json::Value::String(text) => Some(text.clone()),
         serde_json::Value::Array(items) => {
-            let parts: Vec<String> =
-                items.iter().filter_map(hover_text_from_contents).collect();
-            if parts.is_empty() { None } else { Some(parts.join("\n")) }
-        }
+            let parts: Vec<String> = items.iter().filter_map(hover_text_from_contents).collect();
+            if parts.is_empty() {
+                None
+            } else {
+                Some(parts.join("\n"))
+            }
+        },
         serde_json::Value::Object(map) => {
             map.get("value").and_then(|v| v.as_str()).map(String::from)
-        }
+        },
         _ => None,
     }
 }
@@ -403,8 +392,7 @@ fn extract_location(loc: &serde_json::Value) -> Option<(String, LspRange)> {
 /// to `targetRange` (the enclosing range) when it is absent.
 fn extract_link(link: &serde_json::Value) -> Option<(String, LspRange)> {
     let uri = link.get("targetUri")?.as_str()?.to_string();
-    let range_val =
-        link.get("targetSelectionRange").or(link.get("targetRange"))?;
+    let range_val = link.get("targetSelectionRange").or(link.get("targetRange"))?;
     let range = extract_range(range_val)?;
     Some((uri, range))
 }
@@ -412,9 +400,7 @@ fn extract_link(link: &serde_json::Value) -> Option<(String, LspRange)> {
 /// Parses definition location from an LSP definition response.
 ///
 /// Handles `Location`, `Location[]`, and `LocationLink[]` responses.
-fn parse_definition_location(
-    result: &serde_json::Value,
-) -> Option<(String, LspRange)> {
+fn parse_definition_location(result: &serde_json::Value) -> Option<(String, LspRange)> {
     if let Some(array) = result.as_array() {
         if let Some(first) = array.first() {
             if first.get("targetUri").is_some() {
@@ -459,7 +445,10 @@ mod tests {
 
     /// Builds a [`PendingRequest`] of `kind`, sent "now" for test purposes.
     fn pending_request(kind: LspRequestKind) -> PendingRequest {
-        PendingRequest { kind, requested_at: Instant::now() }
+        PendingRequest {
+            kind,
+            requested_at: Instant::now(),
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -468,9 +457,7 @@ mod tests {
 
     #[test]
     fn test_read_message_reads_framed_body() {
-        let mut stream = std::io::Cursor::new(
-            b"Content-Length: 9\r\n\r\n{\"id\":42}".to_vec(),
-        );
+        let mut stream = std::io::Cursor::new(b"Content-Length: 9\r\n\r\n{\"id\":42}".to_vec());
         assert_eq!(
             read_message(&mut stream).as_deref(),
             Some(&b"{\"id\":42}"[..])
@@ -480,8 +467,7 @@ mod tests {
     #[test]
     fn test_read_message_ignores_other_headers() {
         let mut stream = std::io::Cursor::new(
-            b"Content-Type: application/vscode-jsonrpc\r\nContent-Length: 2\r\n\r\n{}"
-                .to_vec(),
+            b"Content-Type: application/vscode-jsonrpc\r\nContent-Length: 2\r\n\r\n{}".to_vec(),
         );
         assert_eq!(read_message(&mut stream).as_deref(), Some(&b"{}"[..]));
     }
@@ -489,8 +475,7 @@ mod tests {
     #[test]
     fn test_read_message_reads_consecutive_frames() {
         let mut stream = std::io::Cursor::new(
-            b"Content-Length: 2\r\n\r\n{}Content-Length: 4\r\n\r\n[1,]"
-                .to_vec(),
+            b"Content-Length: 2\r\n\r\n{}Content-Length: 4\r\n\r\n[1,]".to_vec(),
         );
         assert_eq!(read_message(&mut stream).as_deref(), Some(&b"{}"[..]));
         assert_eq!(read_message(&mut stream).as_deref(), Some(&b"[1,]"[..]));
@@ -501,16 +486,14 @@ mod tests {
     fn test_read_message_rejects_oversized_frame() {
         // The announced length exceeds MAX_MESSAGE_BYTES: the frame must be
         // refused without allocating it.
-        let header =
-            format!("Content-Length: {}\r\n\r\n", MAX_MESSAGE_BYTES + 1);
+        let header = format!("Content-Length: {}\r\n\r\n", MAX_MESSAGE_BYTES + 1);
         let mut stream = std::io::Cursor::new(header.into_bytes());
         assert!(read_message(&mut stream).is_none());
     }
 
     #[test]
     fn test_read_message_rejects_truncated_body() {
-        let mut stream =
-            std::io::Cursor::new(b"Content-Length: 10\r\n\r\nabc".to_vec());
+        let mut stream = std::io::Cursor::new(b"Content-Length: 10\r\n\r\nabc".to_vec());
         assert!(read_message(&mut stream).is_none());
     }
 
@@ -579,8 +562,7 @@ mod tests {
 
     #[test]
     fn test_read_log_line_reads_lines_in_order() {
-        let mut reader =
-            BufReader::new(std::io::Cursor::new(b"first\nsecond\n".to_vec()));
+        let mut reader = BufReader::new(std::io::Cursor::new(b"first\nsecond\n".to_vec()));
 
         assert_eq!(read_log_line(&mut reader).as_deref(), Some("first\n"));
         assert_eq!(read_log_line(&mut reader).as_deref(), Some("second\n"));
@@ -592,8 +574,7 @@ mod tests {
         let cap = MAX_LOG_LINE_BYTES as usize;
         let flood = "a".repeat(cap * 3);
         let stream = format!("{flood}\nnext\n");
-        let mut reader =
-            BufReader::new(std::io::Cursor::new(stream.into_bytes()));
+        let mut reader = BufReader::new(std::io::Cursor::new(stream.into_bytes()));
 
         let line = read_log_line(&mut reader);
         assert!(
@@ -614,9 +595,7 @@ mod tests {
     fn test_read_log_line_replaces_invalid_utf8_instead_of_ending_the_stream() {
         // Server diagnostics are not worth tearing the log stream down over:
         // a bad byte must not cost us every later line.
-        let mut reader = BufReader::new(std::io::Cursor::new(
-            b"bad \xff byte\nnext\n".to_vec(),
-        ));
+        let mut reader = BufReader::new(std::io::Cursor::new(b"bad \xff byte\nnext\n".to_vec()));
 
         let line = read_log_line(&mut reader);
         assert!(
@@ -684,8 +663,20 @@ mod tests {
             "end": { "line": 3, "character": 4 }
         });
         let range = extract_range(&range_val).unwrap();
-        assert_eq!(range.start, LspPosition { line: 1, character: 2 });
-        assert_eq!(range.end, LspPosition { line: 3, character: 4 });
+        assert_eq!(
+            range.start,
+            LspPosition {
+                line: 1,
+                character: 2
+            }
+        );
+        assert_eq!(
+            range.end,
+            LspPosition {
+                line: 3,
+                character: 4
+            }
+        );
     }
 
     #[test]
@@ -708,7 +699,13 @@ mod tests {
         });
         let (uri, range) = extract_location(&loc).unwrap();
         assert_eq!(uri, "file:///a.rs");
-        assert_eq!(range.start, LspPosition { line: 0, character: 0 });
+        assert_eq!(
+            range.start,
+            LspPosition {
+                line: 0,
+                character: 0
+            }
+        );
     }
 
     #[test]
@@ -727,7 +724,13 @@ mod tests {
         });
         let (uri, range) = extract_link(&link).unwrap();
         assert_eq!(uri, "file:///b.rs");
-        assert_eq!(range.start, LspPosition { line: 12, character: 4 });
+        assert_eq!(
+            range.start,
+            LspPosition {
+                line: 12,
+                character: 4
+            }
+        );
     }
 
     #[test]
@@ -742,7 +745,13 @@ mod tests {
         });
         let (uri, range) = extract_link(&link).unwrap();
         assert_eq!(uri, "file:///c.rs");
-        assert_eq!(range.start, LspPosition { line: 5, character: 0 });
+        assert_eq!(
+            range.start,
+            LspPosition {
+                line: 5,
+                character: 0
+            }
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -781,10 +790,7 @@ mod tests {
     fn test_handle_client_response_hover() {
         let (events_tx, events_rx) = mpsc::channel::<LspEvent>();
         let pending = Arc::new(Mutex::new(HashMap::new()));
-        pending
-            .lock()
-            .unwrap()
-            .insert(1u64, pending_request(LspRequestKind::Hover));
+        pending.lock().unwrap().insert(1u64, pending_request(LspRequestKind::Hover));
 
         let value = serde_json::json!({
             "id": 1,
@@ -818,7 +824,7 @@ mod tests {
         match events_rx.try_recv().expect("expected a Completion event") {
             LspEvent::Completion { items } => {
                 assert_eq!(items, vec!["foo", "bar"]);
-            }
+            },
             _ => panic!("expected LspEvent::Completion"),
         }
     }
@@ -848,7 +854,7 @@ mod tests {
         match events_rx.try_recv().expect("expected a Definition event") {
             LspEvent::Definition { uri, .. } => {
                 assert_eq!(uri, "file:///foo/bar.rs");
-            }
+            },
             _ => panic!("expected LspEvent::Definition"),
         }
     }
@@ -883,19 +889,19 @@ mod tests {
             }
         });
 
-        handle_server_notification(
-            METHOD_PROGRESS,
-            &params,
-            &events_tx,
-            "lua-ls",
-        );
+        handle_server_notification(METHOD_PROGRESS, &params, &events_tx, "lua-ls");
 
         match events_rx.try_recv().expect("expected a Progress event") {
-            LspEvent::Progress { token, done, server_key, .. } => {
+            LspEvent::Progress {
+                token,
+                done,
+                server_key,
+                ..
+            } => {
                 assert_eq!(token, "my-token");
                 assert!(done);
                 assert_eq!(server_key, "lua-ls");
-            }
+            },
             _ => panic!("expected LspEvent::Progress"),
         }
     }
@@ -909,12 +915,7 @@ mod tests {
             "value": { "kind": "report", "title": "Building" }
         });
 
-        handle_server_notification(
-            METHOD_PROGRESS,
-            &params,
-            &events_tx,
-            "rust-analyzer",
-        );
+        handle_server_notification(METHOD_PROGRESS, &params, &events_tx, "rust-analyzer");
 
         match events_rx.try_recv().expect("expected a Progress event") {
             LspEvent::Progress { done, .. } => assert!(!done),
@@ -926,12 +927,7 @@ mod tests {
     fn test_handle_server_notification_unknown_method_ignored() {
         let (events_tx, events_rx) = mpsc::channel::<LspEvent>();
         let params = serde_json::json!({});
-        handle_server_notification(
-            "$/somethingElse",
-            &params,
-            &events_tx,
-            "server",
-        );
+        handle_server_notification("$/somethingElse", &params, &events_tx, "server");
         assert!(events_rx.try_recv().is_err());
     }
 }

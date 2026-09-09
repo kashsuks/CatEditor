@@ -28,27 +28,24 @@ impl MoveLinesCommand {
     /// * `end` - Last line of the range to move (inclusive)
     /// * `down` - `true` to move the range down, `false` to move it up
     /// * `cursor` - Current cursor position
-    pub fn new(
-        start: usize,
-        end: usize,
-        down: bool,
-        cursor: (usize, usize),
-    ) -> Self {
+    pub fn new(start: usize, end: usize, down: bool, cursor: (usize, usize)) -> Self {
         let cursor_after = if down {
             (cursor.0 + 1, cursor.1)
         } else {
             (cursor.0 - 1, cursor.1)
         };
-        Self { start, end, down, cursor_before: cursor, cursor_after }
+        Self {
+            start,
+            end,
+            down,
+            cursor_before: cursor,
+            cursor_after,
+        }
     }
 }
 
 impl Command for MoveLinesCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         if self.down {
             // Pull the line below the range up to the top of the range.
             if let Some(line) = buffer.remove_line(self.end + 1) {
@@ -101,31 +98,34 @@ impl DuplicateLinesCommand {
     /// * `end` - Last line of the range to duplicate (inclusive)
     /// * `down` - `true` to insert the copy below, `false` to insert it above
     /// * `cursor` - Current cursor position
-    pub fn new(
-        start: usize,
-        end: usize,
-        down: bool,
-        cursor: (usize, usize),
-    ) -> Self {
+    pub fn new(start: usize, end: usize, down: bool, cursor: (usize, usize)) -> Self {
         let block_len = end - start + 1;
         // Downward: move the cursor onto the new copy below. Upward: the copy
         // is inserted above, so the original line index now points to the copy.
-        let cursor_after =
-            if down { (cursor.0 + block_len, cursor.1) } else { cursor };
-        Self { start, end, down, cursor_before: cursor, cursor_after }
+        let cursor_after = if down {
+            (cursor.0 + block_len, cursor.1)
+        } else {
+            cursor
+        };
+        Self {
+            start,
+            end,
+            down,
+            cursor_before: cursor,
+            cursor_after,
+        }
     }
 }
 
 impl Command for DuplicateLinesCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
-        let block: Vec<String> = (self.start..=self.end)
-            .map(|i| buffer.line(i).to_string())
-            .collect();
-        let insert_at = if self.down { self.end + 1 } else { self.start };
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
+        let block: Vec<String> =
+            (self.start..=self.end).map(|i| buffer.line(i).to_string()).collect();
+        let insert_at = if self.down {
+            self.end + 1
+        } else {
+            self.start
+        };
         for (offset, content) in block.into_iter().enumerate() {
             buffer.insert_line(insert_at + offset, content);
         }
@@ -134,7 +134,11 @@ impl Command for DuplicateLinesCommand {
 
     fn undo(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         let block_len = self.end - self.start + 1;
-        let remove_at = if self.down { self.end + 1 } else { self.start };
+        let remove_at = if self.down {
+            self.end + 1
+        } else {
+            self.start
+        };
         for _ in 0..block_len {
             buffer.remove_line(remove_at);
         }

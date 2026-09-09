@@ -16,16 +16,14 @@ use std::time::Instant;
 use crate::buffer::TextBuffer;
 use crate::i18n::Translations;
 use crate::theme::Style;
-use caches::{
-    BracketDepthCache, HighlightCache, MaxContentWidthCache, VisualLinesCache,
-};
+use caches::{BracketDepthCache, HighlightCache, MaxContentWidthCache, VisualLinesCache};
 use editing::cursor_set;
 pub use editing::history::CommandHistory;
 use features::{command_palette, folding, goto_line, search, vim};
 use metrics::{
-    CACHE_WINDOW_MARGIN_MULTIPLIER, CHAR_WIDTH, CURSOR_BLINK_INTERVAL,
-    FONT_SIZE, GUTTER_WIDTH, HIGHLIGHT_LINES_PER_FRAME, LINE_HEIGHT, TAB_WIDTH,
-    compare_floats, indent_width, measure_char_width, measure_text_width,
+    CACHE_WINDOW_MARGIN_MULTIPLIER, CHAR_WIDTH, CURSOR_BLINK_INTERVAL, FONT_SIZE, GUTTER_WIDTH,
+    HIGHLIGHT_LINES_PER_FRAME, LINE_HEIGHT, TAB_WIDTH, compare_floats, indent_width,
+    measure_char_width, measure_text_width,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -169,8 +167,7 @@ pub struct CodeEditor {
     /// derived layout caches (visual lines) are invalidated.
     pub(crate) fold_revision: u64,
     /// Cached foldable regions, keyed by `buffer_revision`.
-    pub(crate) foldable_regions_cache:
-        RefCell<Option<(u64, Rc<Vec<folding::FoldRegion>>)>>,
+    pub(crate) foldable_regions_cache: RefCell<Option<(u64, Rc<Vec<folding::FoldRegion>>)>>,
     /// Search state
     pub(crate) search_state: search::SearchState,
     /// Custom entries displayed before the built-in context-menu actions.

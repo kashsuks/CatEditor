@@ -18,12 +18,7 @@ use super::Command;
 /// let end = insert_text_at(&mut buffer, 0, 0, "ab\ncd");
 /// assert_eq!(end, (1, 2));
 /// ```
-fn insert_text_at(
-    buffer: &mut TextBuffer,
-    line: usize,
-    col: usize,
-    text: &str,
-) -> (usize, usize) {
+fn insert_text_at(buffer: &mut TextBuffer, line: usize, col: usize, text: &str) -> (usize, usize) {
     let mut current_line = line;
     let mut current_col = col;
 
@@ -60,12 +55,7 @@ impl InsertCharCommand {
     /// * `col` - Column position where to insert
     /// * `ch` - Character to insert
     /// * `cursor` - Current cursor position
-    pub fn new(
-        line: usize,
-        col: usize,
-        ch: char,
-        cursor: (usize, usize),
-    ) -> Self {
+    pub fn new(line: usize, col: usize, ch: char, cursor: (usize, usize)) -> Self {
         Self {
             line,
             col,
@@ -77,11 +67,7 @@ impl InsertCharCommand {
 }
 
 impl Command for InsertCharCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         buffer.insert_char(self.line, self.col, self.ch);
         *cursor = self.cursor_after;
     }
@@ -113,12 +99,7 @@ impl DeleteCharCommand {
     /// * `line` - Line index
     /// * `col` - Column position
     /// * `cursor` - Current cursor position
-    pub fn new(
-        buffer: &TextBuffer,
-        line: usize,
-        col: usize,
-        cursor: (usize, usize),
-    ) -> Self {
+    pub fn new(buffer: &TextBuffer, line: usize, col: usize, cursor: (usize, usize)) -> Self {
         let (deleted_char, merged_line, cursor_after) = if col > 0 {
             // Deleting character before cursor
             let line_str = buffer.line(line);
@@ -145,11 +126,7 @@ impl DeleteCharCommand {
 }
 
 impl Command for DeleteCharCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         buffer.delete_char(self.line, self.col);
         *cursor = self.cursor_after;
     }
@@ -187,12 +164,7 @@ impl DeleteForwardCommand {
     /// * `line` - Line index
     /// * `col` - Column position
     /// * `cursor` - Current cursor position
-    pub fn new(
-        buffer: &TextBuffer,
-        line: usize,
-        col: usize,
-        cursor: (usize, usize),
-    ) -> Self {
+    pub fn new(buffer: &TextBuffer, line: usize, col: usize, cursor: (usize, usize)) -> Self {
         let line_len = buffer.line_len(line);
         let (deleted_char, merged_next_line) = if col < line_len {
             // Deleting character at cursor
@@ -217,11 +189,7 @@ impl DeleteForwardCommand {
 }
 
 impl Command for DeleteForwardCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         buffer.delete_forward(self.line, self.col);
         *cursor = self.cursor_before; // Cursor doesn't move on delete forward
     }
@@ -267,12 +235,7 @@ impl InsertNewlineCommand {
     /// * `col` - Column position where to split
     /// * `cursor` - Current cursor position
     /// * `indent` - Leading whitespace to copy to the new line
-    pub fn with_indent(
-        line: usize,
-        col: usize,
-        cursor: (usize, usize),
-        indent: String,
-    ) -> Self {
+    pub fn with_indent(line: usize, col: usize, cursor: (usize, usize), indent: String) -> Self {
         let indent_len = indent.chars().count();
         Self {
             line,
@@ -285,11 +248,7 @@ impl InsertNewlineCommand {
 }
 
 impl Command for InsertNewlineCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         buffer.insert_newline(self.line, self.col);
         for (i, c) in self.indent.chars().enumerate() {
             buffer.insert_char(self.line + 1, i, c);
@@ -337,12 +296,7 @@ impl InsertTextCommand {
     /// * `col` - Column position where to insert
     /// * `text` - Text to insert
     /// * `cursor` - Current cursor position
-    pub fn new(
-        line: usize,
-        col: usize,
-        text: String,
-        cursor: (usize, usize),
-    ) -> Self {
+    pub fn new(line: usize, col: usize, text: String, cursor: (usize, usize)) -> Self {
         // Position right after the inserted text; also the default resting
         // place for the cursor.
         let lines: Vec<&str> = text.split('\n').collect();
@@ -369,21 +323,14 @@ impl InsertTextCommand {
     /// Vim paste leaves it on the first inserted character or line. Only the
     /// resting position changes; `insert_end` keeps describing the end of the
     /// insertion so undo still removes exactly the inserted characters.
-    pub(crate) fn with_cursor_after(
-        mut self,
-        cursor_after: (usize, usize),
-    ) -> Self {
+    pub(crate) fn with_cursor_after(mut self, cursor_after: (usize, usize)) -> Self {
         self.cursor_after = cursor_after;
         self
     }
 }
 
 impl Command for InsertTextCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         insert_text_at(buffer, self.line, self.col, &self.text);
         *cursor = self.cursor_after;
     }
@@ -447,11 +394,11 @@ impl DeleteRangeCommand {
             // Single line
             let line = buffer.line(start.0);
             let chars: Vec<char> = line.chars().collect();
-            for ch in chars.iter().skip(start.1).take(
-                end.1
-                    .saturating_sub(start.1)
-                    .min(chars.len().saturating_sub(start.1)),
-            ) {
+            for ch in chars
+                .iter()
+                .skip(start.1)
+                .take(end.1.saturating_sub(start.1).min(chars.len().saturating_sub(start.1)))
+            {
                 deleted_text.push(*ch);
             }
         } else {
@@ -479,16 +426,17 @@ impl DeleteRangeCommand {
             }
         }
 
-        Self { start, end, deleted_text, cursor_before: cursor }
+        Self {
+            start,
+            end,
+            deleted_text,
+            cursor_before: cursor,
+        }
     }
 }
 
 impl Command for DeleteRangeCommand {
-    fn execute(
-        &mut self,
-        buffer: &mut TextBuffer,
-        cursor: &mut (usize, usize),
-    ) {
+    fn execute(&mut self, buffer: &mut TextBuffer, cursor: &mut (usize, usize)) {
         // Delete from start to end
         if self.start == self.end {
             *cursor = self.start;
@@ -497,20 +445,14 @@ impl Command for DeleteRangeCommand {
 
         if self.start.0 == self.end.0 {
             // Single line: remove the selected characters in one splice.
-            buffer.replace_range(
-                self.start.0,
-                self.start.1,
-                self.end.1 - self.start.1,
-                "",
-            );
+            buffer.replace_range(self.start.0, self.start.1, self.end.1 - self.start.1, "");
         } else {
             // Multi-line: splice the surviving tail of the last line onto
             // the first line's prefix, then drop the fully-consumed lines
             // in between (including the original last line). This keeps
             // the whole operation O(text touched + lines removed) instead
             // of the previous per-character `delete_forward` loop.
-            let tail: String =
-                buffer.line(self.end.0).chars().skip(self.end.1).collect();
+            let tail: String = buffer.line(self.end.0).chars().skip(self.end.1).collect();
             let first_line_len = buffer.line_len(self.start.0);
             buffer.replace_range(
                 self.start.0,
@@ -531,22 +473,11 @@ impl Command for DeleteRangeCommand {
         // `execute`, using the exact captured text instead of replaying it
         // character by character.
         if self.start.0 == self.end.0 {
-            buffer.replace_range(
-                self.start.0,
-                self.start.1,
-                0,
-                &self.deleted_text,
-            );
+            buffer.replace_range(self.start.0, self.start.1, 0, &self.deleted_text);
         } else {
             let segments: Vec<&str> = self.deleted_text.split('\n').collect();
-            if let [first_segment, middle_segments @ .., last_segment] =
-                segments.as_slice()
-            {
-                let tail: String = buffer
-                    .line(self.start.0)
-                    .chars()
-                    .skip(self.start.1)
-                    .collect();
+            if let [first_segment, middle_segments @ .., last_segment] = segments.as_slice() {
+                let tail: String = buffer.line(self.start.0).chars().skip(self.start.1).collect();
                 buffer.replace_range(
                     self.start.0,
                     self.start.1,
@@ -554,10 +485,7 @@ impl Command for DeleteRangeCommand {
                     first_segment,
                 );
                 for (offset, segment) in middle_segments.iter().enumerate() {
-                    buffer.insert_line(
-                        self.start.0 + 1 + offset,
-                        (*segment).to_string(),
-                    );
+                    buffer.insert_line(self.start.0 + 1 + offset, (*segment).to_string());
                 }
                 buffer.insert_line(self.end.0, format!("{last_segment}{tail}"));
             }
@@ -728,8 +656,7 @@ mod tests {
     fn test_insert_newline_command() {
         let mut buffer = TextBuffer::new("hello world");
         let mut cursor = (0, 5);
-        let mut cmd =
-            InsertNewlineCommand::with_indent(0, 5, cursor, String::new());
+        let mut cmd = InsertNewlineCommand::with_indent(0, 5, cursor, String::new());
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "hello");
@@ -745,8 +672,7 @@ mod tests {
     fn test_insert_newline_with_indent_spaces() {
         let mut buffer = TextBuffer::new("    hello");
         let mut cursor = (0, 9);
-        let mut cmd =
-            InsertNewlineCommand::with_indent(0, 9, cursor, "    ".to_string());
+        let mut cmd = InsertNewlineCommand::with_indent(0, 9, cursor, "    ".to_string());
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "    hello");
@@ -763,8 +689,7 @@ mod tests {
     fn test_insert_newline_with_indent_mid_line() {
         let mut buffer = TextBuffer::new("    hello world");
         let mut cursor = (0, 9);
-        let mut cmd =
-            InsertNewlineCommand::with_indent(0, 9, cursor, "    ".to_string());
+        let mut cmd = InsertNewlineCommand::with_indent(0, 9, cursor, "    ".to_string());
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "    hello");
@@ -781,8 +706,7 @@ mod tests {
     fn test_insert_newline_with_indent_tab() {
         let mut buffer = TextBuffer::new("\thello");
         let mut cursor = (0, 6);
-        let mut cmd =
-            InsertNewlineCommand::with_indent(0, 6, cursor, "\t".to_string());
+        let mut cmd = InsertNewlineCommand::with_indent(0, 6, cursor, "\t".to_string());
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "\thello");
@@ -799,8 +723,7 @@ mod tests {
     fn test_insert_text_command() {
         let mut buffer = TextBuffer::new("hello");
         let mut cursor = (0, 5);
-        let mut cmd =
-            InsertTextCommand::new(0, 5, " world".to_string(), cursor);
+        let mut cmd = InsertTextCommand::new(0, 5, " world".to_string(), cursor);
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "hello world");
@@ -817,8 +740,8 @@ mod tests {
         // still delete the inserted text, which starts at the caret.
         let mut buffer = TextBuffer::new("abc");
         let mut cursor = (0, 0);
-        let mut cmd = InsertTextCommand::new(0, 0, "a".to_string(), cursor)
-            .with_cursor_after((0, 0));
+        let mut cmd =
+            InsertTextCommand::new(0, 0, "a".to_string(), cursor).with_cursor_after((0, 0));
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.line(0), "aabc");
@@ -834,8 +757,8 @@ mod tests {
         // Linewise Vim paste: the caret rests at the start of the pasted line.
         let mut buffer = TextBuffer::new("one\ntwo");
         let mut cursor = (0, 0);
-        let mut cmd = InsertTextCommand::new(1, 0, "one\n".to_string(), cursor)
-            .with_cursor_after((1, 0));
+        let mut cmd =
+            InsertTextCommand::new(1, 0, "one\n".to_string(), cursor).with_cursor_after((1, 0));
 
         cmd.execute(&mut buffer, &mut cursor);
         assert_eq!(buffer.to_string(), "one\none\ntwo");

@@ -2,9 +2,7 @@
 //! wrap/whitespace/bracket/folding-enabled flags, auto-indent, auto-close
 //! brackets, indent style, search/replace enablement, and line numbers.
 
-use crate::canvas_editor::features::context_menu::{
-    ContextMenuEntry, ContextMenuItem,
-};
+use crate::canvas_editor::features::context_menu::{ContextMenuEntry, ContextMenuItem};
 use crate::canvas_editor::features::vim::VimMode;
 use crate::canvas_editor::{CodeEditor, IndentStyle};
 use crate::theme::Style;
@@ -33,10 +31,7 @@ impl CodeEditor {
     /// ]);
     /// assert_eq!(editor.custom_context_menu_entries().len(), 3);
     /// ```
-    pub fn set_custom_context_menu_entries(
-        &mut self,
-        entries: Vec<ContextMenuEntry>,
-    ) {
+    pub fn set_custom_context_menu_entries(&mut self, entries: Vec<ContextMenuEntry>) {
         self.custom_context_menu_entries = entries;
     }
 
@@ -62,10 +57,7 @@ impl CodeEditor {
     /// assert_eq!(editor.custom_context_menu_entries().len(), 1);
     /// ```
     #[must_use]
-    pub fn with_custom_context_menu_entries(
-        mut self,
-        entries: Vec<ContextMenuEntry>,
-    ) -> Self {
+    pub fn with_custom_context_menu_entries(mut self, entries: Vec<ContextMenuEntry>) -> Self {
         self.set_custom_context_menu_entries(entries);
         self
     }
@@ -185,10 +177,7 @@ impl CodeEditor {
     /// ```
     ///
     /// [`Message::CommandPaletteAction`]: crate::Message::CommandPaletteAction
-    pub fn set_custom_command_palette_entries(
-        &mut self,
-        entries: Vec<ContextMenuItem>,
-    ) {
+    pub fn set_custom_command_palette_entries(&mut self, entries: Vec<ContextMenuItem>) {
         self.custom_command_palette_entries = entries;
     }
 
@@ -214,10 +203,7 @@ impl CodeEditor {
     /// assert_eq!(editor.custom_command_palette_entries().len(), 1);
     /// ```
     #[must_use]
-    pub fn with_custom_command_palette_entries(
-        mut self,
-        entries: Vec<ContextMenuItem>,
-    ) -> Self {
+    pub fn with_custom_command_palette_entries(mut self, entries: Vec<ContextMenuItem>) -> Self {
         self.set_custom_command_palette_entries(entries);
         self
     }
@@ -282,10 +268,7 @@ impl CodeEditor {
     /// assert!(!editor.default_command_palette_enabled());
     /// ```
     #[must_use]
-    pub fn with_default_command_palette_enabled(
-        mut self,
-        enabled: bool,
-    ) -> Self {
+    pub fn with_default_command_palette_enabled(mut self, enabled: bool) -> Self {
         self.set_default_command_palette_enabled(enabled);
         self
     }
@@ -421,10 +404,7 @@ impl CodeEditor {
     /// assert!(editor.reveal_in_file_manager_enabled());
     /// ```
     #[must_use]
-    pub fn with_reveal_in_file_manager_enabled(
-        mut self,
-        enabled: bool,
-    ) -> Self {
+    pub fn with_reveal_in_file_manager_enabled(mut self, enabled: bool) -> Self {
         self.set_reveal_in_file_manager_enabled(enabled);
         self
     }
@@ -1340,12 +1320,10 @@ mod tests {
     #[test]
     fn test_custom_context_menu_configuration() {
         let custom_entries = vec![
-            ContextMenuEntry::item("format", "Format document")
-                .with_shortcut("Shift+Alt+F"),
+            ContextMenuEntry::item("format", "Format document").with_shortcut("Shift+Alt+F"),
             ContextMenuEntry::separator(),
             ContextMenuEntry::Item(
-                ContextMenuItem::new("rename", "Rename symbol")
-                    .with_enabled(false),
+                ContextMenuItem::new("rename", "Rename symbol").with_enabled(false),
             ),
         ];
 
@@ -1369,8 +1347,7 @@ mod tests {
         editor.set_reveal_in_file_manager_enabled(true);
         assert!(editor.reveal_in_file_manager_enabled());
 
-        let editor =
-            CodeEditor::new("", "rs").with_reveal_in_file_manager_enabled(true);
+        let editor = CodeEditor::new("", "rs").with_reveal_in_file_manager_enabled(true);
         assert!(editor.reveal_in_file_manager_enabled());
     }
 
@@ -1476,8 +1453,7 @@ mod tests {
 
     #[test]
     fn vim_disable_clears_pending_state() {
-        let mut editor =
-            CodeEditor::new("unchanged", "rs").with_vim_enabled(true);
+        let mut editor = CodeEditor::new("unchanged", "rs").with_vim_enabled(true);
         assert_eq!(editor.vim_state.parse_key('4'), None);
         assert_eq!(editor.vim_state.parse_key('d'), None);
 

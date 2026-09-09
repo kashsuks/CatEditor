@@ -163,8 +163,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn search_placeholder(&self) -> String {
-        rust_i18n::t!("search.placeholder", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("search.placeholder", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the placeholder text for the replace input field.
@@ -179,8 +178,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn replace_placeholder(&self) -> String {
-        rust_i18n::t!("replace.placeholder", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("replace.placeholder", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the label text for the case sensitive checkbox.
@@ -252,11 +250,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn close_search_tooltip(&self) -> String {
-        rust_i18n::t!(
-            "search.close_tooltip",
-            locale = self.language.to_locale()
-        )
-        .into_owned()
+        rust_i18n::t!("search.close_tooltip", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the tooltip text for the replace current match button.
@@ -290,8 +284,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn replace_all_tooltip(&self) -> String {
-        rust_i18n::t!("replace.all_tooltip", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("replace.all_tooltip", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the context-menu label for undo.
@@ -309,8 +302,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn context_menu_undo(&self) -> String {
-        rust_i18n::t!("context_menu.undo", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("context_menu.undo", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the context-menu label for redo.
@@ -328,8 +320,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn context_menu_redo(&self) -> String {
-        rust_i18n::t!("context_menu.redo", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("context_menu.redo", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the context-menu label for cut.
@@ -347,8 +338,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn context_menu_cut(&self) -> String {
-        rust_i18n::t!("context_menu.cut", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("context_menu.cut", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the context-menu label for copy.
@@ -366,8 +356,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn context_menu_copy(&self) -> String {
-        rust_i18n::t!("context_menu.copy", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("context_menu.copy", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the context-menu label for paste.
@@ -385,8 +374,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn context_menu_paste(&self) -> String {
-        rust_i18n::t!("context_menu.paste", locale = self.language.to_locale())
-            .into_owned()
+        rust_i18n::t!("context_menu.paste", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the context-menu label for select all.
@@ -565,11 +553,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn command_palette_save(&self) -> String {
-        rust_i18n::t!(
-            "command_palette.save",
-            locale = self.language.to_locale()
-        )
-        .into_owned()
+        rust_i18n::t!("command_palette.save", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the command-palette label for toggling the line comment.
@@ -774,11 +758,7 @@ impl Translations {
     /// ```
     #[must_use]
     pub fn command_palette_find(&self) -> String {
-        rust_i18n::t!(
-            "command_palette.find",
-            locale = self.language.to_locale()
-        )
-        .into_owned()
+        rust_i18n::t!("command_palette.find", locale = self.language.to_locale()).into_owned()
     }
 
     /// Returns the command-palette label for opening the search-and-replace dialog.
@@ -891,9 +871,7 @@ mod tests {
 
         for line in yaml.lines() {
             let line = line.trim_end();
-            if line.trim_start().is_empty()
-                || line.trim_start().starts_with('#')
-            {
+            if line.trim_start().is_empty() || line.trim_start().starts_with('#') {
                 continue;
             }
 
@@ -903,13 +881,13 @@ mod tests {
                     if let Some((name, _)) = entry.split_once(':') {
                         keys.insert(format!("{section}.{}", name.trim()));
                     }
-                }
+                },
                 // Flush left: a new section header.
                 None => {
                     if let Some((name, _)) = line.split_once(':') {
                         section = name.trim().to_string();
                     }
-                }
+                },
             }
         }
 
@@ -1054,10 +1032,7 @@ mod tests {
             "Risultato precedente (Maiusc+F3)"
         );
         assert_eq!(t.next_match_tooltip(), "Risultato successivo (F3 / Invio)");
-        assert_eq!(
-            t.close_search_tooltip(),
-            "Chiudi finestra di ricerca (Esc)"
-        );
+        assert_eq!(t.close_search_tooltip(), "Chiudi finestra di ricerca (Esc)");
         assert_eq!(
             t.replace_current_tooltip(),
             "Sostituisci risultato corrente"
@@ -1079,10 +1054,7 @@ mod tests {
             t.next_match_tooltip(),
             "Próxima correspondência (F3 / Enter)"
         );
-        assert_eq!(
-            t.close_search_tooltip(),
-            "Fechar diálogo de pesquisa (Esc)"
-        );
+        assert_eq!(t.close_search_tooltip(), "Fechar diálogo de pesquisa (Esc)");
         assert_eq!(
             t.replace_current_tooltip(),
             "Substituir correspondência atual"
@@ -1104,10 +1076,7 @@ mod tests {
             t.next_match_tooltip(),
             "Próxima correspondência (F3 / Enter)"
         );
-        assert_eq!(
-            t.close_search_tooltip(),
-            "Fechar diálogo de pesquisa (Esc)"
-        );
+        assert_eq!(t.close_search_tooltip(), "Fechar diálogo de pesquisa (Esc)");
         assert_eq!(
             t.replace_current_tooltip(),
             "Substituir correspondência actual"
@@ -1267,10 +1236,7 @@ mod tests {
             assert_eq!(translations.context_menu_copy(), expected[3]);
             assert_eq!(translations.context_menu_paste(), expected[4]);
             assert_eq!(translations.context_menu_select_all(), expected[5]);
-            assert_eq!(
-                translations.context_menu_reveal_in_finder(),
-                expected[6]
-            );
+            assert_eq!(translations.context_menu_reveal_in_finder(), expected[6]);
             assert_eq!(
                 translations.context_menu_reveal_in_file_explorer(),
                 expected[7]

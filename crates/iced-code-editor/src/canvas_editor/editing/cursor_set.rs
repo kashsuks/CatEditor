@@ -30,7 +30,10 @@ pub struct Cursor {
 impl Cursor {
     /// Creates a new cursor at the given position with no selection.
     pub fn new(position: (usize, usize)) -> Self {
-        Self { position, anchor: None }
+        Self {
+            position,
+            anchor: None,
+        }
     }
 
     /// Returns `true` if this cursor has an active selection.
@@ -90,7 +93,10 @@ pub struct CursorSet {
 impl CursorSet {
     /// Creates a `CursorSet` with a single cursor at `pos`.
     pub fn new(pos: (usize, usize)) -> Self {
-        Self { cursors: vec![Cursor::new(pos)], primary_idx: 0 }
+        Self {
+            cursors: vec![Cursor::new(pos)],
+            primary_idx: 0,
+        }
     }
 
     // -----------------------------------------------------------------
@@ -201,8 +207,7 @@ impl CursorSet {
 
         // Tag each cursor with its original index so we can track the primary.
         let primary_orig = self.primary_idx;
-        let mut tagged: Vec<(usize, Cursor)> =
-            self.cursors.drain(..).enumerate().collect();
+        let mut tagged: Vec<(usize, Cursor)> = self.cursors.drain(..).enumerate().collect();
 
         // Sort by the *minimum* position (considering anchor) so overlapping
         // selections are adjacent.
@@ -262,21 +267,14 @@ impl CursorSet {
     ///     order.iter().map(|&i| cs.as_slice()[i].position).collect();
     /// assert_eq!(positions, vec![(2, 0), (1, 0), (0, 0)]);
     /// ```
-    pub fn descending_order_by_key<F, K>(
-        &self,
-        mut filter: F,
-        mut key: K,
-    ) -> Vec<usize>
+    pub fn descending_order_by_key<F, K>(&self, mut filter: F, mut key: K) -> Vec<usize>
     where
         F: FnMut(&Cursor) -> bool,
         K: FnMut(&Cursor) -> (usize, usize),
     {
-        let mut order: Vec<usize> = (0..self.cursors.len())
-            .filter(|&i| filter(&self.cursors[i]))
-            .collect();
-        order.sort_by(|&a, &b| {
-            key(&self.cursors[b]).cmp(&key(&self.cursors[a]))
-        });
+        let mut order: Vec<usize> =
+            (0..self.cursors.len()).filter(|&i| filter(&self.cursors[i])).collect();
+        order.sort_by(|&a, &b| key(&self.cursors[b]).cmp(&key(&self.cursors[a])));
         order
     }
 
@@ -310,11 +308,12 @@ fn cmp_pos(a: (usize, usize), b: (usize, usize)) -> Ordering {
 }
 
 /// Returns `(start, end)` with `start <= end`.
-fn normalise(
-    a: (usize, usize),
-    b: (usize, usize),
-) -> ((usize, usize), (usize, usize)) {
-    if cmp_pos(a, b) == Ordering::Greater { (b, a) } else { (a, b) }
+fn normalise(a: (usize, usize), b: (usize, usize)) -> ((usize, usize), (usize, usize)) {
+    if cmp_pos(a, b) == Ordering::Greater {
+        (b, a)
+    } else {
+        (a, b)
+    }
 }
 
 /// Minimum position covered by a cursor (position or anchor, whichever is earlier).
@@ -326,7 +325,7 @@ fn min_pos(c: &Cursor) -> (usize, usize) {
             } else {
                 c.position
             }
-        }
+        },
         None => c.position,
     }
 }
@@ -340,7 +339,7 @@ fn max_pos(c: &Cursor) -> (usize, usize) {
             } else {
                 c.position
             }
-        }
+        },
         None => c.position,
     }
 }
@@ -358,12 +357,20 @@ fn merge_into(dst: &mut Cursor, src: &Cursor) {
     let combined_min = {
         let a = min_pos(dst);
         let b = min_pos(src);
-        if cmp_pos(a, b) == Ordering::Less { a } else { b }
+        if cmp_pos(a, b) == Ordering::Less {
+            a
+        } else {
+            b
+        }
     };
     let combined_max = {
         let a = max_pos(dst);
         let b = max_pos(src);
-        if cmp_pos(a, b) == Ordering::Greater { a } else { b }
+        if cmp_pos(a, b) == Ordering::Greater {
+            a
+        } else {
+            b
+        }
     };
 
     // If either cursor had a selection, the merged cursor keeps the union.
@@ -499,8 +506,7 @@ mod tests {
         cs.add_cursor((1, 0));
 
         let order = cs.descending_order();
-        let positions: Vec<_> =
-            order.iter().map(|&i| cs.as_slice()[i].position).collect();
+        let positions: Vec<_> = order.iter().map(|&i| cs.as_slice()[i].position).collect();
         assert_eq!(positions, vec![(2, 0), (1, 0), (0, 0)]);
     }
 
