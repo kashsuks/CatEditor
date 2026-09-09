@@ -23,7 +23,7 @@ jobs:
             pkg-config \
             libxkbcommon-dev \
             libwayland-dev \
-            libeg11-mesa-dev \
+            libegl1-mesa-dev \
             libvulkan-dev \
             libx11-dev \
             libxcursor-dev \
