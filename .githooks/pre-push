@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# Blocks `git push` unless `utils/run-tests.sh` has already passed for the 
+# current commit. Tracked in .githooks/ (not .git/hooks)
+#
+# Setup with
+#
+# git config core.hooksPath .githooks
+#
+set -euo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+RESET='\033[0m'
+
+MARKER_FILE="$(git rev-parse --git-dir)/PINEL_LAST_TESTED_COMMIT"
+CURRENT_HASH="$(git rev-parse HEAD)"
+
+if [ -f "$MARKER_FILE" ] && [ "$(cat "MARKER_FILE")" = "$CURRENT_HASH" ]; then
+    echo -e "${GREEN}✓${RESET} tests already passed for this commit )${CURRENT_HASH:0:8} - pushing"
+    exit 0
+fi
+
+echo -e "${RED}x${RESET} test have not been run for this commit (${CURRENT_HASH:0:8})"
+echo -e "${YELLOW}->${RESET} run ./utils/run-tests.sh, then push again"
+echo -e "${YELLOW}->${RESET} (or 'git push --no-verify' to skip this check just this once)"
+exit 1
